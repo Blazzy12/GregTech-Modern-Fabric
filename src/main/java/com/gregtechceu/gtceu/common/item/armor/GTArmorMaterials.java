@@ -1,114 +1,45 @@
 package com.gregtechceu.gtceu.common.item.armor;
 
-import net.minecraft.Util;
-import net.minecraft.sounds.SoundEvent;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.util.StringRepresentable;
-import net.minecraft.world.item.ArmorItem;
-import net.minecraft.world.item.ArmorMaterial;
-import net.minecraft.world.item.crafting.Ingredient;
-import net.minecraftforge.common.util.Lazy;
+import com.gregtechceu.gtceu.GTCEu;
+import com.gregtechceu.gtceu.api.item.armor.ArmorLayer;
+import com.gregtechceu.gtceu.api.item.armor.GTArmorBaseItem;
 
-import com.mojang.serialization.Codec;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.tags.TagKey;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.equipment.ArmorMaterial;
+import net.minecraft.world.item.equipment.ArmorType;
 
 import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
 
-@AllArgsConstructor
-public enum GTArmorMaterials implements ArmorMaterial, StringRepresentable {
+public class GTArmorMaterials {
 
-    GOGGLES("goggles", 0, Util.make(new EnumMap<>(ArmorItem.Type.class), map -> {
-        map.put(ArmorItem.Type.BOOTS, 0);
-        map.put(ArmorItem.Type.LEGGINGS, 0);
-        map.put(ArmorItem.Type.CHESTPLATE, 0);
-        map.put(ArmorItem.Type.HELMET, 0);
-    }), 50, SoundEvents.ARMOR_EQUIP_GENERIC, 0.0F, 0.0F, () -> Ingredient.EMPTY),
-    JETPACK("jetpack", 0, Util.make(new EnumMap<>(ArmorItem.Type.class), map -> {
-        map.put(ArmorItem.Type.BOOTS, 0);
-        map.put(ArmorItem.Type.LEGGINGS, 0);
-        map.put(ArmorItem.Type.CHESTPLATE, 0);
-        map.put(ArmorItem.Type.HELMET, 0);
-    }), 50, SoundEvents.ARMOR_EQUIP_GENERIC, 0.0F, 0.0F, () -> Ingredient.EMPTY),
-    HYDRAULIC("gtceu:hydraulic", 0, Util.make(new EnumMap<>(ArmorItem.Type.class), map -> {
-        map.put(ArmorItem.Type.BOOTS, 3);
-        map.put(ArmorItem.Type.LEGGINGS, 6);
-        map.put(ArmorItem.Type.CHESTPLATE, 8);
-        map.put(ArmorItem.Type.HELMET, 3);
-    }), 50, SoundEvents.ARMOR_EQUIP_GENERIC, 2.0F, 0.0F, () -> Ingredient.EMPTY),
-    NANO_MUSCLE("gtceu:nano_muscle_suite", 0, Util.make(new EnumMap<>(ArmorItem.Type.class), map -> {
-        map.put(ArmorItem.Type.BOOTS, 4);
-        map.put(ArmorItem.Type.LEGGINGS, 8);
-        map.put(ArmorItem.Type.CHESTPLATE, 12);
-        map.put(ArmorItem.Type.HELMET, 4);
-    }), 50, SoundEvents.ARMOR_EQUIP_GENERIC, 4.0F, 0.0F, () -> Ingredient.EMPTY),
-    // Note: Quark-Matter Armor exceeds Vanilla's Armor and Toughness limits.
-    // We may want to consider Apothic Attributes in the future if other modular tool/gear systems demand it and justify
-    // it, this is slightly misleading but suffices for vanilla
-    QUARK_TECH("gtceu:quark_tech_suite", 0, Util.make(new EnumMap<>(ArmorItem.Type.class), map -> {
-        map.put(ArmorItem.Type.BOOTS, 6);
-        map.put(ArmorItem.Type.LEGGINGS, 12);
-        map.put(ArmorItem.Type.CHESTPLATE, 18);
-        map.put(ArmorItem.Type.HELMET, 6);
-    }), 50, SoundEvents.ARMOR_EQUIP_GENERIC, 5.0F, 0.0F, () -> Ingredient.EMPTY),
-    BAD_PPE_EQUIPMENT("bad_ppe_equipment", 10, Util.make(new EnumMap<>(ArmorItem.Type.class), map -> {
-        map.put(ArmorItem.Type.BOOTS, 1);
-        map.put(ArmorItem.Type.LEGGINGS, 2);
-        map.put(ArmorItem.Type.CHESTPLATE, 3);
-        map.put(ArmorItem.Type.HELMET, 1);
-    }), 10, SoundEvents.ARMOR_EQUIP_GENERIC, 0.0F, 0.0F, () -> Ingredient.EMPTY),
-    GOOD_PPE_EQUIPMENT("good_ppe_equipment", 20, Util.make(new EnumMap<>(ArmorItem.Type.class), map -> {
-        map.put(ArmorItem.Type.BOOTS, 2);
-        map.put(ArmorItem.Type.LEGGINGS, 5);
-        map.put(ArmorItem.Type.CHESTPLATE, 6);
-        map.put(ArmorItem.Type.HELMET, 2);
-    }), 10, SoundEvents.ARMOR_EQUIP_GENERIC, 0.0F, 0.0F, () -> Ingredient.EMPTY),
-    ;
+    public static final List<ArmorLayer> BLANK_LAYERS = List.of(new ArmorLayer(GTCEu.id("armor")));
 
-    public static final Codec<GTArmorMaterials> CODEC = StringRepresentable.fromEnum(GTArmorMaterials::values);
-    private static final EnumMap<ArmorItem.Type, Integer> HEALTH_FUNCTION_FOR_TYPE = Util
-            .make(new EnumMap<>(ArmorItem.Type.class), map -> {
-                map.put(ArmorItem.Type.BOOTS, 13);
-                map.put(ArmorItem.Type.LEGGINGS, 15);
-                map.put(ArmorItem.Type.CHESTPLATE, 16);
-                map.put(ArmorItem.Type.HELMET, 11);
-            });
+    /** GT armor repairs through its own logic, never in an anvil. */
+    private static final TagKey<Item> NO_REPAIR = TagKey.create(Registries.ITEM, GTCEu.id("no_repair"));
 
-    private final String name;
-    private final int durabilityMultiplier;
-    private final EnumMap<ArmorItem.Type, Integer> protectionFunctionForType;
-    @Getter
-    private final int enchantmentValue;
-    @Getter
-    private final SoundEvent equipSound;
-    @Getter
-    private final float toughness;
-    @Getter
-    private final float knockbackResistance;
-    private final Lazy<Ingredient> repairIngredient;
+    public static final ArmorMaterial GOGGLES = material("goggles", 0, 0, 0, 0, 0, 0.0F, 0.0F);
+    public static final ArmorMaterial JETPACK = material("jetpack", 0, 0, 0, 0, 0, 0.0F, 0.0F);
+    public static final ArmorMaterial BAD_PPE_EQUIPMENT = material("bad_ppe_equipment", 1, 2, 3, 1, 10, 0.0F, 0.0F);
+    public static final ArmorMaterial GOOD_PPE_EQUIPMENT = material("good_ppe_equipment", 2, 5, 6, 2, 10, 0.0F, 0.0F);
+    public static final ArmorMaterial HYDRAULIC = material("hydraulic", 3, 6, 8, 3, 50, 2.0F, 0.0F);
+    public static final ArmorMaterial NANO_MUSCLE = material("nano_muscle", 4, 8, 12, 4, 50, 4.0F, 0.0F);
+    public static final ArmorMaterial QUARK_TECH = material("quark_tech", 6, 12, 18, 6, 50, 5.0F, 0.0F);
 
-    @Override
-    public int getDurabilityForType(ArmorItem.Type type) {
-        return HEALTH_FUNCTION_FOR_TYPE.get(type) * this.durabilityMultiplier;
+    private static ArmorMaterial material(String name, int boots, int leggings, int chestplate, int helmet,
+                                          int enchantability, float toughness, float knockbackResistance) {
+        Map<ArmorType, Integer> defense = new EnumMap<>(ArmorType.class);
+        defense.put(ArmorType.BOOTS, boots);
+        defense.put(ArmorType.LEGGINGS, leggings);
+        defense.put(ArmorType.CHESTPLATE, chestplate);
+        defense.put(ArmorType.HELMET, helmet);
+        return new ArmorMaterial(0, defense, enchantability, SoundEvents.ARMOR_EQUIP_GENERIC, toughness,
+                knockbackResistance, NO_REPAIR, GTArmorBaseItem.assetKey(GTCEu.id(name)));
     }
 
-    @Override
-    public int getDefenseForType(ArmorItem.Type type) {
-        return this.protectionFunctionForType.get(type);
-    }
-
-    @Override
-    public Ingredient getRepairIngredient() {
-        return this.repairIngredient.get();
-    }
-
-    @Override
-    public String getName() {
-        return name;
-    }
-
-    @Override
-    public String getSerializedName() {
-        return name;
-    }
+    public static void init() {}
 }

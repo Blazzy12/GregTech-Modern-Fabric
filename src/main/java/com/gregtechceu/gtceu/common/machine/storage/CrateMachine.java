@@ -12,10 +12,14 @@ import com.gregtechceu.gtceu.api.sync_system.annotations.RerenderOnChanged;
 import com.gregtechceu.gtceu.api.sync_system.annotations.SaveField;
 import com.gregtechceu.gtceu.api.sync_system.annotations.SyncToClient;
 import com.gregtechceu.gtceu.common.data.GTItems;
+import com.gregtechceu.gtceu.common.data.item.GTDataComponents;
 import com.gregtechceu.gtceu.utils.ExtendedUseOnContext;
 
-import net.minecraft.nbt.CompoundTag;
+import net.minecraft.core.component.DataComponentMap;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.util.Unit;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.item.component.ItemContainerContents;
 
 import brachy.modularui.api.drawable.Text;
 import brachy.modularui.factory.PosGuiData;
@@ -103,21 +107,29 @@ public class CrateMachine extends MetaMachine implements IMuiMachine {
                 inventory.shouldDropInventoryInWorld(false);
                 setRenderState(getRenderState().setValue(GTMachineModelProperties.IS_TAPED, isTaped));
                 syncDataHolder.markClientSyncFieldDirty("isTaped");
-                return InteractionResult.sidedSuccess(context.getLevel().isClientSide);
+                return InteractionResult.SUCCESS;
             }
         }
         return super.onUseWithItem(context);
     }
 
     @Override
-    public void saveToItem(CompoundTag tag, boolean clone) {
-        if (isTaped) tag.put("inventory", inventory.storage.serializeNBT());
+    protected void applyImplicitComponents(net.minecraft.core.component.DataComponentGetter componentInput) {
+        super.applyImplicitComponents(componentInput);
+        if (componentInput.get(GTDataComponents.TAPED.get()) != null &&
+                componentInput.get(DataComponents.CONTAINER) != null) {
+            var contents = componentInput.getOrDefault(DataComponents.CONTAINER, ItemContainerContents.EMPTY);
+            contents.copyInto(inventory.storage.getStacks());
+            setRenderState(getRenderState().setValue(GTMachineModelProperties.IS_TAPED, false));
+        }
     }
 
     @Override
-    public void loadFromItem(CompoundTag tag) {
-        if (tag.contains("inventory")) {
-            this.inventory.storage.deserializeNBT(tag.getCompound("inventory"));
+    public void collectImplicitComponents(DataComponentMap.Builder components) {
+        super.collectImplicitComponents(components);
+        if (isTaped) {
+            components.set(GTDataComponents.TAPED.get(), Unit.INSTANCE);
+            components.set(DataComponents.CONTAINER, ItemContainerContents.fromItems(inventory.storage.getStacks()));
         }
     }
 }

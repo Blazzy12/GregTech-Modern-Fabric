@@ -2,13 +2,12 @@ package com.gregtechceu.gtceu.common.item.behavior;
 
 import com.gregtechceu.gtceu.api.item.component.ICustomDescriptionId;
 import com.gregtechceu.gtceu.api.item.component.ISubItemHandler;
+import com.gregtechceu.gtceu.api.item.datacomponents.FacadeWrapper;
 import com.gregtechceu.gtceu.common.data.GTBlocks;
+import com.gregtechceu.gtceu.common.data.item.GTDataComponents;
 import com.gregtechceu.gtceu.utils.memoization.GTMemoizer;
 
 import net.minecraft.core.NonNullList;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.NbtOps;
-import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.CreativeModeTab;
@@ -18,7 +17,6 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.state.BlockState;
 
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -30,7 +28,7 @@ public class FacadeItemBehaviour implements ISubItemHandler, ICustomDescriptionI
     @Override
     public @Nullable Component getItemName(ItemStack stack) {
         BlockState facadeState = getFacadeState(stack);
-        return Component.translatable(stack.getDescriptionId(), facadeState.getBlock().getName());
+        return Component.translatable(stack.getItem().getDescriptionId(), facadeState.getBlock().getName());
     }
 
     public static final Supplier<List<BlockState>> DEFAULT_FACADES = GTMemoizer.memoize(() -> {
@@ -51,14 +49,11 @@ public class FacadeItemBehaviour implements ISubItemHandler, ICustomDescriptionI
         }
     }
 
-    public static void setFacadeState(ItemStack itemStack, BlockState facadeState) {
-        if (!isValidFacade(facadeState)) {
-            facadeState = Blocks.STONE.defaultBlockState();
+    public static void setFacadeState(ItemStack itemStack, BlockState state) {
+        if (!isValidFacade(state)) {
+            state = Blocks.STONE.defaultBlockState();
         }
-        var tagCompound = itemStack.getOrCreateTag();
-        Tag stateTag = BlockState.CODEC.encodeStart(NbtOps.INSTANCE, facadeState)
-                .result().orElse(new CompoundTag());
-        tagCompound.put("Facade", stateTag);
+        itemStack.set(GTDataComponents.FACADE, new FacadeWrapper(state));
     }
 
     public static boolean isValidFacade(ItemStack itemStack) {
@@ -85,40 +80,18 @@ public class FacadeItemBehaviour implements ISubItemHandler, ICustomDescriptionI
             return blockItem.getBlock().defaultBlockState();
         }
 
-        BlockState unsafeState = getFacadeStateUnsafe(itemStack);
-        if (unsafeState == null) {
-            // backwards support
-            ItemStack unsafeStack = getFacadeStackUnsafe(itemStack);
-            if (unsafeStack.getItem() instanceof BlockItem blockItem) {
-                return blockItem.getBlock().defaultBlockState();
-            }
-
-            return null;
-        }
-        return unsafeState;
+        return getFacadeStateUnsafe(itemStack);
     }
 
     @Nullable
     private static BlockState getFacadeStateUnsafe(ItemStack itemStack) {
-        var tagCompound = itemStack.getTag();
-        if (tagCompound == null || !tagCompound.contains("Facade", Tag.TAG_COMPOUND)) {
+        var facade = itemStack.get(GTDataComponents.FACADE);
+        if (facade == null) {
             return null;
         }
-        return BlockState.CODEC.parse(NbtOps.INSTANCE, tagCompound.getCompound("Facade"))
-                .result().orElse(null);
-    }
-
-    @SuppressWarnings("DeprecatedIsStillUsed")
-    @Deprecated
-    @NotNull
-    private static ItemStack getFacadeStackUnsafe(ItemStack itemStack) {
-        var tagCompound = itemStack.getTag();
-        if (tagCompound == null || !tagCompound.contains("Facade", Tag.TAG_COMPOUND)) {
-            return ItemStack.EMPTY;
-        }
-        ItemStack facadeStack = ItemStack.of(tagCompound.getCompound("Facade"));
-        if (facadeStack.isEmpty() || !isValidFacade(facadeStack)) {
-            return ItemStack.EMPTY;
+        BlockState facadeStack = facade.state();
+        if (facadeStack.isAir() || !isValidFacade(facadeStack)) {
+            return null;
         }
         return facadeStack;
     }

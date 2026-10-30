@@ -9,9 +9,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 
-import lombok.Getter;
-import lombok.Setter;
-
 import java.util.*;
 
 public class ItemPipeNet extends PipeNet<ItemPipeProperties> {
@@ -19,11 +16,6 @@ public class ItemPipeNet extends PipeNet<ItemPipeProperties> {
     private final Map<BlockPos, List<ItemRoutePath>> NET_DATA = new HashMap<>();
     private final Map<BlockPos, List<ItemRoutePath>> NET_DATA_NO_RESTRICTIVE = new HashMap<>();
     private final Map<BlockPos, List<ItemRoutePath>> NET_DATA_ONLY_RESTRICTIVE = new HashMap<>();
-
-    // Guard against recursive transfer made possible by some item handlers that wrap other item handlers
-    @Getter
-    @Setter
-    private boolean isTransferringItem = false;
 
     public ItemPipeNet(LevelPipeNet<ItemPipeProperties, ? extends PipeNet<ItemPipeProperties>> world) {
         super(world);
@@ -101,6 +93,6 @@ public class ItemPipeNet extends PipeNet<ItemPipeProperties> {
 
     @Override
     protected ItemPipeProperties readNodeData(CompoundTag tagCompound) {
-        return new ItemPipeProperties(tagCompound.getInt("Resistance"), tagCompound.getFloat("Rate"));
+        return new ItemPipeProperties(tagCompound.getIntOr("Resistance", 0), tagCompound.getFloatOr("Rate", 0f));
     }
 }

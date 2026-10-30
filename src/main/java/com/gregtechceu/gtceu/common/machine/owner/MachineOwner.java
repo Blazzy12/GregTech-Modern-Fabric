@@ -7,9 +7,9 @@ import com.gregtechceu.gtceu.config.ConfigHolder;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.common.UsernameCache;
-import net.minecraftforge.fml.ModLoader;
-import net.minecraftforge.server.ServerLifecycleHooks;
+import com.gregtechceu.gtceu.compat.fml.ModLoader;
+import com.gregtechceu.gtceu.compat.common.UsernameCache;
+import com.gregtechceu.gtceu.compat.server.ServerLifecycleHooks;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import lombok.Getter;
@@ -20,7 +20,7 @@ import org.jetbrains.annotations.UnmodifiableView;
 import java.util.*;
 import java.util.function.Function;
 
-public abstract sealed class MachineOwner permits PlayerOwner, FTBOwner, ArgonautsOwner {
+public abstract sealed class MachineOwner permits PlayerOwner {
 
     private static Function<UUID, MachineOwner> machineOwnerGenerator;
     public static final UUID EMPTY = new UUID(0, 0);
@@ -42,14 +42,8 @@ public abstract sealed class MachineOwner permits PlayerOwner, FTBOwner, Argonau
 
     public static void init() {
         var event = new RegisterOwnerTypeEvent();
-        if (GTCEu.Mods.isFTBTeamsLoaded()) {
-            event.register(0, FTBOwner::new);
-        } else if (GTCEu.Mods.isArgonautsLoaded()) {
-            event.register(0, ArgonautsOwner::new);
-        } else {
-            event.register(0, PlayerOwner::new);
-        }
-        ModLoader.get().postEvent(event);
+        event.register(0, PlayerOwner::new);
+        ModLoader.postEventWrapContainerInModOrder(event);
         machineOwnerGenerator = event.ownershipProvider;
     }
 
@@ -88,7 +82,7 @@ public abstract sealed class MachineOwner permits PlayerOwner, FTBOwner, Argonau
 
     public static boolean canOpenOwnerMachine(Player player, MetaMachine machine) {
         if (!ConfigHolder.INSTANCE.machines.onlyOwnerGUI) return true;
-        if (player.hasPermissions(ConfigHolder.INSTANCE.machines.ownerOPBypass)) return true;
+        if (com.gregtechceu.gtceu.compat.common.util.Perms.hasLevel(player.permissions(), ConfigHolder.INSTANCE.machines.ownerOPBypass)) return true;
         var owner = machine.getOwner();
         if (owner == null) return true;
         return owner.isPlayerInTeam(player) || owner.isPlayerFriendly(player);
@@ -96,7 +90,7 @@ public abstract sealed class MachineOwner permits PlayerOwner, FTBOwner, Argonau
 
     public static boolean canBreakOwnerMachine(Player player, MetaMachine machine) {
         if (!ConfigHolder.INSTANCE.machines.onlyOwnerBreak) return true;
-        if (player.hasPermissions(ConfigHolder.INSTANCE.machines.ownerOPBypass)) return true;
+        if (com.gregtechceu.gtceu.compat.common.util.Perms.hasLevel(player.permissions(), ConfigHolder.INSTANCE.machines.ownerOPBypass)) return true;
         var owner = machine.getOwner();
         if (owner == null) return true;
         return owner.isPlayerInTeam(player);

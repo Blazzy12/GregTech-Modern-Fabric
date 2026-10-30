@@ -1,6 +1,6 @@
 package com.gregtechceu.gtceu.data.recipe.event;
 
-import net.minecraftforge.eventbus.api.Event;
+import com.gregtechceu.gtceu.compat.bus.Event;
 
 import org.jetbrains.annotations.ApiStatus;
 

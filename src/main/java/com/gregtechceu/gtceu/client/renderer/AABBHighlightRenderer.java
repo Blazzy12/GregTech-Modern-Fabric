@@ -1,21 +1,25 @@
 package com.gregtechceu.gtceu.client.renderer;
 
-import com.gregtechceu.gtceu.client.util.RenderBufferHelper;
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
+import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 
-import net.minecraft.client.Camera;
-import net.minecraft.client.renderer.GameRenderer;
-import net.minecraft.client.renderer.MultiBufferSource;
+import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
+
+import net.minecraft.world.phys.shapes.Shapes;
+
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+
+import net.minecraft.client.renderer.SubmitNodeCollector;
+
+import net.minecraft.client.Minecraft;
+
 import net.minecraft.core.BlockPos;
-import net.minecraft.util.FastColor;
+import net.minecraft.util.ARGB;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 
-import com.mojang.blaze3d.platform.GlStateManager;
-import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.VertexConsumer;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -24,7 +28,7 @@ import lombok.experimental.Tolerate;
 
 import java.util.List;
 
-@OnlyIn(Dist.CLIENT)
+@Environment(EnvType.CLIENT)
 @NoArgsConstructor
 public class AABBHighlightRenderer {
 
@@ -32,40 +36,34 @@ public class AABBHighlightRenderer {
 
     private final List<AABBHighlight> highlights = new ObjectArrayList<>();
 
-    public void tick(PoseStack stack, MultiBufferSource.BufferSource multiBuf, Camera camera) {
-        if (GameRenderer.getPositionColorShader() == null || !camera.isInitialized()) return;
-        Vec3 offset = camera.getPosition().reverse();
+    /** Registers the render hook. */
+    public static void init() {
+        LevelRenderEvents.COLLECT_SUBMITS.register(INSTANCE::render);
+    }
 
-        RenderSystem.disableDepthTest();
-        RenderSystem.enableBlend();
-        RenderSystem.setShader(GameRenderer::getPositionColorShader);
-        RenderSystem.blendFunc(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
-        RenderSystem.disableCull();
-
+    private void render(LevelRenderContext context) {
+        if (highlights.isEmpty()) return;
+        Vec3 offset = Minecraft.getInstance().gameRenderer.mainCamera().position().reverse();
+        PoseStack stack = context.poseStack();
         stack.pushPose();
         stack.translate(offset.x, offset.y, offset.z);
-        VertexConsumer buffer = multiBuf.getBuffer(GTRenderTypes.blockHighlightQuads());
-
         long time = System.currentTimeMillis();
-        highlights.forEach(h -> h.render(buffer, stack, time));
-
+        // copy, as finished highlights remove themselves
+        for (AABBHighlight highlight : List.copyOf(highlights)) {
+            highlight.render(stack, context.submitNodeCollector(), time);
+        }
         stack.popPose();
-        multiBuf.endBatch();
-
-        RenderSystem.enableCull();
-        RenderSystem.enableDepthTest();
-        RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
     }
 
     public void addHighlight(AABBHighlight highlight) {
         highlights.add(highlight);
     }
 
-    public record AABBHighlight(AABB aabb, int colorARGB, long startMillis, long durationMillis, long phaseMillis,
+    public record AABBHighlight(AABB aabb, int colorARGB,
+                                long startMillis, long durationMillis, long phaseMillis,
                                 double thickness) {
 
-        public void render(VertexConsumer buf, PoseStack pose, long currentTimeMillis) {
+        public void render(PoseStack poseStack, SubmitNodeCollector collector, long currentTimeMillis) {
             if (currentTimeMillis - startMillis >= durationMillis) {
                 this.remove();
                 return;
@@ -73,11 +71,12 @@ public class AABBHighlightRenderer {
             if (currentTimeMillis < startMillis) return;
             if ((currentTimeMillis - startMillis) / phaseMillis % 2 == 1) return;
 
-            RenderBufferHelper.renderAABBOutline(buf, pose, aabb(), thickness, colorARGB());
+            // drawn through blocks, like before
+            collector.submitShapeOutline(poseStack, Shapes.create(aabb), RenderTypes.linesTranslucentNoDepthWrite(),
+                    colorARGB, 2f, true);
         }
 
         public void remove() {
-            // FIXME CME inbound here!
             AABBHighlightRenderer.INSTANCE.highlights.remove(this);
         }
     }
@@ -109,7 +108,7 @@ public class AABBHighlightRenderer {
         }
 
         public AABBHighlightBuilder colorARGB(int alpha, int red, int green, int blue) {
-            this.colorARGB = FastColor.ARGB32.color(alpha, red, green, blue);
+            this.colorARGB = ARGB.color(alpha, red, green, blue);
             return this;
         }
 

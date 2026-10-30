@@ -7,7 +7,9 @@ import com.gregtechceu.gtceu.utils.GTTransferUtils;
 import com.gregtechceu.gtceu.utils.RedstoneUtil;
 
 import net.minecraft.core.Direction;
-import net.minecraftforge.items.IItemHandler;
+import com.gregtechceu.gtceu.compat.items.IItemHandler;
+
+import org.jetbrains.annotations.Nullable;
 
 public class ItemDetectorCover extends DetectorCover {
 
@@ -43,8 +45,9 @@ public class ItemDetectorCover extends DetectorCover {
         setRedstoneSignalOutput(RedstoneUtil.computeRedstoneValue(storedItems, itemCapacity, isInverted()));
     }
 
+    @Nullable
     protected IItemHandler getItemHandler() {
-        return GTTransferUtils.getItemHandler(coverHolder.getLevel(), coverHolder.getBlockPos(), attachedSide).resolve()
+        return GTTransferUtils.getItemHandler(coverHolder.getLevel(), coverHolder.getBlockPos(), attachedSide)
                 .orElse(null);
     }
 }

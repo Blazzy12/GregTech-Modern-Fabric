@@ -8,7 +8,7 @@ import com.gregtechceu.gtceu.api.machine.trait.notifiable.NotifiableEnergyContai
 import com.gregtechceu.gtceu.api.sync_system.annotations.SaveField;
 import com.gregtechceu.gtceu.common.machine.trait.EnvironmentalExplosionTrait;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
 
 import lombok.Getter;
 

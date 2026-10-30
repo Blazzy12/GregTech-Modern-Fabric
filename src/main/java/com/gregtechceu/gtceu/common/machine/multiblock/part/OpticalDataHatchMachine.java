@@ -9,11 +9,9 @@ import com.gregtechceu.gtceu.api.machine.multiblock.PartAbility;
 import com.gregtechceu.gtceu.api.machine.multiblock.WorkableMultiblockMachine;
 import com.gregtechceu.gtceu.api.machine.multiblock.part.MultiblockPartMachine;
 import com.gregtechceu.gtceu.api.recipe.GTRecipe;
-import com.gregtechceu.gtceu.common.blockentity.OpticalPipeBlockEntity;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.entity.BlockEntity;
 
 import lombok.Getter;
 import org.jetbrains.annotations.NotNull;
@@ -64,18 +62,10 @@ public class OpticalDataHatchMachine extends MultiblockPartMachine implements IO
             return isRecipeAvailable(dataAccesses, seen, recipe) ||
                     isRecipeAvailable(transmitters, seen, recipe);
         } else {
-            BlockEntity blockEntity = getLevel().getBlockEntity(getBlockPos().relative(getFrontFacing()));
-            if (blockEntity == null) return false;
-
-            if (blockEntity instanceof OpticalPipeBlockEntity) {
-                // noinspection DataFlowIssue
-                IDataAccessHatch cap = blockEntity.getCapability(GTCapability.CAPABILITY_DATA_ACCESS,
-                        getFrontFacing().getOpposite()).orElse(null);
-                // noinspection ConstantValue
-                return cap != null && cap.isRecipeAvailable(recipe, seen);
-            }
+            IDataAccessHatch cap = getLevel().getCapability(GTCapability.CAPABILITY_DATA_ACCESS,
+                    getBlockPos().relative(getFrontFacing()), getFrontFacing().getOpposite());
+            return cap != null && cap.isRecipeAvailable(recipe, seen);
         }
-        return false;
     }
 
     private static boolean isRecipeAvailable(@NotNull Iterable<? extends IDataAccessHatch> hatches,

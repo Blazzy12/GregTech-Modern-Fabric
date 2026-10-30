@@ -22,7 +22,7 @@ public class SelectableSlot extends ItemSlot {
     private IBoolValue<?> selectable = new BoolValue(true);
 
     private int getIndex() {
-        return index == null ? getSlot().getSlotIndex() : index;
+        return index == null ? getSlot().getContainerSlot() : index;
     }
 
     @Override

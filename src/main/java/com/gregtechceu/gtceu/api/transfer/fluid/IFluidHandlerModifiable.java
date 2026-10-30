@@ -1,7 +1,7 @@
 package com.gregtechceu.gtceu.api.transfer.fluid;
 
-import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.capability.IFluidHandler;
+import com.gregtechceu.gtceu.compat.fluids.FluidStack;
+import com.gregtechceu.gtceu.compat.fluids.capability.IFluidHandler;
 
 public interface IFluidHandlerModifiable extends IFluidHandler {
 

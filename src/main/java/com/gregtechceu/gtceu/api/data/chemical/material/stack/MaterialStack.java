@@ -1,8 +1,11 @@
 package com.gregtechceu.gtceu.api.data.chemical.material.stack;
 
+import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.api.data.chemical.material.Material;
 import com.gregtechceu.gtceu.api.registry.GTRegistries;
 import com.gregtechceu.gtceu.utils.FormattingUtil;
+
+import net.minecraft.core.Holder;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -12,7 +15,11 @@ import java.util.WeakHashMap;
 
 public record MaterialStack(@Nullable Material material, long amount) {
 
-    public static final MaterialStack EMPTY = new MaterialStack(null, 0);
+    public MaterialStack(Holder<Material> materialHolder, long amount) {
+        this(materialHolder.value(), amount);
+    }
+
+    public static final MaterialStack EMPTY = new MaterialStack((Material) null, 0);
 
     private static final Map<String, MaterialStack> PARSE_CACHE = new WeakHashMap<>();
 
@@ -21,8 +28,9 @@ public record MaterialStack(@Nullable Material material, long amount) {
         return new MaterialStack(material, amount);
     }
 
+    @Override
     public Material material() {
-        if (material == null) throw new NoSuchElementException("Cannot get material from empty material stack.");
+        if (material == null) throw new NoSuchElementException("Cannot get material from empty material stack");
         return material;
     }
 
@@ -60,7 +68,7 @@ public record MaterialStack(@Nullable Material material, long amount) {
             copy = copy.substring(spaceIndex + 1);
         }
 
-        cached = new MaterialStack(GTRegistries.MATERIALS.get(copy), count);
+        cached = new MaterialStack(GTRegistries.MATERIALS.getValue(GTCEu.id(copy)), count);
         PARSE_CACHE.put(trimmed, cached);
         return cached;
     }
@@ -73,7 +81,7 @@ public record MaterialStack(@Nullable Material material, long amount) {
     public String toString() {
         String string = "";
         if (this.isEmpty()) return "";
-        if (material.getChemicalFormula() == null || material.getChemicalFormula().isEmpty()) {
+        if (material.getChemicalFormula().isEmpty()) {
             string += "?";
         } else if (material.getMaterialComponents().size() > 1) {
             string += '(' + material.getChemicalFormula() + ')';

@@ -1,0 +1,10 @@
+package com.gregtechceu.gtceu.compat.fml.common;
+
+import java.lang.annotation.*;
+
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.TYPE)
+public @interface Mod {
+
+    String value();
+}

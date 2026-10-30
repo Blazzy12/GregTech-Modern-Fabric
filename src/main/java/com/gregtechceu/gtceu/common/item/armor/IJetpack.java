@@ -2,7 +2,9 @@ package com.gregtechceu.gtceu.common.item.armor;
 
 import com.gregtechceu.gtceu.api.capability.GTCapabilityHelper;
 import com.gregtechceu.gtceu.api.item.armor.ArmorUtils;
+import com.gregtechceu.gtceu.api.item.datacomponents.GTArmor;
 import com.gregtechceu.gtceu.api.item.module.ModuleContext;
+import com.gregtechceu.gtceu.common.data.item.GTDataComponents;
 import com.gregtechceu.gtceu.common.module.CreativeFlightModule;
 import com.gregtechceu.gtceu.common.module.JetpackModule;
 import com.gregtechceu.gtceu.common.module.LiquidFuelJetpackModule;
@@ -10,7 +12,6 @@ import com.gregtechceu.gtceu.utils.input.SyncedKeyMappings;
 
 import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
@@ -86,7 +87,7 @@ public interface IJetpack {
                 }
             }
         }
-        return stack.getTag() != null && stack.getTag().getBoolean("enabled");
+        return stack.getOrDefault(GTDataComponents.ARMOR_DATA, GTArmor.EMPTY).enabled();
     }
 
     static void setEngineEnabled(ItemStack stack, boolean enabled) {
@@ -100,7 +101,7 @@ public interface IJetpack {
                 }
             }
         }
-        stack.getOrCreateTag().putBoolean("enabled", enabled);
+        stack.update(GTDataComponents.ARMOR_DATA, GTArmor.EMPTY, data -> data.setEnabled(enabled));
     }
 
     default boolean updateHoverMode(Player player, ItemStack stack, boolean hover, boolean toggle) {
@@ -108,10 +109,10 @@ public interface IJetpack {
         boolean creativeFlight = modular != null && modular.getAllModuleInstances().stream()
                 .anyMatch(context -> context.getModule() instanceof CreativeFlightModule &&
                         context.getModule().isEnabled(context));
-        if (!creativeFlight) return toggle != hover;
+        if (!creativeFlight) return toggle ? !hover : hover;
 
         // The server owns flight changes; vanilla's ability packet also covers double-tap jump.
-        if (toggle && !player.level().isClientSide && !player.isSpectator()) {
+        if (toggle && !player.level().isClientSide() && !player.isSpectator()) {
             var abilities = player.getAbilities();
             var electric = GTCapabilityHelper.getElectricItem(stack);
             if (abilities.flying || (abilities.mayfly && electric != null &&
@@ -128,7 +129,7 @@ public interface IJetpack {
 
         double deltaY = player.getDeltaMovement().y();
 
-        if ((!flightEnabled || !hover) && player.getY() < player.level().getMinBuildHeight() - 5) {
+        if ((!flightEnabled || !hover) && player.getY() < player.level().getMinY() - 5) {
             performEHover(stack, player);
         } else if (!flightEnabled) {
             return;
@@ -198,7 +199,7 @@ public interface IJetpack {
             }
 
             // ensure that the player is actually using the jetpack to cancel fall damage
-            if (!player.level().isClientSide && (hover || flyKeyDown)) {
+            if (!player.level().isClientSide() && (hover || flyKeyDown)) {
                 player.fallDistance = 0;
                 if (player instanceof ServerPlayer serverPlayer) {
                     serverPlayer.connection.aboveGroundTickCount = 0;
@@ -214,13 +215,13 @@ public interface IJetpack {
     }
 
     static void performEHover(ItemStack stack, Player player) {
-        CompoundTag tag = stack.getOrCreateTag();
-        tag.putBoolean("enabled", true);
-        tag.putBoolean("hover", true);
-        player.displayClientMessage(Component.translatable("armor.gtceu.jetpack.emergency_hover"), true);
+        setEngineEnabled(stack, true);
+        stack.update(GTDataComponents.ARMOR_DATA, GTArmor.EMPTY, armor -> armor
+                .setHover(true));
+        player.sendOverlayMessage(Component.translatable("armor.gtceu.jetpack.emergency_hover"));
         player.fallDistance = 0;
 
-        if (!player.level().isClientSide) {
+        if (!player.level().isClientSide()) {
             if (player instanceof ServerPlayer) {
                 ((ServerPlayer) player).connection.aboveGroundTickCount = 0;
             }

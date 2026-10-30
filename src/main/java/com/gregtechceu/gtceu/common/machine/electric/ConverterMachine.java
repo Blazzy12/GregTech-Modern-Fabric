@@ -8,12 +8,13 @@ import com.gregtechceu.gtceu.api.machine.TieredMachine;
 import com.gregtechceu.gtceu.api.machine.trait.notifiable.NotifiableEnergyContainer;
 import com.gregtechceu.gtceu.api.sync_system.annotations.SaveField;
 import com.gregtechceu.gtceu.api.sync_system.annotations.SyncToClient;
+import com.gregtechceu.gtceu.common.data.item.GTItemAbilities;
 import com.gregtechceu.gtceu.common.machine.trait.ConverterTrait;
 import com.gregtechceu.gtceu.common.machine.trait.EnvironmentalExplosionTrait;
 import com.gregtechceu.gtceu.common.mui.GTGuiTextures;
 import com.gregtechceu.gtceu.utils.ExtendedUseOnContext;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
@@ -71,6 +72,9 @@ public class ConverterMachine extends TieredMachine {
     @Override
     public InteractionResult onSoftMalletClick(ExtendedUseOnContext context) {
         if (!isRemote()) {
+            if (!context.getItemInHand().canPerformAction(GTItemAbilities.MALLET_CONFIGURE)) {
+                return InteractionResult.PASS;
+            }
             if (getConverterTrait().isFeToEu()) {
                 setFeToEu(false);
                 context.getPlayer().sendSystemMessage(

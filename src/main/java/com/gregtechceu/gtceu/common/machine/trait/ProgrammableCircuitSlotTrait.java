@@ -17,7 +17,7 @@ import com.gregtechceu.gtceu.common.mui.GTMuiWidgets;
 import com.gregtechceu.gtceu.config.ConfigHolder;
 
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.crafting.Ingredient;
+import com.gregtechceu.gtceu.compat.common.crafting.SizedIngredient;
 
 import brachy.modularui.screen.ModularPanel;
 import brachy.modularui.value.sync.PanelSyncManager;
@@ -30,7 +30,7 @@ import java.util.List;
 /**
  * Machine trait which adds a programmable circuit input slot to the side of a machine.
  */
-public class ProgrammableCircuitSlotTrait extends NotifiableRecipeHandlerTrait<Ingredient>
+public class ProgrammableCircuitSlotTrait extends NotifiableRecipeHandlerTrait<SizedIngredient>
                                           implements IAttachConfiguratorsTrait, ICapabilityTrait {
 
     @SaveField
@@ -97,8 +97,8 @@ public class ProgrammableCircuitSlotTrait extends NotifiableRecipeHandlerTrait<I
     }
 
     @Override
-    public List<Ingredient> handleRecipeInner(IO io, GTRecipe recipe, List<Ingredient> left,
-                                              boolean simulate) {
+    public List<SizedIngredient> handleRecipeInner(IO io, GTRecipe recipe, List<SizedIngredient> left,
+                                                   boolean simulate) {
         if (!controllerAllowsCircuits || !enabled || !ConfigHolder.INSTANCE.machines.ghostCircuit) return left;
         return NotifiableItemStackHandler.handleRecipe(io, recipe, left, simulate, getHandlerIO(), storage,
                 getMachine());
@@ -115,7 +115,7 @@ public class ProgrammableCircuitSlotTrait extends NotifiableRecipeHandlerTrait<I
     }
 
     @Override
-    public RecipeCapability<Ingredient> getCapability() {
+    public RecipeCapability<SizedIngredient> getCapability() {
         return ItemRecipeCapability.CAP;
     }
 }

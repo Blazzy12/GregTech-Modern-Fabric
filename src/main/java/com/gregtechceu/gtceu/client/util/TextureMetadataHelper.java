@@ -1,5 +1,7 @@
 package com.gregtechceu.gtceu.client.util;
 
+import net.minecraft.util.LightCoordsUtil;
+
 import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.client.model.ctm.GTTextureMetadata;
 import com.gregtechceu.gtceu.client.util.quad.transformers.GTQuadTransformers;
@@ -7,11 +9,10 @@ import com.gregtechceu.gtceu.config.ConfigHolder;
 import com.gregtechceu.gtceu.utils.TriState;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.LightTexture;
-import net.minecraft.client.renderer.block.model.BakedQuad;
+import com.gregtechceu.gtceu.compat.client.model.BakedQuad;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.client.resources.model.Material;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.client.resources.model.sprite.Material;
+import net.minecraft.resources.Identifier;
 
 import lombok.experimental.UtilityClass;
 
@@ -22,9 +23,9 @@ import java.util.concurrent.ConcurrentHashMap;
 @UtilityClass
 public class TextureMetadataHelper {
 
-    private static final Map<ResourceLocation, Optional<GTTextureMetadata>> metadataCache = new ConcurrentHashMap<>();
+    private static final Map<Identifier, Optional<GTTextureMetadata>> metadataCache = new ConcurrentHashMap<>();
 
-    public static Optional<GTTextureMetadata> getMetadata(ResourceLocation res) {
+    public static Optional<GTTextureMetadata> getMetadata(Identifier res) {
         return metadataCache.computeIfAbsent(res, loc -> {
             try {
                 return Minecraft.getInstance().getResourceManager().getResource(res)
@@ -44,14 +45,14 @@ public class TextureMetadataHelper {
     }
 
     public static Optional<GTTextureMetadata> getMetadata(Material material) {
-        return getMetadata(spriteToAbsolute(material.texture()));
+        return getMetadata(spriteToAbsolute(material.sprite()));
     }
 
-    public static Optional<GTTextureMetadata> getMetadataFromRelativeLocation(ResourceLocation relativeLocation) {
+    public static Optional<GTTextureMetadata> getMetadataFromRelativeLocation(Identifier relativeLocation) {
         return getMetadata(spriteToAbsolute(relativeLocation));
     }
 
-    public static ResourceLocation spriteToAbsolute(ResourceLocation sprite) {
+    public static Identifier spriteToAbsolute(Identifier sprite) {
         if (!sprite.getPath().startsWith("textures/")) {
             sprite = sprite.withPrefix("textures/");
         }
@@ -84,10 +85,10 @@ public class TextureMetadataHelper {
 
         for (int i = 0; i < 4; i++) {
             int quadLight = quadPackedLights[i];
-            int qBlock = LightTexture.block(quadLight), qSky = LightTexture.sky(quadLight);
+            int qBlock = LightCoordsUtil.block(quadLight), qSky = LightCoordsUtil.sky(quadLight);
 
             int ambientLight = ambientPackedLights[i];
-            int aBlock = LightTexture.block(ambientLight), aSky = LightTexture.sky(ambientLight);
+            int aBlock = LightCoordsUtil.block(ambientLight), aSky = LightCoordsUtil.sky(ambientLight);
 
             if (qBlock > aBlock || qSky > aSky) {
                 return true;

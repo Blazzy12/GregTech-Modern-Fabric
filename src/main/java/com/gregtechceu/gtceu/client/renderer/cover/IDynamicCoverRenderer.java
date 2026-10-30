@@ -2,7 +2,7 @@ package com.gregtechceu.gtceu.client.renderer.cover;
 
 import com.gregtechceu.gtceu.api.machine.MetaMachine;
 
-import net.minecraft.client.renderer.MultiBufferSource;
+import com.gregtechceu.gtceu.compat.client.render.MultiBufferSource;
 import net.minecraft.core.Direction;
 
 import com.mojang.blaze3d.vertex.PoseStack;

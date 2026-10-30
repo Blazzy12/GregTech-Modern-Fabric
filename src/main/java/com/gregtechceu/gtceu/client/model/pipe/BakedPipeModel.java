@@ -1,5 +1,9 @@
 package com.gregtechceu.gtceu.client.model.pipe;
 
+import com.gregtechceu.gtceu.compat.client.color.ColorHandlers;
+
+import net.minecraft.client.renderer.chunk.ChunkSectionLayer;
+
 import com.gregtechceu.gtceu.api.blockentity.PipeBlockEntity;
 import com.gregtechceu.gtceu.api.cover.CoverBehavior;
 import com.gregtechceu.gtceu.api.data.chemical.ChemicalHelper;
@@ -16,19 +20,18 @@ import com.gregtechceu.gtceu.utils.GTUtil;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.color.block.BlockColors;
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
-import net.minecraft.client.renderer.block.model.BakedQuad;
+import com.gregtechceu.gtceu.compat.client.render.MultiBufferSource;
+import com.gregtechceu.gtceu.compat.client.model.BakedQuad;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.client.resources.model.BakedModel;
+import com.gregtechceu.gtceu.compat.client.model.BakedModel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.util.RandomSource;
-import net.minecraft.world.level.BlockAndTintGetter;
+import net.minecraft.client.renderer.block.BlockAndTintGetter;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.client.ChunkRenderTypeSet;
-import net.minecraftforge.client.model.data.ModelData;
+import com.gregtechceu.gtceu.compat.client.model.ChunkRenderTypeSet;
+import com.gregtechceu.gtceu.compat.client.model.data.ModelData;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import org.jetbrains.annotations.Nullable;
@@ -50,7 +53,7 @@ public class BakedPipeModel extends BaseBakedModel implements ICoverableRenderer
 
     @Override
     public List<BakedQuad> getQuads(@Nullable BlockState state, @Nullable Direction side,
-                                    RandomSource rand, ModelData modelData, @Nullable RenderType renderType) {
+                                    RandomSource rand, ModelData modelData, @Nullable ChunkSectionLayer renderType) {
         List<BakedQuad> quads = new ArrayList<>();
 
         BlockAndTintGetter level = modelData.get(GTModelProperties.LEVEL);
@@ -122,10 +125,9 @@ public class BakedPipeModel extends BaseBakedModel implements ICoverableRenderer
         }
 
         // bake all the quads' tint colors into the vertices
-        BlockColors blockColors = Minecraft.getInstance().getBlockColors();
         for (BakedQuad frameQuad : frameQuads) {
             if (frameQuad.isTinted()) {
-                int color = blockColors.getColor(frameState, level, pos, frameQuad.getTintIndex());
+                int color = ColorHandlers.getBlockColor(frameState, level, pos, frameQuad.getTintIndex());
                 frameQuad = GTQuadTransformers.setColor(frameQuad, color, true);
             }
             quads.add(frameQuad);
@@ -135,10 +137,6 @@ public class BakedPipeModel extends BaseBakedModel implements ICoverableRenderer
 
     @Override
     public ModelData getModelData(BlockAndTintGetter level, BlockPos pos, BlockState state, ModelData modelData) {
-        modelData = modelData.derive()
-                .with(GTModelProperties.LEVEL, level)
-                .with(GTModelProperties.POS, pos)
-                .build();
         for (BakedModel part : this.parts.values()) {
             modelData = part.getModelData(level, pos, state, modelData);
         }

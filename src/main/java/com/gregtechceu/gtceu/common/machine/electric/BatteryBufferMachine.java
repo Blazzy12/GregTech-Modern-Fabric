@@ -23,11 +23,12 @@ import com.gregtechceu.gtceu.utils.FormattingUtil;
 import com.gregtechceu.gtceu.utils.GTUtil;
 
 import net.minecraft.core.Direction;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
-import net.minecraftforge.energy.IEnergyStorage;
+import com.gregtechceu.gtceu.compat.energy.IEnergyStorage;
 
 import brachy.modularui.api.drawable.IDrawable;
 import brachy.modularui.drawable.progress.ProgressDrawable;
@@ -105,10 +106,10 @@ public class BatteryBufferMachine extends TieredEnergyMachine
     }
 
     @Override
-    public void load(CompoundTag tag) {
+    public void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         if (tag.contains("chargerInventory"))
             tag.put("batteryInventory", Objects.requireNonNull(tag.get("chargerInventory")));
-        super.load(tag);
+        super.loadAdditional(tag, registries);
     }
 
     @Override

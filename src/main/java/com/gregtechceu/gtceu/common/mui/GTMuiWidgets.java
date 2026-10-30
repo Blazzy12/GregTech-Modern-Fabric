@@ -30,7 +30,7 @@ import brachy.modularui.api.drawable.IDrawable;
 import brachy.modularui.api.drawable.Text;
 import brachy.modularui.drawable.*;
 import brachy.modularui.drawable.text.TextRenderer;
-import brachy.modularui.factory.GuiData;
+import brachy.modularui.factory.SidedPosGuiData;
 import brachy.modularui.screen.ModularPanel;
 import brachy.modularui.screen.RichTooltip;
 import brachy.modularui.screen.UISettings;
@@ -41,7 +41,6 @@ import brachy.modularui.utils.MouseData;
 import brachy.modularui.value.BoolValue;
 import brachy.modularui.value.sync.*;
 import brachy.modularui.widget.ParentWidget;
-import brachy.modularui.widget.Widget;
 import brachy.modularui.widgets.*;
 import brachy.modularui.widgets.layout.Flow;
 import brachy.modularui.widgets.layout.Grid;
@@ -94,53 +93,41 @@ public class GTMuiWidgets {
     }
 
     public static Flow createTitleBar(Supplier<ItemStack> stackSupplier, int panelWidth, UITexture background) {
-        return createTitleBarWithEnd(stackSupplier, panelWidth, background, null);
-    }
-
-    public static Flow createTitleBar(Icon icon, String text, int panelWidth, UITexture background) {
-        return createTitleBarWithEnd(icon, text, panelWidth, background, null);
-    }
-
-    public static Flow createTitleBarWithEnd(Supplier<ItemStack> stackSupplier, int panelWidth, UITexture background,
-                                             @Nullable Widget<?> end) {
         ItemStack stack = stackSupplier.get();
         var name = stack.getHoverName().getString();
         name = name.replaceAll("§.", "").trim();
-        return createTitleBarWithEnd(new ItemDrawable(stack).asIcon(), name, panelWidth, background, end);
+        return createTitleBar(new ItemDrawable(stack).asIcon(), name, panelWidth, background);
     }
 
-    public static Flow createTitleBarWithEnd(Icon icon, String text, int panelWidth, UITexture background,
-                                             @Nullable Widget<?> end) {
-        int sidePadding = 5;
-        int topPadding = 3;
-
-        int iconSize = 12;
-
-        int endWidth = 0;
-        if (end != null) {
-            endWidth = end.resizer().getFixedPixelWidth() + sidePadding;
-        }
-        int minPanelWidth = (int) (panelWidth * 0.9f) - (iconSize + endWidth + (sidePadding * 3));
+    public static Flow createTitleBar(@Nullable Icon icon, String text, int panelWidth, UITexture background) {
+        int borderRadius = 5;
+        int iconSize = icon == null ? 0 : 16;
+        int minPanelWidth = (int) (panelWidth * 0.9f) - (iconSize + (borderRadius * 3));
         int textTitleWidth = GTCEu.isClientThread() ? TextRenderer.getFont().width(text) : 1;
 
         int textRows = (int) Math.ceil((double) textTitleWidth / minPanelWidth);
         int textHeightPerRow = GTCEu.isClientThread() ? (int) (Text.renderer.getFontHeight()) : 9;
-        int textHeight = textHeightPerRow * textRows + topPadding;
+        int textHeight = textHeightPerRow * textRows + borderRadius;
 
-        int rowWidth = Math.min((int) (0.9 * panelWidth), (iconSize + endWidth + (sidePadding * 4) + textTitleWidth));
-
+        int rowWidth = Math.min((int) (0.9 * panelWidth), (iconSize + (borderRadius * 4) + textTitleWidth));
+        TextWidget<?> textWidget = Text.str(text)
+                .asWidget()
+                .margin(borderRadius, borderRadius, borderRadius, 1)
+                .size(Math.min(minPanelWidth, textTitleWidth), textHeight);
+        if (icon == null) textWidget.center();
         return Flow.row()
                 .decoration()
                 .coverChildrenHeight()
                 .mainAxisAlignment(Alignment.MainAxis.CENTER)
                 .crossAxisAlignment(Alignment.CrossAxis.CENTER)
                 .width(rowWidth)
-                .top(-(textHeight + topPadding))
+                .top(-(textHeight + borderRadius))
                 .horizontalCenter()
                 .background(background.getSubArea(0f, 0f, 1.0f, 0.75f))
-                .child(icon.size(iconSize).asWidget().size(iconSize))
-                .child(Text.str(text).asWidget().size(Math.min(minPanelWidth, textTitleWidth), textHeight))
-                .childIf(end != null, () -> end);
+                .childIf(icon != null, () -> icon.size(iconSize)
+                        .asWidget()
+                        .marginLeft(borderRadius))
+                .child(textWidget);
     }
 
     public static ToggleButton createToggleButton(BooleanSupplier getter, BooleanConsumer setter, UITexture texture,
@@ -263,7 +250,7 @@ public class GTMuiWidgets {
             return IntCircuitBehaviour.getCircuitConfiguration(circuitGetter.get());
         },
                 (v) -> circuitSetter.accept(v < 0 ? ItemStack.EMPTY :
-                        IntCircuitBehaviour.stack(v)))
+                        IntCircuitBehaviour.stack(v, Math.max(1, circuitGetter.get().getCount()))))
                 .allowC2S();
     }
 
@@ -327,12 +314,13 @@ public class GTMuiWidgets {
                     }
                     return true;
                 })
-                .onMouseScrolled((context, delta) -> {
+                .onMouseScrolled(((context, scrollX, scrollY) -> {
                     int newValue = nextCircuitValue(circuitTrait.storage.getStackInSlot(0),
-                            circuitSyncValue.getIntValue(), delta);
+                            circuitSyncValue.getIntValue(), scrollY);
                     circuitSyncValue.setValue(newValue);
                     return true;
-                })
+
+                }))
                 .overlay(new DynamicDrawable(() -> {
                     if (circuitTrait.storage.getStackInSlot(0).isEmpty()) {
                         return new DrawableStack(new ItemDrawable(IntCircuitBehaviour.stack(0)),
@@ -424,7 +412,7 @@ public class GTMuiWidgets {
 
     public static <T> ParentWidget<?> createFilterRow(Flow existingRow,
                                                       FilterHandler<T> filterHandler,
-                                                      GuiData data,
+                                                      SidedPosGuiData data,
                                                       PanelSyncManager syncManager,
                                                       UISettings settings) {
         var filterSlot = filterHandler.getFilterSlot();
@@ -436,7 +424,7 @@ public class GTMuiWidgets {
         syncManager.syncValue("filterSlotHandler", filterSlotHandler);
 
         IPanelHandler panelHandler = syncManager.syncedPanel("filterPanel", true,
-                (sm, sh) -> filterHandler.getFilter().getPanel(data, sm, settings, false, sh));
+                (sm, sh) -> filterHandler.getFilter().getPanel(data, sm, settings, false));
 
         modSlot.changeListener((oldStack, newStack, client, init) -> {
             if (init || ItemStack.isSameItem(oldStack, newStack)) return;
@@ -444,8 +432,7 @@ public class GTMuiWidgets {
             panelHandler.deleteCachedPanel();
         });
         return existingRow
-                .child(new ItemSlot().syncHandler(filterSlotHandler)
-                        .background(GTGuiTextures.SLOT, GTGuiTextures.FILTER_SLOT_OVERLAY))
+                .child(new ItemSlot().syncHandler(filterSlotHandler))
                 .child(new ButtonWidget<>()
                         .background(GuiTextures.MC_BUTTON)
                         .size(16)
@@ -457,7 +444,7 @@ public class GTMuiWidgets {
     }
 
     public static <T> ParentWidget<?> createFilterRow(FilterHandler<T> filterHandler,
-                                                      GuiData data,
+                                                      SidedPosGuiData data,
                                                       PanelSyncManager syncManager,
                                                       UISettings settings) {
         Flow row = Flow.row().coverChildrenHeight().childPadding(2);
@@ -515,8 +502,8 @@ public class GTMuiWidgets {
         var textField = new TextFieldWidget() {
 
             @Override
-            public boolean onMouseScrolled(double delta) {
-                int inc = (int) delta * getIncrementValue(MouseData.create(-1), 1);
+            public boolean onMouseScrolled(double scrollX, double scrollY) {
+                int inc = (int) scrollY * getIncrementValue(MouseData.create(-1), 1);
                 int val = Mth.clamp(syncValue.getIntValue() + inc, minValue.getAsInt(),
                         maxValue.getAsInt());
                 syncValue.setIntValue(val, true, true);
@@ -566,8 +553,8 @@ public class GTMuiWidgets {
         var textField = new TextFieldWidget() {
 
             @Override
-            public boolean onMouseScrolled(double delta) {
-                long inc = (long) delta * getIncrementValue(MouseData.create(-1), 1);
+            public boolean onMouseScrolled(double scrollX, double scrollY) {
+                long inc = (long) (scrollY * getIncrementValue(MouseData.create(-1), 1));
                 long value = syncValue.getLongValue() + inc;
                 syncValue.setLongValue(GTMath.clamp(value, minValue.getAsLong(), maxValue.getAsLong()),
                         true, true);
@@ -608,16 +595,16 @@ public class GTMuiWidgets {
                                                                EnumSyncValue<BucketMode> bucketModeSyncValue,
                                                                IntSupplier maxMB) {
         StringSyncValue formattedValue = new StringSyncValue(
-                () -> formattedBucketValue(intSyncValue.getIntValue(), bucketModeSyncValue.getValue()),
-                (v) -> intSyncValue.setValue(bucketsFromFormattedValue(v, bucketModeSyncValue.getValue()), true,
+                () -> String.valueOf(intSyncValue.getValue()),
+                (v) -> intSyncValue.setValue(Integer.parseInt(v), true,
                         true))
                 .allowC2S();
 
         var textField = new TextFieldWidget() {
 
             @Override
-            public boolean onMouseScrolled(double delta) {
-                int inc = (int) delta * (getIncrementValue(MouseData.create(-1), 1) *
+            public boolean onMouseScrolled(double scrollX, double scrollY) {
+                int inc = (int) scrollY * (getIncrementValue(MouseData.create(-1), 1) *
                         bucketModeSyncValue.getValue().multiplier);
                 int val = Mth.clamp(intSyncValue.getIntValue() + inc, 0, maxMB.getAsInt());
                 intSyncValue.setIntValue(val, true, true);
@@ -662,21 +649,6 @@ public class GTMuiWidgets {
                         .background(GTGuiTextures.BUTTON)
                         .stateOverlay(0, BucketMode.BUCKET.icon.asIcon().size(16))
                         .stateOverlay(1, BucketMode.MILLI_BUCKET.icon.asIcon().size(16)));
-    }
-
-    public static String formattedBucketValue(int millibuckets, BucketMode bucketMode) {
-        if (bucketMode == BucketMode.MILLI_BUCKET) return String.valueOf(millibuckets);
-        StringBuilder buckets = new StringBuilder(String.format("%04d", millibuckets));
-        buckets.insert(buckets.length() - 3, '.');
-        return buckets.toString();
-    }
-
-    public static int bucketsFromFormattedValue(String uiInput, BucketMode bucketMode) {
-        if (bucketMode == BucketMode.MILLI_BUCKET) return Integer.parseInt(uiInput);
-        if (!uiInput.contains(".")) return Integer.parseInt(uiInput) * 1000;
-        String[] splitInput = uiInput.split("\\.");
-        if (splitInput.length > 1 && splitInput[1].length() > 3) splitInput[1] = splitInput[1].substring(0, 3);
-        return (Integer.parseInt(splitInput[0]) * 1000) + Integer.parseInt(splitInput[1]);
     }
 
     public static SlotGroupWidget verticalPlayerInventory(SlotGroupWidget.SlotConsumer slotConsumer) {

@@ -11,13 +11,12 @@ import com.gregtechceu.gtceu.common.cover.data.TransferMode;
 import com.gregtechceu.gtceu.common.mui.GTMuiCoverUtil;
 import com.gregtechceu.gtceu.common.mui.GTMuiWidgets;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.capability.IFluidHandler;
-import net.minecraftforge.fluids.capability.IFluidHandler.FluidAction;
+import com.gregtechceu.gtceu.compat.fluids.FluidStack;
+import com.gregtechceu.gtceu.compat.fluids.capability.IFluidHandler;
+import com.gregtechceu.gtceu.compat.fluids.capability.IFluidHandler.FluidAction;
 
 import brachy.modularui.factory.SidedPosGuiData;
 import brachy.modularui.screen.UISettings;
@@ -28,10 +27,6 @@ import brachy.modularui.widgets.layout.Flow;
 import lombok.Getter;
 import lombok.Setter;
 
-import javax.annotation.ParametersAreNonnullByDefault;
-
-@ParametersAreNonnullByDefault
-@MethodsReturnNonnullByDefault
 public class FluidRegulatorCover extends PumpCover {
 
     @SaveField
@@ -179,7 +174,7 @@ public class FluidRegulatorCover extends PumpCover {
         GTMuiCoverUtil.addTransferModeRow(column, transferMode);
 
         column.child(
-                GTMuiWidgets.createIntInputWithBucketMode(transferSize, transferBucketMode, () -> Integer.MAX_VALUE)
+                GTMuiWidgets.createIntInputWithBucketMode(transferSize, transferBucketMode, () -> maxFluidTransferRate)
                         .setEnabledIf($ -> shouldShowTransferSize()));
     }
 
@@ -203,9 +198,9 @@ public class FluidRegulatorCover extends PumpCover {
 
     @Override
     public void pasteConfig(ServerPlayer player, CompoundTag tag) {
-        setTransferMode(TransferMode.values()[tag.getInt("transferMode")]);
-        globalTransferLimit = (tag.getInt("transferLimit"));
-        setTransferBucketMode(BucketMode.values()[tag.getInt("transferBucket")]);
+        setTransferMode(TransferMode.values()[tag.getIntOr("transferMode", 0)]);
+        globalTransferLimit = (tag.getIntOr("transferLimit", 0));
+        setTransferBucketMode(BucketMode.values()[tag.getIntOr("transferBucket", 0)]);
         super.pasteConfig(player, tag);
     }
 }

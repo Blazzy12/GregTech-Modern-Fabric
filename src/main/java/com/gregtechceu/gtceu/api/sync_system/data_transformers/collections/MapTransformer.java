@@ -7,7 +7,7 @@ import com.gregtechceu.gtceu.api.sync_system.data_transformers.ValueTransformers
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import org.jetbrains.annotations.Nullable;
@@ -100,7 +100,7 @@ public class MapTransformer<K, V> implements ValueTransformer<Map<K, V>> {
     }
 
     @Override
-    public void writeToPacket(FriendlyByteBuf buf, Map<K, V> value, TransformerContext<Map<K, V>> context) {
+    public void writeToPacket(RegistryFriendlyByteBuf buf, Map<K, V> value, TransformerContext<Map<K, V>> context) {
         buf.writeVarInt(value.size());
         value.forEach((k, v) -> {
             getKeyTransformer(context).writeToPacket(buf, k, getInnerKeyContext(k, context));
@@ -110,7 +110,7 @@ public class MapTransformer<K, V> implements ValueTransformer<Map<K, V>> {
     }
 
     @Override
-    public @Nullable Map<K, V> readFromPacket(FriendlyByteBuf buf, TransformerContext<Map<K, V>> context) {
+    public @Nullable Map<K, V> readFromPacket(RegistryFriendlyByteBuf buf, TransformerContext<Map<K, V>> context) {
         var current = context.currentValue();
 
         int size = buf.readVarInt();

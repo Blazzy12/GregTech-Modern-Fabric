@@ -1,12 +1,12 @@
 package com.gregtechceu.gtceu.client.particle;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import com.gregtechceu.gtceu.client.bloom.EffectRenderContext;
 import com.gregtechceu.gtceu.client.bloom.IRenderSetup;
 
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 
-import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.blaze3d.vertex.PoseStack;
 import lombok.Getter;
 import org.jetbrains.annotations.Nullable;
@@ -96,15 +96,14 @@ public abstract class GTParticle {
 
     /**
      * Render the particle. If this particle has non-null {@link #getRenderSetup()} associated, this method will be
-     * called between a {@link IRenderSetup#preDraw(BufferBuilder)} call and a
-     * {@link IRenderSetup#postDraw(BufferBuilder)} call.
+     * drawn with the render type of {@link #getRenderSetup()}.
      *
      * @param poseStack pose stack
      * @param buffer    buffer builder
      * @param context   render context
      */
-    @OnlyIn(Dist.CLIENT)
-    public void renderParticle(PoseStack poseStack, BufferBuilder buffer, EffectRenderContext context) {}
+    @Environment(EnvType.CLIENT)
+    public void renderParticle(PoseStack poseStack, VertexConsumer buffer, EffectRenderContext context) {}
 
     /**
      * @return Render setup for this particle, if exists

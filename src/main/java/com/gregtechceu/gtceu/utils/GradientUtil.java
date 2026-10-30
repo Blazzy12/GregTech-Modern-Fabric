@@ -1,6 +1,6 @@
 package com.gregtechceu.gtceu.utils;
 
-import net.minecraft.util.FastColor;
+import net.minecraft.util.ARGB;
 
 import it.unimi.dsi.fastutil.ints.IntIntPair;
 
@@ -26,27 +26,24 @@ public class GradientUtil {
         return new float[] { r, g, b };
     }
 
-    public static int multiplyBlendWithAlpha(int c1, int c2) {
-        int x1 = (c1 & 0xff);
-        int y1 = ((c1 & 0xff00) >> 8);
-        int z1 = ((c1 & 0xff0000) >> 16);
-        int w1 = ((c1 & 0xff000000) >> 24);
+    @SuppressWarnings("PointlessBitwiseExpression")
+    public static int multiplyBlendRGBA(int c1, int c2) {
+        int r1 = ((c1 & 0xff000000) >> 24);
+        int g1 = ((c1 & 0x00ff0000) >> 16);
+        int b1 = ((c1 & 0x0000ff00) >> 8);
+        int a1 = ((c1 & 0x000000ff) >> 0);
 
-        int x2 = (c2 & 0xff);
-        int y2 = ((c2 & 0xff00) >> 8);
-        int z2 = ((c2 & 0xff0000) >> 16);
-        int w2 = ((c2 & 0xff000000) >> 24);
+        int r2 = ((c2 & 0xff000000) >> 24);
+        int g2 = ((c2 & 0x00ff0000) >> 16);
+        int b2 = ((c2 & 0x0000ff00) >> 8);
+        int a2 = ((c2 & 0x000000ff) >> 0);
 
-        int x = (x1 * x2) / 255;
-        int y = (y1 * y2) / 255;
-        int z = (z1 * z2) / 255;
-        int w = (w1 * w2) / 255;
-        // harcode an exception for max alpha because it ends up as 0 from the above calculations
-        if (w1 == -1 && w2 == -1) {
-            w = 0xff;
-        }
+        int r = (r1 * r2) / 255;
+        int g = (g1 * g2) / 255;
+        int b = (b1 * b2) / 255;
+        int a = (a1 * a2) / 255;
 
-        return w << 24 | z << 16 | y << 8 | x;
+        return r << 24 | g << 16 | b << 8 | a;
     }
 
     public static int blend(int c1, int c2, float ratio) {
@@ -150,7 +147,7 @@ public class GradientUtil {
         int g = (int) (Math.max(0, hueToRGB(p, q, h)) * 255);
         int b = (int) (Math.max(0, hueToRGB(p, q, h - (1.0F / 3.0F))) * 255);
 
-        return FastColor.ARGB32.color(255, r, g, b);
+        return ARGB.color(255, r, g, b);
     }
 
     private static float hueToRGB(float p, float q, float h) {

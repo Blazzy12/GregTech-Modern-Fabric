@@ -2,10 +2,11 @@ package com.gregtechceu.gtceu.api.misc.forge;
 
 import com.gregtechceu.gtceu.api.capability.IThermalFluidHandlerItemStack;
 import com.gregtechceu.gtceu.api.item.component.ThermalFluidStats;
+import com.gregtechceu.gtceu.common.data.item.GTDataComponents;
 
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.capability.templates.FluidHandlerItemStack;
+import com.gregtechceu.gtceu.compat.fluids.FluidStack;
+import com.gregtechceu.gtceu.compat.fluids.capability.templates.FluidHandlerItemStack;
 
 import lombok.Getter;
 import org.jetbrains.annotations.NotNull;
@@ -29,7 +30,7 @@ public class ThermalFluidHandlerItemStack extends FluidHandlerItemStack implemen
      */
     public ThermalFluidHandlerItemStack(@NotNull ItemStack container, int capacity, int maxFluidTemperature,
                                         boolean gasProof, boolean acidProof, boolean cryoProof, boolean plasmaProof) {
-        super(container, capacity);
+        super(GTDataComponents.FLUID_CONTENT, container, capacity);
         this.maxFluidTemperature = maxFluidTemperature;
         this.gasProof = gasProof;
         this.acidProof = acidProof;
@@ -38,7 +39,7 @@ public class ThermalFluidHandlerItemStack extends FluidHandlerItemStack implemen
     }
 
     public ThermalFluidHandlerItemStack(@NotNull ItemStack container, ThermalFluidStats stats) {
-        super(container, stats.capacity);
+        super(GTDataComponents.FLUID_CONTENT, container, stats.capacity);
         this.maxFluidTemperature = stats.maxFluidTemperature;
         this.gasProof = stats.gasProof;
         this.acidProof = stats.acidProof;

@@ -10,7 +10,7 @@ import com.gregtechceu.gtceu.client.util.RenderUtil;
 import com.gregtechceu.gtceu.common.machine.multiblock.electric.CentralMonitorMachine;
 import com.gregtechceu.gtceu.common.machine.multiblock.electric.monitor.MonitorGroup;
 
-import net.minecraft.client.renderer.MultiBufferSource;
+import com.gregtechceu.gtceu.compat.client.render.MultiBufferSource;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.item.ItemStack;
@@ -20,12 +20,13 @@ import net.minecraft.world.phys.Vec3;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 
 public class CentralMonitorRender extends DynamicRender<CentralMonitorMachine, CentralMonitorRender> {
 
     // spotless:off
-    public static final Codec<CentralMonitorRender> CODEC = Codec.unit(CentralMonitorRender::new);
-    public static final DynamicRenderType<CentralMonitorMachine, CentralMonitorRender> TYPE = new DynamicRenderType<>(CODEC);
+    public static final Codec<CentralMonitorRender> CODEC = MapCodec.unitCodec(CentralMonitorRender::new);
+    public static final DynamicRenderType<CentralMonitorMachine, CentralMonitorRender> TYPE = new DynamicRenderType<CentralMonitorMachine, CentralMonitorRender>(MapCodec.unit(CentralMonitorRender::new));
     // spotless:on
     private static final float SCREEN_OFFSET_Z = 0.01f;
 

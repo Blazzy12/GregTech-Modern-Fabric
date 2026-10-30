@@ -1,10 +1,12 @@
 package com.gregtechceu.gtceu.api.item.component.prospector;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
+import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.api.data.chemical.ChemicalHelper;
 import com.gregtechceu.gtceu.api.data.chemical.material.Material;
 import com.gregtechceu.gtceu.api.data.chemical.material.stack.MaterialEntry;
 import com.gregtechceu.gtceu.api.data.tag.TagPrefix;
-import com.gregtechceu.gtceu.api.data.tag.TagUtil;
 import com.gregtechceu.gtceu.api.data.worldgen.bedrockfluid.BedrockFluidVeinSavedData;
 import com.gregtechceu.gtceu.api.data.worldgen.bedrockfluid.FluidVeinWorldEntry;
 import com.gregtechceu.gtceu.api.data.worldgen.bedrockore.BedrockOreVeinSavedData;
@@ -14,6 +16,7 @@ import com.gregtechceu.gtceu.config.ConfigHolder;
 import com.gregtechceu.gtceu.core.mixins.BlockStateAccessor;
 import com.gregtechceu.gtceu.utils.FormattingUtil;
 import com.gregtechceu.gtceu.utils.GTUtil;
+import com.gregtechceu.gtceu.utils.TagUtil;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -22,7 +25,7 @@ import net.minecraft.nbt.NbtUtils;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -31,9 +34,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.fluids.FluidStack;
+import com.gregtechceu.gtceu.compat.fluids.FluidStack;
 
 import brachy.modularui.api.drawable.IDrawable;
 import brachy.modularui.drawable.FluidDrawable;
@@ -68,7 +69,7 @@ public abstract class ProspectorMode<T> {
             var oreTag = TagUtil.createBlockTag("ores");
             for (int x = 0; x < 16; x++) {
                 for (int z = 0; z < 16; z++) {
-                    for (int y = chunk.getMaxBuildHeight() - 1; y >= chunk.getMinBuildHeight(); y--) {
+                    for (int y = chunk.getMaxY() - 1; y >= chunk.getMinY(); y--) {
                         pos.set(x, y, z);
                         BlockState state = chunk.getBlockState(pos);
                         if (!state.is(oreTag)) continue;
@@ -106,11 +107,10 @@ public abstract class ProspectorMode<T> {
                     return oreItems;
                 }, state -> {
                     MaterialEntry entry = ChemicalHelper.getMaterialEntry(state.getBlock());
-                    if (entry == null) return new ArrayList<>();
-                    List<ItemLike> oreItems = ChemicalHelper.getItems(entry);
+                    List<ItemLike> oreItems = entry == null ? List.of() : ChemicalHelper.getItems(entry);
                     if (oreItems.isEmpty()) {
                         oreItems = List.of(state.getBlock().asItem());
-                        if (oreItems.get(0).asItem() == Items.AIR) {
+                        if (oreItems.getFirst().asItem() == Items.AIR) {
                             oreItems = List.of(Items.BARRIER);
                         }
                     }
@@ -133,9 +133,9 @@ public abstract class ProspectorMode<T> {
         @Override
         public String getUniqueId(Either<Material, BlockState> item) {
             return item.map(material -> MATERIAL_PREFIX + material.getResourceLocation(),
-                    state -> state.getBlockHolder().unwrapKey()
-                            .map(ResourceKey::location)
-                            .map(ResourceLocation::toString)
+                    state -> state.typeHolder().unwrapKey()
+                            .map(ResourceKey::identifier)
+                            .map(Identifier::toString)
                             .orElse("Unknown entry ???"));
         }
 
@@ -143,7 +143,7 @@ public abstract class ProspectorMode<T> {
         public void serialize(Either<Material, BlockState> item, FriendlyByteBuf buf) {
             item.ifLeft(material -> {
                 buf.writeBoolean(true);
-                buf.writeResourceLocation(material.getResourceLocation());
+                buf.writeIdentifier(material.getResourceLocation());
             }).ifRight(state -> {
                 buf.writeBoolean(false);
                 buf.writeNbt(NbtUtils.writeBlockState(state));
@@ -153,11 +153,11 @@ public abstract class ProspectorMode<T> {
         @Override
         public Either<Material, BlockState> deserialize(FriendlyByteBuf buf) {
             if (buf.readBoolean()) {
-                return Either.left(GTRegistries.MATERIALS.get(buf.readResourceLocation()));
+                return Either.left(GTRegistries.MATERIALS.getValue(buf.readIdentifier()));
             } else {
                 CompoundTag tag = buf.readNbt();
                 assert tag != null;
-                return Either.right(NbtUtils.readBlockState(BuiltInRegistries.BLOCK.asLookup(), tag));
+                return Either.right(NbtUtils.readBlockState(BuiltInRegistries.BLOCK, tag));
             }
         }
 
@@ -200,9 +200,9 @@ public abstract class ProspectorMode<T> {
         }
 
         public static FluidInfo fromNbt(CompoundTag tag) {
-            Fluid fluid = BuiltInRegistries.FLUID.get(ResourceLocation.parse(tag.getString("fluid")));
-            int left = tag.getInt("left");
-            int yield = tag.getInt("yield");
+            Fluid fluid = BuiltInRegistries.FLUID.getValue(Identifier.parse(tag.getStringOr("fluid", "")));
+            int left = tag.getIntOr("left", 0);
+            int yield = tag.getIntOr("yield", 0);
             return new FluidInfo(fluid, yield, left);
         }
 
@@ -218,7 +218,7 @@ public abstract class ProspectorMode<T> {
             if (savedData.getDefinition() == null) {
                 return null;
             }
-            return new FluidInfo(savedData.getDefinition().getStoredFluid().get(),
+            return new FluidInfo(savedData.getDefinition().value().getStoredFluid(),
                     savedData.getFluidYield(),
                     100 * savedData.getOperationsRemaining() / BedrockFluidVeinSavedData.MAXIMUM_VEIN_OPERATIONS);
         }
@@ -230,7 +230,7 @@ public abstract class ProspectorMode<T> {
         public void scan(FluidInfo[][][] storage, LevelChunk chunk) {
             if (chunk.getLevel() instanceof ServerLevel serverLevel) {
                 var fluidVein = BedrockFluidVeinSavedData.getOrCreate(serverLevel)
-                        .getFluidVeinWorldEntry(chunk.getPos().x, chunk.getPos().z);
+                        .getFluidVeinWorldEntry(chunk.getPos().x(), chunk.getPos().z());
                 if (fluidVein.getDefinition() != null) {
                     storage[0][0] = new FluidInfo[] {
                             FluidInfo.fromVeinWorldEntry(fluidVein)
@@ -255,7 +255,7 @@ public abstract class ProspectorMode<T> {
 
         @Override
         public Component getDescription(FluidInfo item) {
-            return item.asStack().getDisplayName();
+            return item.fluid.getFluidType().getDescription(new FluidStack(item.fluid, item.left));
         }
 
         @Override
@@ -265,14 +265,14 @@ public abstract class ProspectorMode<T> {
 
         @Override
         public void serialize(FluidInfo item, FriendlyByteBuf buf) {
-            buf.writeResourceLocation(BuiltInRegistries.FLUID.getKey(item.fluid));
+            buf.writeUtf(BuiltInRegistries.FLUID.getKey(item.fluid).toString());
             buf.writeVarInt(item.yield);
             buf.writeVarInt(item.left);
         }
 
         @Override
         public FluidInfo deserialize(FriendlyByteBuf buf) {
-            return new FluidInfo(BuiltInRegistries.FLUID.get(buf.readResourceLocation()), buf.readVarInt(),
+            return new FluidInfo(BuiltInRegistries.FLUID.getValue(Identifier.parse(buf.readUtf())), buf.readVarInt(),
                     buf.readVarInt());
         }
 
@@ -292,7 +292,7 @@ public abstract class ProspectorMode<T> {
         }
 
         @Override
-        @OnlyIn(Dist.CLIENT)
+        @Environment(EnvType.CLIENT)
         public void drawSpecialGrid(GuiContext context, FluidInfo[] items, int x, int y, int width, int height) {
             if (items.length == 0) {
                 return;
@@ -316,11 +316,11 @@ public abstract class ProspectorMode<T> {
         @Override
         public void scan(BedrockOreInfo[][][] storage, LevelChunk chunk) {
             if (chunk.getLevel() instanceof ServerLevel serverLevel) {
-                var oreVein = BedrockOreVeinSavedData.getOrCreate(serverLevel).getOreVeinWorldEntry(chunk.getPos().x,
-                        chunk.getPos().z);
+                var oreVein = BedrockOreVeinSavedData.getOrCreate(serverLevel).getOreVeinWorldEntry(chunk.getPos().x(),
+                        chunk.getPos().z());
                 if (oreVein.getDefinition() != null) {
                     var left = 100 * oreVein.getOperationsRemaining() / BedrockOreVeinSavedData.MAXIMUM_VEIN_OPERATIONS;
-                    for (var entry : oreVein.getDefinition().materials()) {
+                    for (var entry : oreVein.getDefinition().value().materials()) {
                         storage[0][0] = ArrayUtils.add(storage[0][0],
                                 new BedrockOreInfo(entry.material(), entry.weight(), left, oreVein.getOreYield()));
                     }
@@ -337,7 +337,9 @@ public abstract class ProspectorMode<T> {
         public IDrawable getItemIcon(BedrockOreInfo item) {
             Material material = item.material;
             ItemStack stack = GTUtil.getFirstNonEmpty(
-                    ChemicalHelper.get(TagPrefix.get(ConfigHolder.INSTANCE.machines.bedrockOreDropTagPrefix), material),
+                    ChemicalHelper
+                            .get(GTRegistries.TAG_PREFIXES.getOrThrow(ResourceKey.create(GTRegistries.Keys.TAG_PREFIX,
+                                    GTCEu.id(ConfigHolder.INSTANCE.machines.bedrockOreDropTagPrefix))), material),
                     ChemicalHelper.get(TagPrefix.crushed, material),
                     ChemicalHelper.get(TagPrefix.gem, material),
                     ChemicalHelper.get(TagPrefix.ore, material),
@@ -357,7 +359,7 @@ public abstract class ProspectorMode<T> {
 
         @Override
         public void serialize(BedrockOreInfo item, FriendlyByteBuf buf) {
-            buf.writeResourceLocation(item.material.getResourceLocation());
+            buf.writeIdentifier(item.material.getResourceLocation());
             buf.writeVarInt(item.weight);
             buf.writeVarInt(item.left);
             buf.writeVarInt(item.yield);
@@ -365,9 +367,9 @@ public abstract class ProspectorMode<T> {
 
         @Override
         public BedrockOreInfo deserialize(FriendlyByteBuf buf) {
-            ResourceLocation materialId = buf.readResourceLocation();
+            Identifier materialId = buf.readIdentifier();
             return new BedrockOreInfo(
-                    GTRegistries.MATERIALS.get(materialId),
+                    GTRegistries.MATERIALS.getValue(materialId),
                     buf.readVarInt(), buf.readVarInt(), buf.readVarInt());
         }
 
@@ -418,6 +420,6 @@ public abstract class ProspectorMode<T> {
 
     public abstract void appendTooltips(List<T[]> items, List<Component> tooltips, String selected);
 
-    @OnlyIn(Dist.CLIENT)
+    @Environment(EnvType.CLIENT)
     public void drawSpecialGrid(GuiContext graphics, T[] items, int x, int y, int width, int height) {}
 }

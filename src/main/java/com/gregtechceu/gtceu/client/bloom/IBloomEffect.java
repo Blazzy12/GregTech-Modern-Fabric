@@ -1,10 +1,10 @@
 package com.gregtechceu.gtceu.client.bloom;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 
-import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.blaze3d.vertex.PoseStack;
 
 /**
@@ -19,15 +19,15 @@ public interface IBloomEffect {
      * @param buffer  buffer builder
      * @param context render context
      */
-    @OnlyIn(Dist.CLIENT)
-    void renderBloomEffect(PoseStack poseStack, BufferBuilder buffer, EffectRenderContext context);
+    @Environment(EnvType.CLIENT)
+    void renderBloomEffect(PoseStack poseStack, VertexConsumer buffer, EffectRenderContext context);
 
     /**
      * @param context render context
      * @return if this effect should be rendered; returning {@code false} skips calling
-     *         {@link #renderBloomEffect(PoseStack, BufferBuilder, EffectRenderContext)}.
+     *         {@link #renderBloomEffect(PoseStack, VertexConsumer, EffectRenderContext)}.
      */
-    @OnlyIn(Dist.CLIENT)
+    @Environment(EnvType.CLIENT)
     default boolean shouldRenderBloomEffect(EffectRenderContext context) {
         return true;
     }

@@ -6,11 +6,8 @@ import com.gregtechceu.gtceu.api.item.MetaMachineItem;
 import com.gregtechceu.gtceu.api.misc.forge.QuantumFluidHandlerItemStack;
 import com.gregtechceu.gtceu.common.machine.storage.QuantumTankMachine;
 
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.common.capabilities.ICapabilityProvider;
-
-import org.jetbrains.annotations.Nullable;
+import com.gregtechceu.gtceu.compat.capabilities.Capabilities;
+import com.gregtechceu.gtceu.compat.capabilities.RegisterCapabilitiesEvent;
 
 public class QuantumTankMachineItem extends MetaMachineItem {
 
@@ -18,13 +15,26 @@ public class QuantumTankMachineItem extends MetaMachineItem {
         super(block, properties);
     }
 
-    @Override
-    public @Nullable ICapabilityProvider initCapabilities(ItemStack stack, @Nullable CompoundTag nbt) {
+    public static QuantumTankMachineItem create(MetaMachineBlock block, Properties props) {
+        return new QuantumTankMachineItem(block, props);
+    }
+
+    public void attachCapabilities(RegisterCapabilitiesEvent event) {
+        long capacity = 0L;
+
         if (!QuantumTankMachine.TANK_CAPACITY.containsKey(getDefinition())) {
-            GTCEu.LOGGER
-                    .error("Quantum tank " + getDefinition().getName() + " does not have a registered TANK_CAPACITY," +
-                            " will have capacity 0.");
+            GTCEu.LOGGER.error(
+                    "Quantum tank " + getDefinition().getName() +
+                            " does not have a registered TANK_CAPACITY, using capacity 0.");
+        } else {
+            capacity = QuantumTankMachine.TANK_CAPACITY.getLong(getDefinition());
         }
-        return new QuantumFluidHandlerItemStack(stack, QuantumTankMachine.TANK_CAPACITY.getLong(getDefinition()));
+
+        final long finalCapacity = capacity;
+
+        event.registerItem(
+                Capabilities.FluidHandler.ITEM,
+                (stack, ignored) -> new QuantumFluidHandlerItemStack(stack, finalCapacity),
+                this);
     }
 }

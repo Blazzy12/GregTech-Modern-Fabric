@@ -6,19 +6,20 @@ import com.gregtechceu.gtceu.api.cover.filter.Filter;
 import com.gregtechceu.gtceu.api.sync_system.annotations.SaveField;
 import com.gregtechceu.gtceu.api.sync_system.annotations.SyncToClient;
 import com.gregtechceu.gtceu.api.transfer.fluid.IFluidHandlerModifiable;
+import com.gregtechceu.gtceu.common.cover.PumpCover;
 import com.gregtechceu.gtceu.common.cover.data.BucketMode;
 import com.gregtechceu.gtceu.common.cover.data.VoidingMode;
 import com.gregtechceu.gtceu.common.mui.GTGuiTextures;
 import com.gregtechceu.gtceu.common.mui.GTMuiWidgets;
 import com.gregtechceu.gtceu.utils.GTMath;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.capability.IFluidHandler;
+import com.gregtechceu.gtceu.compat.fluids.FluidStack;
+import com.gregtechceu.gtceu.compat.fluids.capability.IFluidHandler;
 
 import brachy.modularui.api.drawable.Text;
 import brachy.modularui.factory.SidedPosGuiData;
@@ -74,7 +75,7 @@ public class AdvancedFluidVoidingCover extends FluidVoidingCover {
     }
 
     private void voidOverflow(IFluidHandlerModifiable fluidHandler) {
-        var fluidAmounts = enumerateDistinctFluids(fluidHandler, TransferDirection.EXTRACT);
+        var fluidAmounts = enumerateDistinctFluids(fluidHandler, PumpCover.TransferDirection.EXTRACT);
 
         for (var entry : Object2LongMaps.fastIterable(fluidAmounts)) {
             var stack = entry.getKey();
@@ -84,7 +85,7 @@ public class AdvancedFluidVoidingCover extends FluidVoidingCover {
 
             long diff = presentAmount - targetAmount;
             for (int op : GTMath.split(diff)) {
-                var toDrain = new FluidStack(stack, op);
+                var toDrain = stack.copyWithAmount(op);
                 fluidHandler.drain(toDrain, IFluidHandler.FluidAction.EXECUTE);
             }
         }
@@ -136,8 +137,17 @@ public class AdvancedFluidVoidingCover extends FluidVoidingCover {
 
         column.child(
                 GTMuiWidgets
-                        .createIntInputWithBucketMode(voidingLimit, bucketModeSync, () -> Integer.MAX_VALUE)
+                        .createIntInputWithBucketMode(voidingLimit, bucketModeSync, () -> getVoidingMode().maxStackSize)
                         .setEnabledIf($ -> shouldShowStackSize()));
+    }
+
+    private int getCurrentBucketModeTransferSize() {
+        return this.globalTransferSizeMillibuckets / this.transferBucketMode.multiplier;
+    }
+
+    private void setCurrentBucketModeTransferSize(int transferSize) {
+        this.globalTransferSizeMillibuckets = Math.max(transferSize * this.transferBucketMode.multiplier, 0);
+        syncDataHolder.markClientSyncFieldDirty("globalTransferSizeMillibuckets");
     }
 
     private boolean shouldShowStackSize() {
@@ -159,9 +169,9 @@ public class AdvancedFluidVoidingCover extends FluidVoidingCover {
 
     @Override
     public void pasteConfig(ServerPlayer player, CompoundTag tag) {
-        setVoidingMode(VoidingMode.values()[tag.getInt("voidingMode")]);
-        setTransferBucketMode(BucketMode.values()[tag.getInt("voidBucketMode")]);
-        setGlobalTransferSizeMillibuckets(tag.getInt("voidSize"));
+        setVoidingMode(VoidingMode.values()[tag.getIntOr("voidingMode", 0)]);
+        setTransferBucketMode(BucketMode.values()[tag.getIntOr("voidBucketMode", 0)]);
+        setCurrentBucketModeTransferSize(tag.getIntOr("voidSize", 0));
         super.pasteConfig(player, tag);
     }
 }

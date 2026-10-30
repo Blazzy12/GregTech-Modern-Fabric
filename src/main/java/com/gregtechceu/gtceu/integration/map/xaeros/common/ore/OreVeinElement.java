@@ -26,9 +26,7 @@ public class OreVeinElement {
     }
 
     public void onMouseSelect() {
-        Material firstMaterial = this.vein.definition().veinGenerator().getAllMaterials().get(0);
-        int color = firstMaterial.getMaterialARGB();
-
+        int color = getFirstMaterial().getMaterialARGB();
         // TODO generalize to all possible layer types
         BlockPos center = this.vein.center();
         WaypointManager.toggleWaypoint("ore_veins", this.name.getString(), color, null, center);
@@ -39,6 +37,6 @@ public class OreVeinElement {
     }
 
     public Material getFirstMaterial() {
-        return this.vein.definition().veinGenerator().getAllMaterials().get(0);
+        return vein.definition().value().veinGenerator().getAllMaterials().getFirst();
     }
 }

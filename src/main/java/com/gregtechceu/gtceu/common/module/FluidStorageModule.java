@@ -6,19 +6,19 @@ import com.gregtechceu.gtceu.api.item.module.CapabilityProviderItemModule;
 import com.gregtechceu.gtceu.api.item.module.ModuleContext;
 import com.gregtechceu.gtceu.api.misc.forge.SimpleThermalFluidHandlerItemStack;
 import com.gregtechceu.gtceu.api.misc.forge.ThermalFluidHandlerItemStack;
+import com.gregtechceu.gtceu.common.data.item.GTDataComponents;
 
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.level.Level;
-import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.capability.IFluidHandler;
-import net.minecraftforge.fluids.capability.IFluidHandlerItem;
-import net.minecraftforge.fluids.capability.templates.FluidHandlerItemStack;
+import com.gregtechceu.gtceu.compat.capabilities.Capabilities;
+import com.gregtechceu.gtceu.compat.capabilities.ItemCapability;
+import com.gregtechceu.gtceu.compat.fluids.FluidStack;
+import com.gregtechceu.gtceu.compat.fluids.SimpleFluidContent;
+import com.gregtechceu.gtceu.compat.fluids.capability.IFluidHandler;
+import com.gregtechceu.gtceu.compat.fluids.capability.IFluidHandlerItem;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -26,29 +26,25 @@ import java.util.List;
 
 public class FluidStorageModule extends CapabilityProviderItemModule<IFluidHandlerItem> {
 
-    public FluidStorageModule(ResourceLocation id) {
+    public FluidStorageModule(Identifier id) {
         super(id);
     }
 
     @Override
-    public Capability<IFluidHandlerItem> getCapability() {
-        return ForgeCapabilities.FLUID_HANDLER_ITEM;
+    public ItemCapability<IFluidHandlerItem, @Nullable Void> getCapability() {
+        return Capabilities.FluidHandler.ITEM;
     }
 
     @Override
     public void applyInitialCapabilityData(IFluidHandlerItem newCap, ModuleContext context) {
-        var moduleItemData = context.getData().getModuleItem().getCapability(ForgeCapabilities.FLUID_HANDLER_ITEM)
-                .resolve();
-        moduleItemData.ifPresent(data -> newCap.fill(data.getFluidInTank(0), IFluidHandler.FluidAction.EXECUTE));
+        var moduleItemData = context.getData().getModuleItem().getCapability(Capabilities.FluidHandler.ITEM);
+        if (moduleItemData != null) newCap.fill(moduleItemData.getFluidInTank(0), IFluidHandler.FluidAction.EXECUTE);
     }
 
     @Override
     public ItemStack copyCapabilityDataToModuleItem(IFluidHandlerItem cap, ModuleContext context) {
         var newItem = context.getData().getModuleItem().copy();
-
-        CompoundTag fluidTag = new CompoundTag();
-        cap.getFluidInTank(0).writeToNBT(fluidTag);
-        newItem.getOrCreateTag().put(FluidHandlerItemStack.FLUID_NBT_KEY, fluidTag);
+        newItem.set(GTDataComponents.FLUID_CONTENT, SimpleFluidContent.copyOf(cap.getFluidInTank(0)));
         return newItem;
     }
 
@@ -71,7 +67,7 @@ public class FluidStorageModule extends CapabilityProviderItemModule<IFluidHandl
 
     @Override
     public void clearCapabilityFromStack(ModuleContext context, ItemStack stack) {
-        stack.removeTagKey(FluidHandlerItemStack.FLUID_NBT_KEY);
+        stack.remove(GTDataComponents.FLUID_CONTENT);
     }
 
     @Override
@@ -80,17 +76,16 @@ public class FluidStorageModule extends CapabilityProviderItemModule<IFluidHandl
     }
 
     @Override
-    public void appendHoverText(ModuleContext moduleContext, @Nullable Level level, List<Component> tooltips,
+    public void appendHoverText(ModuleContext moduleContext, Item.TooltipContext context, List<Component> tooltips,
                                 TooltipFlag isAdvanced) {
-        super.appendHoverText(moduleContext, level, tooltips, isAdvanced);
+        super.appendHoverText(moduleContext, context, tooltips, isAdvanced);
         tooltips.add(moduleContext.getData().getModuleItem().getHoverName());
-        IFluidHandlerItem fluidHandler = moduleContext.getAppliedTo()
-                .getCapability(ForgeCapabilities.FLUID_HANDLER_ITEM).resolve().orElse(null);
+        IFluidHandlerItem fluidHandler = moduleContext.getAppliedTo().getCapability(Capabilities.FluidHandler.ITEM);
         if (fluidHandler != null) {
             FluidStack fluid = fluidHandler.getFluidInTank(0);
             int capacity = fluidHandler.getTankCapacity(0);
             tooltips.add(Component.translatable("module.gtceu.fluid_storage.current_stored", fluid.getAmount(),
-                    capacity, fluid.getDisplayName()));
+                    capacity, fluid.getHoverName()));
         }
     }
 }

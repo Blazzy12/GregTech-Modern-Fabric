@@ -6,15 +6,15 @@ import com.gregtechceu.gtceu.api.item.module.ui.ItemModuleSettingsBuilder;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.context.UseOnContext;
@@ -22,7 +22,7 @@ import net.minecraft.world.level.Level;
 
 import brachy.modularui.api.drawable.Text;
 import brachy.modularui.value.sync.PanelSyncManager;
-import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 import lombok.Getter;
 import org.jetbrains.annotations.Nullable;
 
@@ -31,16 +31,16 @@ import java.util.List;
 public abstract class ItemModule {
 
     @Getter
-    private final ResourceLocation id;
+    private final Identifier id;
 
-    public ItemModule(ResourceLocation id) {
+    public ItemModule(Identifier id) {
         this.id = id;
     }
 
     /**
      * A codec used to serialise/deserialise persistent data for this module.<br>
      */
-    public Codec<? extends ModuleData> moduleDataCodec() {
+    public MapCodec<? extends ModuleData> moduleDataCodec() {
         return ModuleData.BASE_CODEC;
     }
 
@@ -97,7 +97,7 @@ public abstract class ItemModule {
      */
     public void onArmorTick(ModuleContext moduleContext, LivingEntity entity) {
         if (!isEnabled(moduleContext)) return;
-        if (entity.level().isClientSide) return;
+        if (entity.level().isClientSide()) return;
 
         IElectricItem electricItem = GTCapabilityHelper.getElectricItem(moduleContext.getAppliedTo());
         long energy = energyUsagePerTick(moduleContext, entity);
@@ -112,7 +112,7 @@ public abstract class ItemModule {
     public void clientSideArmorTick(ModuleContext moduleContext, Player entity) {}
 
     /**
-     * Called each tick this item is in a player's inventory or equipment slots
+     * Called each tick this item is in a player's inventory or equipment slots.
      */
     public void onInventoryTick(ModuleContext moduleContext, Player player) {
         IElectricItem electricItem = GTCapabilityHelper.getElectricItem(moduleContext.getAppliedTo());
@@ -129,7 +129,7 @@ public abstract class ItemModule {
         return Component.translatable(getLanguageKey());
     }
 
-    public void appendHoverText(ModuleContext moduleContext, @Nullable Level level, List<Component> tooltips,
+    public void appendHoverText(ModuleContext moduleContext, Item.TooltipContext context, List<Component> tooltips,
                                 TooltipFlag isAdvanced) {}
 
     public boolean useEnergyInInventory(ModuleContext moduleContext, LivingEntity entity) {
@@ -168,9 +168,9 @@ public abstract class ItemModule {
     public void onTickRaw(ModuleContext moduleContext, @Nullable Entity entity, Level level,
                           @Nullable BlockPos pos) {}
 
-    public InteractionResultHolder<ItemStack> use(ModuleContext moduleContext, Level level, Player player,
+    public InteractionResult use(ModuleContext moduleContext, Level level, Player player,
                                                   InteractionHand hand) {
-        return InteractionResultHolder.pass(player.getItemInHand(hand));
+        return InteractionResult.PASS;
     }
 
     public InteractionResult useOn(ModuleContext moduleContext, UseOnContext context) {
@@ -194,8 +194,8 @@ public abstract class ItemModule {
     }
 
     // Allows a custom armour texture to be used.
-    public @Nullable ResourceLocation getArmorTexture(ModuleContext context, Entity entity, EquipmentSlot slot,
-                                                      String type) {
+    public @Nullable Identifier getArmorTexture(ModuleContext context, Entity entity, EquipmentSlot slot,
+                                                      com.gregtechceu.gtceu.api.item.armor.ArmorLayer layer, boolean innerModel) {
         return null;
     }
 

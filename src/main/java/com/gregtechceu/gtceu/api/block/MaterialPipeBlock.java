@@ -1,25 +1,20 @@
 package com.gregtechceu.gtceu.api.block;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import com.gregtechceu.gtceu.api.blockentity.IPaintable;
 import com.gregtechceu.gtceu.api.data.chemical.material.Material;
 import com.gregtechceu.gtceu.api.pipenet.*;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
-import net.minecraft.client.color.block.BlockColor;
+import com.gregtechceu.gtceu.compat.client.color.BlockColor;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.BlockAndTintGetter;
+import net.minecraft.client.renderer.block.BlockAndTintGetter;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 
 import org.jetbrains.annotations.Nullable;
 
-import javax.annotation.ParametersAreNonnullByDefault;
-
-@ParametersAreNonnullByDefault
-@MethodsReturnNonnullByDefault
 public abstract class MaterialPipeBlock<
         PipeType extends Enum<PipeType> & IPipeType<NodeDataType> & IMaterialPipeType<NodeDataType>, NodeDataType,
         WorldPipeNetType extends LevelPipeNet<NodeDataType, ? extends PipeNet<NodeDataType>>>
@@ -32,7 +27,7 @@ public abstract class MaterialPipeBlock<
         this.material = material;
     }
 
-    @OnlyIn(Dist.CLIENT)
+    @Environment(EnvType.CLIENT)
     public static BlockColor tintedColor() {
         return (state, level, pos, index) -> {
             if (level != null && pos != null && (index == 0 || index == 1)) {
@@ -48,7 +43,7 @@ public abstract class MaterialPipeBlock<
     }
 
     public int tinted(BlockState blockState, @Nullable BlockAndTintGetter level, @Nullable BlockPos pos, int index) {
-        return index == 0 || index == 1 ? material.getMaterialRGB() : -1;
+        return index == 0 || index == 1 ? material.getMaterialARGB() : -1;
     }
 
     @Override
@@ -75,14 +70,13 @@ public abstract class MaterialPipeBlock<
     }
 
     protected abstract NodeDataType createMaterialData();
-
-    @Override
-    public String getDescriptionId() {
-        return pipeType.getTagPrefix().getUnlocalizedName(material);
+    /** Translation key; {@code getDescriptionId()} is final in 26.x. */
+    public String getGTDescriptionId() {
+        return pipeType.getTagPrefix().value().getUnlocalizedName(material);
     }
 
     @Override
     public MutableComponent getName() {
-        return pipeType.getTagPrefix().getLocalizedName(material);
+        return pipeType.getTagPrefix().value().getLocalizedName(material);
     }
 }

@@ -7,14 +7,8 @@ import com.gregtechceu.gtceu.api.sync_system.annotations.RerenderOnChanged;
 import com.gregtechceu.gtceu.api.sync_system.annotations.SaveField;
 import com.gregtechceu.gtceu.api.sync_system.annotations.SyncToClient;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
-
 import lombok.Getter;
 
-import javax.annotation.ParametersAreNonnullByDefault;
-
-@ParametersAreNonnullByDefault
-@MethodsReturnNonnullByDefault
 public class TieredIOPartMachine extends TieredPartMachine implements IControllable {
 
     protected final IO io;

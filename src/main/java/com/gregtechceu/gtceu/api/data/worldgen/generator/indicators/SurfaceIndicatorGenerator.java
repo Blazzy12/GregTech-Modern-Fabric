@@ -1,7 +1,6 @@
 package com.gregtechceu.gtceu.api.data.worldgen.generator.indicators;
 
 import com.gregtechceu.gtceu.api.data.chemical.material.Material;
-import com.gregtechceu.gtceu.api.data.worldgen.GTOreDefinition;
 import com.gregtechceu.gtceu.api.data.worldgen.WorldGeneratorUtils;
 import com.gregtechceu.gtceu.api.data.worldgen.generator.IndicatorGenerator;
 import com.gregtechceu.gtceu.api.data.worldgen.ores.GeneratedVeinMetadata;
@@ -9,9 +8,9 @@ import com.gregtechceu.gtceu.api.data.worldgen.ores.OreIndicatorPlacer;
 import com.gregtechceu.gtceu.api.registry.GTRegistries;
 import com.gregtechceu.gtceu.common.data.GTMaterialBlocks;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.Holder;
 import net.minecraft.core.SectionPos;
 import net.minecraft.util.RandomSource;
 import net.minecraft.util.StringRepresentable;
@@ -29,10 +28,10 @@ import net.minecraft.world.level.levelgen.Heightmap;
 
 import com.mojang.datafixers.util.Either;
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import lombok.AllArgsConstructor;
 import org.apache.commons.lang3.function.TriFunction;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
@@ -43,18 +42,15 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import javax.annotation.ParametersAreNonnullByDefault;
-
-@MethodsReturnNonnullByDefault
-@ParametersAreNonnullByDefault
 public class SurfaceIndicatorGenerator extends IndicatorGenerator {
 
-    public static final Codec<SurfaceIndicatorGenerator> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-            Codec.either(BlockState.CODEC, GTRegistries.MATERIALS.codec()).fieldOf("block")
-                    .forGetter(ext -> ext.block),
-            IntProvider.codec(1, 32).fieldOf("radius").forGetter(ext -> ext.radius),
-            FloatProvider.codec(0.0f, 2.0f).fieldOf("density").forGetter(ext -> ext.density),
-            IndicatorPlacement.CODEC.fieldOf("placement").forGetter(ext -> ext.placement))
+    public static final MapCodec<SurfaceIndicatorGenerator> CODEC = RecordCodecBuilder.mapCodec(instance -> instance
+            .group(
+                    Codec.either(BlockState.CODEC, GTRegistries.MATERIALS.byNameCodec()).fieldOf("block")
+                            .forGetter(ext -> ext.block),
+                    net.minecraft.util.valueproviders.IntProviders.codec(1, 32).fieldOf("radius").forGetter(ext -> ext.radius),
+                    net.minecraft.util.valueproviders.FloatProviders.codec(0.0f, 2.0f).fieldOf("density").forGetter(ext -> ext.density),
+                    IndicatorPlacement.CODEC.fieldOf("placement").forGetter(ext -> ext.placement))
             .apply(instance, SurfaceIndicatorGenerator::new));
 
     private Either<BlockState, Material> block = Either.left(Blocks.AIR.defaultBlockState());
@@ -62,9 +58,7 @@ public class SurfaceIndicatorGenerator extends IndicatorGenerator {
     private FloatProvider density = ConstantFloat.of(0.2f);
     private IndicatorPlacement placement = IndicatorPlacement.SURFACE;
 
-    public SurfaceIndicatorGenerator(GTOreDefinition entry) {
-        super(entry);
-    }
+    public SurfaceIndicatorGenerator() {}
 
     public SurfaceIndicatorGenerator(Either<BlockState, Material> block, IntProvider radius, FloatProvider density,
                                      IndicatorPlacement placement) {
@@ -81,6 +75,10 @@ public class SurfaceIndicatorGenerator extends IndicatorGenerator {
 
         this.block = Either.right(material);
         return this;
+    }
+
+    public SurfaceIndicatorGenerator surfaceRock(Holder<Material> material) {
+        return surfaceRock(material.value());
     }
 
     public SurfaceIndicatorGenerator block(Block block) {
@@ -179,11 +177,11 @@ public class SurfaceIndicatorGenerator extends IndicatorGenerator {
 
     @Override
     public int getSearchRadiusModifier(int veinRadius) {
-        return Math.max(0, radius.getMaxValue() - veinRadius);
+        return Math.max(0, radius.maxInclusive() - veinRadius);
     }
 
     @Override
-    public Codec<? extends IndicatorGenerator> codec() {
+    public MapCodec<? extends IndicatorGenerator> codec() {
         return CODEC;
     }
 
@@ -202,7 +200,7 @@ public class SurfaceIndicatorGenerator extends IndicatorGenerator {
                         pos -> access.getBlockState(pos).isAir() &&
                                 access.getBlockState(pos.below()).isFaceSturdy(level, pos.below(), Direction.UP),
                         pos -> pos.move(Direction.UP, 1),
-                        level.getMaxBuildHeight() - initialPos.getY()).orElse(initialPos),
+                        level.getMaxY() - initialPos.getY()).orElse(initialPos),
                 block -> getBlockState(block, Direction.DOWN)),
 
         BELOW(
@@ -211,7 +209,7 @@ public class SurfaceIndicatorGenerator extends IndicatorGenerator {
                         pos -> access.getBlockState(pos).isAir() &&
                                 access.getBlockState(pos.above()).isFaceSturdy(level, pos.above(), Direction.DOWN),
                         pos -> pos.move(Direction.DOWN, 1),
-                        initialPos.getY() - level.getMinBuildHeight()).orElse(initialPos),
+                        initialPos.getY() - level.getMinY()).orElse(initialPos),
                 block -> getBlockState(block, Direction.UP));
 
         public static final Codec<IndicatorPlacement> CODEC = StringRepresentable.fromEnum(IndicatorPlacement::values);
@@ -231,7 +229,7 @@ public class SurfaceIndicatorGenerator extends IndicatorGenerator {
             return name().toLowerCase(Locale.ROOT);
         }
 
-        public static @NotNull IndicatorPlacement getByName(String name) {
+        public static IndicatorPlacement getByName(String name) {
             return IndicatorPlacement.valueOf(name.toUpperCase(Locale.ROOT));
         }
     }

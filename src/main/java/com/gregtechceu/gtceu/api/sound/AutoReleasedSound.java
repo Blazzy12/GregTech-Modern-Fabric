@@ -1,14 +1,14 @@
 package com.gregtechceu.gtceu.api.sound;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.sounds.AbstractTickableSoundInstance;
 import net.minecraft.core.BlockPos;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 
 import java.util.function.BooleanSupplier;
 
-@OnlyIn(Dist.CLIENT)
+@Environment(EnvType.CLIENT)
 public class AutoReleasedSound extends AbstractTickableSoundInstance {
 
     public final BooleanSupplier predicate;
@@ -16,7 +16,7 @@ public class AutoReleasedSound extends AbstractTickableSoundInstance {
 
     protected AutoReleasedSound(SoundEntry soundEntry, BooleanSupplier predicate, BlockPos pos, boolean loop, int delay,
                                 float volume, float pitch) {
-        super(soundEntry.getMainEvent(), soundEntry.category, Minecraft.getInstance().level.random);
+        super(soundEntry.getMainEvent(), soundEntry.category, Minecraft.getInstance().level.getRandom());
         this.soundEntry = soundEntry;
         this.predicate = predicate;
         this.looping = loop;

@@ -1,17 +1,14 @@
 package com.gregtechceu.gtceu.api.multiblock.error;
 
-import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.api.machine.multiblock.CleanroomType;
 
 import net.minecraft.core.BlockPos;
 
-import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 
 public class FilterMatchingError extends MismatchError<CleanroomType> {
 
-    public static final Codec<FilterMatchingError> CODEC = makeCodec(CleanroomType.CODEC, FilterMatchingError::new);
-
-    public static final PatternErrorType TYPE = new PatternErrorType(GTCEu.id("filter_matching_error"), CODEC);
+    public static final MapCodec<FilterMatchingError> CODEC = makeCodec(CleanroomType.CODEC, FilterMatchingError::new);
 
     public FilterMatchingError(BlockPos pos, CleanroomType expected, CleanroomType actual) {
         super(pos, expected, actual);
@@ -25,6 +22,6 @@ public class FilterMatchingError extends MismatchError<CleanroomType> {
 
     @Override
     public PatternErrorType type() {
-        return TYPE;
+        return GTPatternErrors.FILTER_MATCHING_ERROR.value();
     }
 }

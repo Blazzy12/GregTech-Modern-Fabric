@@ -1,8 +1,6 @@
 package com.gregtechceu.gtceu.data.recipe.serialized.chemistry;
 
-import net.minecraft.data.recipes.FinishedRecipe;
-
-import java.util.function.Consumer;
+import net.minecraft.data.recipes.RecipeOutput;
 
 import static com.gregtechceu.gtceu.api.GTValues.*;
 import static com.gregtechceu.gtceu.api.data.tag.TagPrefix.*;
@@ -13,7 +11,7 @@ import static com.gregtechceu.gtceu.common.data.GTRecipeTypes.DISTILLERY_RECIPES
 
 public class DistillationRecipes {
 
-    public static void init(Consumer<FinishedRecipe> provider) {
+    public static void init(RecipeOutput provider) {
         DISTILLATION_RECIPES.recipeBuilder("distill_creosote")
                 .inputFluids(Creosote.getFluid(24))
                 .outputFluids(Lubricant.getFluid(12))

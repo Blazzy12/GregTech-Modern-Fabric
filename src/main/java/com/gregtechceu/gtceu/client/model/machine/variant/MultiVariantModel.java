@@ -1,11 +1,20 @@
 package com.gregtechceu.gtceu.client.model.machine.variant;
 
+import com.gregtechceu.gtceu.compat.client.model.WeightedBakedModel;
+
+import net.minecraft.client.resources.model.ModelBaker;
+
+import net.minecraft.client.renderer.block.dispatch.ModelState;
+
+import net.minecraft.client.resources.model.sprite.Material;
+
+import com.gregtechceu.gtceu.compat.client.model.UnbakedModel;
+
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.client.resources.model.*;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.client.model.SimpleModelState;
+
+import com.gregtechceu.gtceu.compat.client.model.BakedModel;
+import net.minecraft.resources.Identifier;
+import com.gregtechceu.gtceu.compat.client.model.SimpleModelState;
 
 import com.google.gson.*;
 import org.jetbrains.annotations.NotNull;
@@ -31,14 +40,14 @@ public record MultiVariantModel(List<VariantState> variants) implements UnbakedM
         }
     }
 
-    public @NotNull Collection<ResourceLocation> getDependencies() {
+    public @NotNull Collection<Identifier> getDependencies() {
         return this.variants.stream()
                 .map(VariantState::getModel)
                 .flatMap(either -> either.map(Stream::of, model -> model.getDependencies().stream()))
                 .collect(Collectors.toSet());
     }
 
-    public void resolveParents(@NotNull Function<ResourceLocation, UnbakedModel> resolver) {
+    public void resolveParents(@NotNull Function<Identifier, UnbakedModel> resolver) {
         this.variants.forEach((variant) -> {
             UnbakedModel model = variant.getModel().map(resolver, Function.identity());
             variant.setResolvedModel(model);
@@ -48,7 +57,7 @@ public record MultiVariantModel(List<VariantState> variants) implements UnbakedM
 
     public @Nullable BakedModel bake(@NotNull ModelBaker baker,
                                      @NotNull Function<Material, TextureAtlasSprite> spriteGetter,
-                                     @NotNull ModelState state, @NotNull ResourceLocation location) {
+                                     @NotNull ModelState state) {
         if (this.variants.isEmpty()) {
             return null;
         } else {
@@ -56,18 +65,16 @@ public record MultiVariantModel(List<VariantState> variants) implements UnbakedM
 
             for (VariantState variant : this.variants) {
                 // rotate the transform by both the variant and the original blockstate rotation
-                var actualRotation = state.getRotation().compose(variant.getRotation());
+                var actualRotation = state.transformation().compose(variant.getRotation());
                 var actualState = new SimpleModelState(actualRotation, variant.isUvLocked());
 
-                BakedModel baked = variant.getResolvedModel().bake(baker, spriteGetter, actualState,
-                        variant.getModel().map(Function.identity(), model -> location));
+                BakedModel baked = variant.getResolvedModel().bake(baker, spriteGetter, actualState);
                 weightedBuilder.add(baked, variant.getWeight());
             }
             return weightedBuilder.build();
         }
     }
 
-    @OnlyIn(Dist.CLIENT)
     public static class Deserializer implements JsonDeserializer<MultiVariantModel> {
 
         public MultiVariantModel deserialize(JsonElement json, Type type,

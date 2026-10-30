@@ -3,6 +3,7 @@ package com.gregtechceu.gtceu.common.machine.storage;
 import com.gregtechceu.gtceu.api.blockentity.BlockEntityCreationInfo;
 import com.gregtechceu.gtceu.api.capability.IControllable;
 import com.gregtechceu.gtceu.api.capability.recipe.IO;
+import com.gregtechceu.gtceu.api.item.datacomponents.LargeItemContent;
 import com.gregtechceu.gtceu.api.item.tool.GTToolType;
 import com.gregtechceu.gtceu.api.machine.TieredMachine;
 import com.gregtechceu.gtceu.api.machine.feature.IMuiMachine;
@@ -11,15 +12,20 @@ import com.gregtechceu.gtceu.api.sync_system.annotations.SaveField;
 import com.gregtechceu.gtceu.api.sync_system.annotations.SyncToClient;
 import com.gregtechceu.gtceu.api.transfer.fluid.IFluidHandlerModifiable;
 import com.gregtechceu.gtceu.api.transfer.item.CustomItemStackHandler;
+import com.gregtechceu.gtceu.common.data.item.GTDataComponents;
 import com.gregtechceu.gtceu.common.machine.trait.AutoOutputTrait;
 import com.gregtechceu.gtceu.common.mui.GTGuiTextures;
 import com.gregtechceu.gtceu.common.mui.GTMuiWidgets;
 import com.gregtechceu.gtceu.utils.*;
+import com.gregtechceu.gtceu.utils.ExtendedUseOnContext;
+import com.gregtechceu.gtceu.utils.FormattingUtil;
+import com.gregtechceu.gtceu.utils.GTMath;
+import com.gregtechceu.gtceu.utils.GTTransferUtils;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.nbt.CompoundTag;
+import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -28,8 +34,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
-import net.minecraftforge.items.IItemHandlerModifiable;
-import net.minecraftforge.items.ItemHandlerHelper;
+import com.gregtechceu.gtceu.compat.items.IItemHandlerModifiable;
 
 import brachy.modularui.api.drawable.Text;
 import brachy.modularui.api.widget.IWidget;
@@ -112,16 +117,19 @@ public class QuantumChestMachine extends TieredMachine implements IControllable,
     }
 
     @Override
-    public void saveToItem(CompoundTag tag, boolean clone) {
-        if (clone || stored.isEmpty()) return;
-        tag.put("stored", stored.save(new CompoundTag()));
-        tag.putLong("storedAmount", storedAmount);
+    protected void applyImplicitComponents(net.minecraft.core.component.DataComponentGetter componentInput) {
+        super.applyImplicitComponents(componentInput);
+        LargeItemContent storage = componentInput.getOrDefault(GTDataComponents.LARGE_ITEM_CONTENT.get(),
+                LargeItemContent.EMPTY);
+        stored = storage.stored();
+        storedAmount = storage.amount();
     }
 
     @Override
-    public void loadFromItem(CompoundTag tag) {
-        stored = ItemStack.of(tag.getCompound("stored"));
-        storedAmount = tag.getLong("storedAmount");
+    public void collectImplicitComponents(DataComponentMap.Builder components) {
+        super.collectImplicitComponents(components);
+        if (!stored.isEmpty())
+            components.set(GTDataComponents.LARGE_ITEM_CONTENT.get(), new LargeItemContent(stored, storedAmount));
     }
 
     //////////////////////////////////////
@@ -179,7 +187,7 @@ public class QuantumChestMachine extends TieredMachine implements IControllable,
                 player.setItemInHand(InteractionHand.MAIN_HAND, remaining);
                 return InteractionResult.SUCCESS;
             } else if (isDoubleHit(player.getUUID())) {
-                for (var stack : player.getInventory().items) {
+                for (var stack : player.getInventory().getNonEquipmentItems()) {
                     if (!stack.isEmpty() && cache.canInsert(stack)) {
                         stack.setCount(cache.insertItem(0, stack, false).getCount());
                     }
@@ -285,7 +293,7 @@ public class QuantumChestMachine extends TieredMachine implements IControllable,
     private IWidget createPhantomLockeditemSlot(PanelSyncManager syncManager) {
         lockedItem.setOnContentsChanged(() -> lockedItem.getStackInSlot(0).setCount(1));
         PhantomItemSlotSyncHandler lockSlot = new PhantomItemSlotSyncHandler(new ModularSlot(lockedItem, 0).filter(
-                stack -> stored.isEmpty() || ItemStack.isSameItemSameTags(stack, stored)));
+                stack -> stored.isEmpty() || ItemStack.isSameItemSameComponents(stack, stored)));
 
         syncManager.syncValue("lock", lockSlot);
         return new PhantomItemSlot().syncHandler("lock");
@@ -306,7 +314,7 @@ public class QuantumChestMachine extends TieredMachine implements IControllable,
     protected class ItemCache extends MachineTrait implements IItemHandlerModifiable {
 
         private final Predicate<ItemStack> filter = i -> !isLocked() ||
-                GTUtil.isSameItemSameTags(i, getLockedItem());
+                ItemStack.isSameItemSameComponents(i, getLockedItem());
 
         public ItemCache() {
             super();
@@ -328,7 +336,7 @@ public class QuantumChestMachine extends TieredMachine implements IControllable,
         public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
             long free = isVoiding ? Long.MAX_VALUE : maxAmount - storedAmount;
             long canStore = 0;
-            if ((stored.isEmpty() || ItemHandlerHelper.canItemStacksStack(stored, stack)) && filter.test(stack)) {
+            if ((stored.isEmpty() || ItemStack.isSameItemSameComponents(stored, stack)) && filter.test(stack)) {
                 canStore = Math.min(stack.getCount(), free);
             }
             if (!simulate && canStore > 0) {

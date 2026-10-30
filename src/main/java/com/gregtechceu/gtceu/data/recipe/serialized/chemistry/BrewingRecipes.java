@@ -2,12 +2,10 @@ package com.gregtechceu.gtceu.data.recipe.serialized.chemistry;
 
 import com.gregtechceu.gtceu.api.data.chemical.material.Material;
 
-import net.minecraft.data.recipes.FinishedRecipe;
+import net.minecraft.data.recipes.RecipeOutput;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
-
-import java.util.function.Consumer;
 
 import static com.gregtechceu.gtceu.api.data.tag.TagPrefix.dust;
 import static com.gregtechceu.gtceu.common.data.GTItems.BIO_CHAFF;
@@ -16,8 +14,8 @@ import static com.gregtechceu.gtceu.common.data.GTRecipeTypes.BREWING_RECIPES;
 
 public class BrewingRecipes {
 
-    public static void init(Consumer<FinishedRecipe> provider) {
-        for (Material material : new Material[] { Talc, Soapstone, Redstone }) {
+    public static void init(RecipeOutput provider) {
+        for (Material material : new Material[] { Talc.value(), Soapstone.value(), Redstone.value() }) {
             BREWING_RECIPES.recipeBuilder("lubricant_from_oil_and_" + material.getName())
                     .inputItems(dust, material)
                     .inputFluids(Oil.getFluid(1000))

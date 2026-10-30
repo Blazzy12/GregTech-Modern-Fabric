@@ -16,7 +16,7 @@
       "y": 180
     },
     "facing=up": {
-      "gtceu:z": 180,
+      "z": 180,
       "model": "gtceu:block/machine/luv_battery_buffer_8x",
       "x": 270
     },

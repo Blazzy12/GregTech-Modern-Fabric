@@ -1,0 +1,49 @@
+package com.gregtechceu.gtceu.core.mixins.fabric.events;
+
+import com.gregtechceu.gtceu.compat.common.NeoForge;
+import com.gregtechceu.gtceu.compat.event.AnvilUpdateEvent;
+
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.AnvilMenu;
+import net.minecraft.world.inventory.ContainerLevelAccess;
+import net.minecraft.world.inventory.DataSlot;
+import net.minecraft.world.inventory.ItemCombinerMenu;
+import net.minecraft.world.inventory.ItemCombinerMenuSlotDefinition;
+import net.minecraft.world.inventory.MenuType;
+import net.minecraft.world.item.ItemStack;
+
+import org.spongepowered.asm.mixin.Final;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+/** Lets listeners veto an anvil result. */
+@Mixin(AnvilMenu.class)
+public abstract class AnvilMenuEventMixin extends ItemCombinerMenu {
+
+    @Shadow
+    private String itemName;
+
+    @Shadow
+    @Final
+    private DataSlot cost;
+
+    private AnvilMenuEventMixin(MenuType<?> type, int containerId, Inventory inventory, ContainerLevelAccess access,
+                                ItemCombinerMenuSlotDefinition itemInputSlots) {
+        super(type, containerId, inventory, access, itemInputSlots);
+    }
+
+    @Inject(method = "createResult", at = @At("HEAD"), cancellable = true)
+    private void gtceu$anvilUpdate(CallbackInfo ci) {
+        ItemStack left = this.inputSlots.getItem(0);
+        ItemStack right = this.inputSlots.getItem(1);
+        if (left.isEmpty() || right.isEmpty()) return;
+        if (NeoForge.EVENT_BUS.post(new AnvilUpdateEvent(left, right, this.itemName, this.player)).isCanceled()) {
+            this.resultSlots.setItem(0, ItemStack.EMPTY);
+            this.cost.set(0);
+            ci.cancel();
+        }
+    }
+}

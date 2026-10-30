@@ -9,12 +9,12 @@ import com.gregtechceu.gtceu.common.data.GTRecipeConditions;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
 
-import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -23,14 +23,14 @@ import org.jetbrains.annotations.NotNull;
 @NoArgsConstructor
 public class BiomeTagCondition extends RecipeCondition<BiomeTagCondition> {
 
-    public static final Codec<BiomeTagCondition> CODEC = RecordCodecBuilder
-            .create(instance -> RecipeCondition.isReverse(instance)
+    public static final MapCodec<BiomeTagCondition> CODEC = RecordCodecBuilder
+            .mapCodec(instance -> RecipeCondition.isReverse(instance)
                     .and(TagKey.codec(Registries.BIOME).fieldOf("biome_tag").forGetter(val -> val.biome))
                     .apply(instance, BiomeTagCondition::new));
 
     public final static BiomeTagCondition INSTANCE = new BiomeTagCondition();
     @Getter
-    private TagKey<Biome> biome = TagKey.create(Registries.BIOME, ResourceLocation.withDefaultNamespace("dummy"));
+    private TagKey<Biome> biome = TagKey.create(Registries.BIOME, Identifier.fromNamespaceAndPath("dummy", ""));
 
     public BiomeTagCondition(boolean isReverse, TagKey<Biome> biome) {
         super(isReverse);
@@ -43,7 +43,7 @@ public class BiomeTagCondition extends RecipeCondition<BiomeTagCondition> {
 
     @Override
     public RecipeConditionType<BiomeTagCondition> getType() {
-        return GTRecipeConditions.BIOME_TAG;
+        return GTRecipeConditions.BIOME_TAG.value();
     }
 
     @Override

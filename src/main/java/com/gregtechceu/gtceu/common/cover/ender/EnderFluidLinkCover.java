@@ -1,5 +1,7 @@
 package com.gregtechceu.gtceu.common.cover.ender;
 
+import com.gregtechceu.gtceu.core.fabric.ItemStackNbt;
+
 import com.gregtechceu.gtceu.api.capability.ICoverable;
 import com.gregtechceu.gtceu.api.cover.CoverDefinition;
 import com.gregtechceu.gtceu.api.cover.filter.FilterHandler;
@@ -15,8 +17,8 @@ import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.FluidUtil;
+import com.gregtechceu.gtceu.compat.fluids.FluidStack;
+import com.gregtechceu.gtceu.compat.fluids.FluidUtil;
 
 import brachy.modularui.api.widget.IWidget;
 import brachy.modularui.value.sync.FluidSlotSyncHandler;
@@ -120,12 +122,13 @@ public class EnderFluidLinkCover extends AbstractEnderLinkCover<VirtualTank> {
     @Override
     public void copyConfig(CompoundTag tag) {
         super.copyConfig(tag);
-        tag.put("filter", filterHandler.getFilterItem().serializeNBT());
+        tag.put("filter", ItemStackNbt.save(filterHandler.getFilterItem(), coverHolder.getLevel().registryAccess()));
     }
 
     @Override
     public void pasteConfig(ServerPlayer player, CompoundTag tag) {
-        filterHandler.setFilterItem(ItemStack.of(tag.getCompound("filter")));
+        filterHandler.setFilterItem(
+                ItemStackNbt.parseOptional(coverHolder.getLevel().registryAccess(), tag.getCompoundOrEmpty("filter")));
         super.pasteConfig(player, tag);
     }
 

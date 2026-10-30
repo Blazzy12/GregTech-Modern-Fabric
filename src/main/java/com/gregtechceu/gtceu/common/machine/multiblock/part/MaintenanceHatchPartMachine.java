@@ -23,15 +23,14 @@ import com.gregtechceu.gtceu.config.ConfigHolder;
 import com.gregtechceu.gtceu.utils.ExtendedUseOnContext;
 import com.gregtechceu.gtceu.utils.GTUtil;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.items.IItemHandler;
-import net.minecraftforge.items.wrapper.InvWrapper;
+import com.gregtechceu.gtceu.compat.items.IItemHandler;
+import com.gregtechceu.gtceu.compat.items.wrapper.InvWrapper;
 
 import brachy.modularui.api.drawable.IDrawable;
 import brachy.modularui.api.drawable.Text;
@@ -61,10 +60,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Stream;
 
-import javax.annotation.ParametersAreNonnullByDefault;
-
-@ParametersAreNonnullByDefault
-@MethodsReturnNonnullByDefault
 public class MaintenanceHatchPartMachine extends TieredPartMachine
                                          implements IMuiMachine {
 
@@ -264,7 +259,7 @@ public class MaintenanceHatchPartMachine extends TieredPartMachine
                 return;
             }
             // Then for every slot in the player's main inventory, try to duct tape fix
-            for (int i = 0; i < entityPlayer.getInventory().items.size(); i++) {
+            for (int i = 0; i < entityPlayer.getInventory().getNonEquipmentItems().size(); i++) {
                 if (consumeDuctTape(new InvWrapper(entityPlayer.getInventory()), i)) {
                     fixAllMaintenanceProblems();
                     setTaped(true);
@@ -344,7 +339,7 @@ public class MaintenanceHatchPartMachine extends TieredPartMachine
                 }
 
                 // Then try all the remaining inventory slots
-                for (ItemStack itemStack : entityPlayer.getInventory().items) {
+                for (ItemStack itemStack : entityPlayer.getInventory().getNonEquipmentItems()) {
                     if (ToolHelper.is(itemStack, toolToMatch)) {
                         fixProblemWithTool(i, itemStack, entityPlayer);
 
@@ -355,7 +350,7 @@ public class MaintenanceHatchPartMachine extends TieredPartMachine
                 }
 
                 if (entityPlayer instanceof ServerPlayer player) {
-                    for (ItemStack stack : entityPlayer.getInventory().items) {
+                    for (ItemStack stack : entityPlayer.getInventory().getNonEquipmentItems()) {
                         if (ToolHelper.is(stack, toolToMatch)) {
                             setMaintenanceFixed(i);
                             ToolHelper.damageItem(stack, player, 1);
@@ -459,6 +454,11 @@ public class MaintenanceHatchPartMachine extends TieredPartMachine
             updateWidget.run();
         });
         updateWidget.run();
+        FloatSyncValue durationSyncValue = new FloatSyncValue(this::getDurationMultiplier,
+                this::setDurationMultiplier);
+        durationSyncValue.allowC2S();
+        FloatSyncValue timeMultiplierSyncValue = new FloatSyncValue(this::getTimeMultiplier);
+        syncManager.syncValue("timeMultiplier", timeMultiplierSyncValue);
         mainWidget.child(Flow.column()
                 .size(MachineUIPanel.DEFAULT_CONTENT_WIDTH, MachineUIPanel.DEFAULT_CONTENT_HEIGHT)
                 .crossAxisAlignment(Alignment.CrossAxis.START)
@@ -477,15 +477,15 @@ public class MaintenanceHatchPartMachine extends TieredPartMachine
                                         .setNumbersDouble(() -> MIN_DURATION_MULTIPLIER,
                                                 () -> MAX_DURATION_MULTIPLIER)
                                         .setDefaultNumber(1)
-                                        .value(new FloatSyncValue(this::getDurationMultiplier,
-                                                this::setDurationMultiplier))
+                                        .value(durationSyncValue)
                                         .addTooltipElement(Text.dynamic(() -> getDurationMultiplier() == 1.0 ?
                                                 Component.translatable(
                                                         "gtceu.maintenance.configurable_duration.unchanged_description") :
                                                 Component.translatable(
                                                         "gtceu.maintenance.configurable_duration.changed_description")))))
-                        .child(new TextWidget<>(Text.lang("gtceu.maintenance.configurable_time",
-                                this.getTimeMultiplier()))
+                        .child(new TextWidget<>(Text.dynamic(() -> Component.translatable(
+                                "gtceu.maintenance.configurable_time",
+                                timeMultiplierSyncValue.getValue())))
                                 .leftRel(0)))
                 .child(Flow.row()
                         .leftRel(0.5f)
@@ -502,5 +502,10 @@ public class MaintenanceHatchPartMachine extends TieredPartMachine
                                         Text.lang("gtceu.machine.maintenance_hatch_tool_slot.tooltip"))
                                 .syncHandler(syncHandler)))
                 .child(maintenanceStatusWidget));
+    }
+
+    @Override
+    public Component getFailReason() {
+        return Component.translatable("gtceu.multiblock.universal.has_problems");
     }
 }

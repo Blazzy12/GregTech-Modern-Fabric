@@ -9,7 +9,6 @@ import net.minecraft.world.level.material.Fluid;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import org.jetbrains.annotations.ApiStatus;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Comparator;
@@ -32,7 +31,7 @@ public class FluidStorageImpl implements FluidStorage {
      * @param builder the FluidBuilder to build
      */
     @Override
-    public void enqueueRegistration(@NotNull FluidStorageKey key, @NotNull FluidBuilder builder) {
+    public void enqueueRegistration(FluidStorageKey key, FluidBuilder builder) {
         if (registered) {
             throw new IllegalStateException("Cannot enqueue a builder after registration");
         }
@@ -48,7 +47,7 @@ public class FluidStorageImpl implements FluidStorage {
      * @return the fluid builder queued to be registered
      */
     @Override
-    public @Nullable FluidBuilder getQueuedBuilder(@NotNull FluidStorageKey key) {
+    public @Nullable FluidBuilder getQueuedBuilder(FluidStorageKey key) {
         if (registered) {
             throw new IllegalArgumentException("FluidStorage has already been registered");
         }
@@ -63,7 +62,7 @@ public class FluidStorageImpl implements FluidStorage {
      * @param material the material the fluid is based off of
      */
     @ApiStatus.Internal
-    public void registerFluids(@NotNull Material material, GTRegistrate registrate) {
+    public void registerFluids(Material material, GTRegistrate registrate) {
         if (registered) {
             throw new IllegalStateException("FluidStorage has already been registered");
         }
@@ -89,6 +88,7 @@ public class FluidStorageImpl implements FluidStorage {
                         GTCEu.LOGGER.error("{} already has an associated fluid for material {}", material, material);
                     }
                 });
+        // noinspection DataFlowIssue
         toRegister = null;
         registered = true;
     }
@@ -98,12 +98,12 @@ public class FluidStorageImpl implements FluidStorage {
      * @return the fluid associated with the key
      */
     @Override
-    public @Nullable Fluid get(@NotNull FluidStorageKey key) {
+    public @Nullable Fluid get(FluidStorageKey key) {
         FluidEntry entry = getEntry(key);
         return entry == null ? null : entry.getFluid().get();
     }
 
-    public @Nullable FluidEntry getEntry(@NotNull FluidStorageKey key) {
+    public @Nullable FluidEntry getEntry(FluidStorageKey key) {
         FluidEntry entry = map.get(key);
         return entry == null && key == FluidStorageKeys.MOLTEN ? map.get(FluidStorageKeys.LIQUID) : entry;
     }
@@ -115,7 +115,7 @@ public class FluidStorageImpl implements FluidStorage {
      * @param fluid the fluid to associate with the key
      * @return if the associations were successfully updated
      */
-    private boolean storeNoOverwrites(@NotNull FluidStorageKey key, @NotNull Supplier<? extends Fluid> fluid,
+    private boolean storeNoOverwrites(FluidStorageKey key, Supplier<? extends Fluid> fluid,
                                       @Nullable FluidBuilder builder) {
         if (map.containsKey(key)) {
             return false;
@@ -125,15 +125,14 @@ public class FluidStorageImpl implements FluidStorage {
     }
 
     @Override
-    public void store(@NotNull FluidStorageKey key, @NotNull Supplier<? extends Fluid> fluid,
-                      @Nullable FluidBuilder builder) {
+    public void store(FluidStorageKey key, Supplier<? extends Fluid> fluid, @Nullable FluidBuilder builder) {
         if (map.containsKey(key)) {
             throw new IllegalArgumentException(key + " already has an associated fluid");
         }
         if (builder != null) {
-            map.put(key, new FluidEntry(fluid, builder));
+            map.put(key, new FluidEntry(fluid, builder, key));
         } else {
-            map.put(key, new FluidEntry(fluid, null));
+            map.put(key, new FluidEntry(fluid, null, key));
         }
     }
 }

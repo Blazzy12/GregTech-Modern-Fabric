@@ -5,9 +5,9 @@ import com.gregtechceu.gtceu.data.pack.GTDynamicResourcePack;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.GsonHelper;
-import net.minecraft.world.item.ArmorItem;
+import net.minecraft.world.item.equipment.ArmorType;
 import net.minecraft.world.item.Item;
 
 import com.google.gson.JsonObject;
@@ -24,10 +24,10 @@ public class ArmorItemModelGenerator {
     public static void reinitModels() {
         for (ArmorItemModelGenerator model : MODELS) {
             // read the base armor model JSON
-            ResourceLocation modelLocation = GTCEu.id("models/item/armor/%s.json".formatted(model.armorType.getName()));
+            Identifier modelLocation = GTCEu.id("models/item/armor/%s.json".formatted(model.armorType.getName()));
             JsonObject original;
             try (BufferedReader reader = Minecraft.getInstance().getResourceManager().openAsReader(modelLocation)) {
-                original = GsonHelper.parse(reader, true);
+                original = GsonHelper.parse(reader);
             } catch (IOException e) {
                 GTCEu.LOGGER.warn("Unable to load model: '{}': {}", modelLocation, e);
                 continue;
@@ -38,14 +38,14 @@ public class ArmorItemModelGenerator {
     }
 
     private final Item item;
-    private final ArmorItem.Type armorType;
+    private final ArmorType armorType;
 
-    protected ArmorItemModelGenerator(Item item, ArmorItem.Type armorType) {
+    protected ArmorItemModelGenerator(Item item, ArmorType armorType) {
         this.item = item;
         this.armorType = armorType;
     }
 
-    public static void add(Item item, ArmorItem.Type armorType) {
+    public static void add(Item item, ArmorType armorType) {
         MODELS.add(new ArmorItemModelGenerator(item, armorType));
     }
 }

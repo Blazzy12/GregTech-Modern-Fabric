@@ -3,22 +3,18 @@ package com.gregtechceu.gtceu.common.module;
 import com.gregtechceu.gtceu.api.item.armor.ArmorUtils;
 import com.gregtechceu.gtceu.api.item.module.ModuleContext;
 import com.gregtechceu.gtceu.api.item.module.TieredAttributeItemModule;
-import com.gregtechceu.gtceu.utils.FormattingUtil;
 
+import net.minecraft.core.Holder;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
-import net.minecraftforge.common.ForgeMod;
-
-import java.util.UUID;
+import com.gregtechceu.gtceu.compat.common.NeoForgeMod;
 
 public class SwimSpeedModule extends TieredAttributeItemModule {
 
-    private static final UUID MUL_SWIM_SPEED_UUID = UUID.fromString("e5bd81ea-b3af-4cca-8866-f3e62f5f68f1");
-
-    public SwimSpeedModule(ResourceLocation id, int tier) {
+    public SwimSpeedModule(Identifier id, int tier) {
         super(id, tier);
     }
 
@@ -35,13 +31,13 @@ public class SwimSpeedModule extends TieredAttributeItemModule {
 
     @Override
     public Component getInfo() {
-        return Component.translatable(getDescriptionLanguageKey(), getMaxAttributeAmount() * 100,
-                FormattingUtil.formatNumbers(getEnergyCost()));
+        return Component.translatable("module.gtceu.swim_speed.description", getMaxAttributeAmount() * 100,
+                getEnergyCost());
     }
 
     @Override
-    public Attribute getAttribute(ModuleContext moduleContext) {
-        return ForgeMod.SWIM_SPEED.get();
+    public Holder<Attribute> getAttribute(ModuleContext moduleContext) {
+        return NeoForgeMod.SWIM_SPEED;
     }
 
     @Override
@@ -50,8 +46,7 @@ public class SwimSpeedModule extends TieredAttributeItemModule {
     }
 
     @Override
-    public AttributeModifier getAttributeModifier(ModuleContext moduleContext) {
-        return new AttributeModifier(MUL_SWIM_SPEED_UUID, "Swim Speed Modifier", getMaxAttributeAmount(),
-                AttributeModifier.Operation.MULTIPLY_TOTAL);
+    public AttributeModifier.Operation getModifierOperation() {
+        return AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL;
     }
 }

@@ -3,34 +3,31 @@ package com.gregtechceu.gtceu.integration.map.xaeros.worldmap.ore;
 import com.gregtechceu.gtceu.api.data.chemical.material.Material;
 import com.gregtechceu.gtceu.api.data.chemical.material.info.MaterialIconType;
 import com.gregtechceu.gtceu.api.data.worldgen.ores.GeneratedVeinMetadata;
-import com.gregtechceu.gtceu.client.util.RenderUtil;
 import com.gregtechceu.gtceu.config.ConfigHolder;
 import com.gregtechceu.gtceu.integration.map.GroupingMapRenderer;
 import com.gregtechceu.gtceu.integration.map.layer.builtin.OreRenderLayer;
+import com.gregtechceu.gtceu.integration.map.xaeros.common.XaeroDraw;
 import com.gregtechceu.gtceu.integration.map.xaeros.common.ore.OreVeinElement;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.texture.TextureManager;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.inventory.InventoryMenu;
+import net.minecraft.data.AtlasIds;
+import net.minecraft.resources.Identifier;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import xaero.map.element.MapElementReader;
-import xaero.map.element.MapElementRenderProvider;
-import xaero.map.element.MapElementRenderer;
+import xaero.lib.client.graphics.XaeroBufferProvider;
+import xaero.map.element.MapElementGraphics;
+import xaero.map.element.render.ElementReader;
+import xaero.map.element.render.ElementRenderInfo;
+import xaero.map.element.render.ElementRenderLocation;
+import xaero.map.element.render.ElementRenderProvider;
+import xaero.map.element.render.ElementRenderer;
 import xaero.map.graphics.renderer.multitexture.MultiTextureRenderTypeRendererProvider;
 
 public class OreVeinElementRenderer extends
-                                    MapElementRenderer<OreVeinElement, OreVeinElementContext, OreVeinElementRenderer> {
-
-    protected static final ResourceLocation STONE = ResourceLocation.withDefaultNamespace("block/stone");
+                                    ElementRenderer<OreVeinElement, OreVeinElementContext, OreVeinElementRenderer> {
 
     protected OreVeinElementRenderer(OreVeinElementContext context,
-                                     MapElementRenderProvider<OreVeinElement, OreVeinElementContext> provider,
-                                     MapElementReader<OreVeinElement, OreVeinElementContext, OreVeinElementRenderer> reader) {
+                                     ElementRenderProvider<OreVeinElement, OreVeinElementContext> provider,
+                                     ElementReader<OreVeinElement, OreVeinElementContext, OreVeinElementRenderer> reader) {
         super(context, provider, reader);
     }
 
@@ -40,90 +37,59 @@ public class OreVeinElementRenderer extends
     }
 
     @Override
-    public void beforeRender(int location, Minecraft mc, GuiGraphics guiGraphics,
-                             double cameraX, double cameraZ, double mouseX, double mouseZ,
-                             float brightness, double scale, double screenSizeBasedScale, TextureManager textureManager,
-                             Font fontRenderer,
-                             MultiBufferSource.BufferSource renderTypeBuffers,
-                             MultiTextureRenderTypeRendererProvider rendererProvider,
-                             boolean pre) {}
+    public void preRender(ElementRenderInfo info, XaeroBufferProvider buffers,
+                          MultiTextureRenderTypeRendererProvider rendererProvider, boolean shadow) {}
 
     @Override
-    public void afterRender(int location, Minecraft mc, GuiGraphics guiGraphics,
-                            double cameraX, double cameraZ, double mouseX, double mouseZ,
-                            float brightness, double scale, double screenSizeBasedScale,
-                            TextureManager textureManager, Font fontRenderer,
-                            MultiBufferSource.BufferSource renderTypeBuffers,
-                            MultiTextureRenderTypeRendererProvider rendererProvider,
-                            boolean pre) {}
+    public void postRender(ElementRenderInfo info, XaeroBufferProvider buffers,
+                           MultiTextureRenderTypeRendererProvider rendererProvider, boolean shadow) {}
 
     @Override
-    public void renderElementPre(int location, OreVeinElement w, boolean hovered,
-                                 Minecraft mc, GuiGraphics guiGraphics,
-                                 double cameraX, double cameraZ, double mouseX, double mouseZ,
-                                 float brightness, double scale, double screenSizeBasedScale,
-                                 TextureManager textureManager, Font fontRenderer,
-                                 MultiBufferSource.BufferSource renderTypeBuffers,
-                                 MultiTextureRenderTypeRendererProvider rendererProvider,
-                                 float optionalScale, double partialX, double partialY,
-                                 boolean cave,
-                                 float partialTicks) {}
+    public void renderElementShadow(OreVeinElement element, boolean hovered, float optionalScale, double partialX,
+                                    double partialY, ElementRenderInfo info, MapElementGraphics graphics,
+                                    XaeroBufferProvider buffers,
+                                    MultiTextureRenderTypeRendererProvider rendererProvider) {}
 
     @Override
-    public boolean renderElement(int location, OreVeinElement element,
-                                 boolean hovered,
-                                 Minecraft mc, GuiGraphics graphics,
-                                 double cameraX, double cameraZ, double mouseX, double mouseZ,
-                                 float brightness, double scale, double screenSizeBasedScale,
-                                 TextureManager textureManager, Font fontRenderer,
-                                 MultiBufferSource.BufferSource renderTypeBuffers,
-                                 MultiTextureRenderTypeRendererProvider rendererProvider,
-                                 int elementIndex, double optionalDepth, float optionalScale,
-                                 double partialX, double partialY,
-                                 boolean cave, float partialTicks) {
+    public boolean renderElement(OreVeinElement element, boolean hovered, double optionalDepth, float optionalScale,
+                                 double partialX, double partialY, ElementRenderInfo info,
+                                 MapElementGraphics graphics, XaeroBufferProvider buffers,
+                                 MultiTextureRenderTypeRendererProvider rendererProvider) {
         GeneratedVeinMetadata vein = element.getVein();
         int iconSize = ConfigHolder.INSTANCE.compat.minimap.oreIconSize;
 
         Material material = OreRenderLayer.getMaterial(vein);
+        if (material == null) return false;
         int materialARGB = material.getMaterialARGB();
-        float[] colors = RenderUtil.floats(materialARGB);
-        RenderSystem.setShaderColor(1, 1, 1, 1);
 
-        ResourceLocation oreTexture = MaterialIconType.rawOre
-                .getItemTexturePath(material.getMaterialIconSet(), true);
-        if (oreTexture != null) {
-            var oreSprite = Minecraft.getInstance()
-                    .getTextureAtlas(InventoryMenu.BLOCK_ATLAS)
-                    .apply(oreTexture);
-            graphics.blit(-iconSize / 2, -iconSize / 2, 200, iconSize, iconSize,
-                    oreSprite, colors[0], colors[1], colors[2], 1);
-        }
+        drawLayer(graphics, buffers, MaterialIconType.rawOre.getItemTexturePath(material.getMaterialIconSet(), true),
+                iconSize, materialARGB);
+        drawLayer(graphics, buffers,
+                MaterialIconType.rawOre.getItemTexturePath(material.getMaterialIconSet(), "secondary", true),
+                iconSize, material.getMaterialSecondaryARGB());
 
-        oreTexture = MaterialIconType.rawOre.getItemTexturePath(material.getMaterialIconSet(), "secondary", true);
-        if (oreTexture != null) {
-            int materialSecondaryARGB = material.getMaterialSecondaryARGB();
-            colors = RenderUtil.floats(materialSecondaryARGB);
-            var oreSprite = Minecraft.getInstance()
-                    .getTextureAtlas(InventoryMenu.BLOCK_ATLAS)
-                    .apply(oreTexture);
-            graphics.blit(-iconSize / 2, -iconSize / 2, 200, iconSize, iconSize,
-                    oreSprite, colors[0], colors[1], colors[2], 1);
-        }
-
-        RenderSystem.setShaderColor(1, 1, 1, 1);
         int borderColor = ConfigHolder.INSTANCE.compat.minimap.getBorderColor(materialARGB | 0xFF000000);
         if ((borderColor & 0xFF000000) != 0) {
-            int thickness = iconSize / 16;
-            graphics.fill(-iconSize / 2, -iconSize / 2, iconSize, thickness, borderColor);
-            graphics.fill(-iconSize / 2, -iconSize / 2 - thickness, iconSize, thickness, borderColor);
-            graphics.fill(-iconSize / 2, -iconSize / 2, thickness, iconSize, borderColor);
-            graphics.fill(-iconSize / 2 - thickness, -iconSize / 2, thickness, iconSize, borderColor);
+            int thickness = Math.max(1, iconSize / 16);
+            int half = iconSize / 2;
+            graphics.fill(-half, -half, half, -half + thickness, borderColor);
+            graphics.fill(-half, half - thickness, half, half, borderColor);
+            graphics.fill(-half, -half, -half + thickness, half, borderColor);
+            graphics.fill(half - thickness, -half, half, half, borderColor);
         }
         return true;
     }
 
+    private static void drawLayer(MapElementGraphics graphics, XaeroBufferProvider buffers,
+                                  Identifier texture, int iconSize, int argb) {
+        if (texture == null) return;
+        var sprite = Minecraft.getInstance().getAtlasManager().getAtlasOrThrow(AtlasIds.ITEMS).getSprite(texture);
+        XaeroDraw.tintedSprite(graphics.pose(), buffers, sprite, -iconSize / 2, -iconSize / 2, iconSize, iconSize,
+                argb | 0xFF000000);
+    }
+
     @Override
-    public boolean shouldRender(int location, boolean pre) {
+    public boolean shouldRender(ElementRenderLocation location, boolean shadow) {
         return GroupingMapRenderer.getInstance().doShowLayer("ore_veins");
     }
 

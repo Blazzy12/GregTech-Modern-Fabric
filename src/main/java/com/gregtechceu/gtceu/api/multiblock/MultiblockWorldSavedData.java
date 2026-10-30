@@ -1,23 +1,25 @@
 package com.gregtechceu.gtceu.api.multiblock;
 
+import com.gregtechceu.gtceu.api.GTSavedData;
+
 import com.gregtechceu.gtceu.api.multiblock.pattern.PatternState;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
-import net.minecraft.world.level.saveddata.SavedData;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 
 import java.util.*;
 import java.util.concurrent.*;
 
-public class MultiblockWorldSavedData extends SavedData {
+public class MultiblockWorldSavedData extends GTSavedData {
 
     public static MultiblockWorldSavedData getOrCreate(ServerLevel serverLevel) {
         return serverLevel.getDataStorage()
-                .computeIfAbsent(MultiblockWorldSavedData::new, MultiblockWorldSavedData::new, "gtceu_multiblock");
+                .computeIfAbsent(GTSavedData.type("gtceu_multiblock", MultiblockWorldSavedData::new, MultiblockWorldSavedData::new));
     }
 
     /**
@@ -34,7 +36,7 @@ public class MultiblockWorldSavedData extends SavedData {
         this.chunkPosMapping = new HashMap<>();
     }
 
-    private MultiblockWorldSavedData(CompoundTag tag) {
+    private MultiblockWorldSavedData(CompoundTag tag, HolderLookup.Provider access) {
         this();
     }
 
@@ -45,7 +47,7 @@ public class MultiblockWorldSavedData extends SavedData {
     public void addMapping(PatternState patternState) {
         this.mapping.computeIfAbsent(patternState.getControllerPos(), x -> new HashSet<>()).add(patternState);
         for (long pos : patternState.getCache().keySet()) {
-            chunkPosMapping.computeIfAbsent(new ChunkPos(BlockPos.of(pos)), c -> new HashSet<>()).add(patternState);
+            chunkPosMapping.computeIfAbsent(ChunkPos.containing(BlockPos.of(pos)), c -> new HashSet<>()).add(patternState);
         }
     }
 
@@ -60,7 +62,7 @@ public class MultiblockWorldSavedData extends SavedData {
     }
 
     @Override
-    public CompoundTag save(CompoundTag compound) {
+    public CompoundTag save(CompoundTag compound, HolderLookup.Provider lookup) {
         return compound;
     }
 }

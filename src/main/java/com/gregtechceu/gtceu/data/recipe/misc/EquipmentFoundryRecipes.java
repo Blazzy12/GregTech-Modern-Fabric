@@ -7,120 +7,128 @@ import com.gregtechceu.gtceu.common.data.GTItems;
 import com.gregtechceu.gtceu.data.recipe.CustomTags;
 import com.gregtechceu.gtceu.data.recipe.EquipmentFoundryRecipeHelper;
 
-import net.minecraft.data.recipes.FinishedRecipe;
+import net.minecraft.data.recipes.RecipeOutput;
+import net.minecraft.tags.ItemTags;
 import net.minecraft.world.item.crafting.Ingredient;
-import net.minecraftforge.common.Tags;
 
-import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 import static com.gregtechceu.gtceu.api.data.tag.TagPrefix.*;
 import static com.gregtechceu.gtceu.common.data.GTMaterials.*;
 
 public class EquipmentFoundryRecipes {
 
-    public static void init(Consumer<FinishedRecipe> provider) {
+    public static void init(RecipeOutput provider) {
         EquipmentFoundryRecipeHelper.addEquipmentFoundryRecipe(provider, GTCEu.id("speed"),
-                Ingredient.of(Tags.Items.ARMORS_LEGGINGS),
+                Ingredient.of(com.gregtechceu.gtceu.utils.TagUtil.holderSet(net.minecraft.core.registries.BuiltInRegistries.ITEM, ItemTags.LEG_ARMOR)),
                 GTItems.ELECTRIC_MOTORS, GTItemModules.SPEED);
 
         EquipmentFoundryRecipeHelper.addEquipmentFoundryRecipe(provider, GTCEu.id("energy_shield"),
-                Ingredient.of(Tags.Items.ARMORS_CHESTPLATES),
+                Ingredient.of(com.gregtechceu.gtceu.utils.TagUtil.holderSet(net.minecraft.core.registries.BuiltInRegistries.ITEM, ItemTags.CHEST_ARMOR)),
                 GTItems.FIELD_GENERATORS, GTItemModules.DAMAGE_BLOCK);
 
         EquipmentFoundryRecipeHelper.addEquipmentFoundryRecipe(provider, GTCEu.id("attack_speed"),
-                Ingredient.of(Tags.Items.ARMORS_CHESTPLATES),
+                Ingredient.of(com.gregtechceu.gtceu.utils.TagUtil.holderSet(net.minecraft.core.registries.BuiltInRegistries.ITEM, ItemTags.CHEST_ARMOR)),
                 GTItems.ELECTRIC_MOTORS, GTItemModules.ATTACK_SPEED);
 
         EquipmentFoundryRecipeHelper.addEquipmentFoundryRecipe(provider, GTCEu.id("attack_damage"),
-                Ingredient.of(Tags.Items.ARMORS_CHESTPLATES),
+                Ingredient.of(com.gregtechceu.gtceu.utils.TagUtil.holderSet(net.minecraft.core.registries.BuiltInRegistries.ITEM, ItemTags.CHEST_ARMOR)),
                 GTItems.ELECTRIC_PISTONS, GTItemModules.ATTACK_DAMAGE);
 
         EquipmentFoundryRecipeHelper.addEquipmentFoundryRecipe(provider, GTCEu.id("block_reach"),
-                Ingredient.of(Tags.Items.ARMORS_CHESTPLATES),
+                Ingredient.of(com.gregtechceu.gtceu.utils.TagUtil.holderSet(net.minecraft.core.registries.BuiltInRegistries.ITEM, ItemTags.CHEST_ARMOR)),
                 GTItems.ROBOT_ARMS, GTItemModules.BLOCK_REACH);
 
         EquipmentFoundryRecipeHelper.addEquipmentFoundryRecipe(provider, GTCEu.id("sneak_speed"),
-                Ingredient.of(Tags.Items.ARMORS_LEGGINGS),
+                Ingredient.of(com.gregtechceu.gtceu.utils.TagUtil.holderSet(net.minecraft.core.registries.BuiltInRegistries.ITEM, ItemTags.LEG_ARMOR)),
                 GTItems.CONVEYOR_MODULES, GTItemModules.SNEAK_SPEED);
 
         EquipmentFoundryRecipeHelper.addEquipmentFoundryRecipe(provider, GTCEu.id("speed_attribute"),
-                Ingredient.of(Tags.Items.ARMORS_BOOTS),
+                Ingredient.of(com.gregtechceu.gtceu.utils.TagUtil.holderSet(net.minecraft.core.registries.BuiltInRegistries.ITEM, ItemTags.FOOT_ARMOR)),
                 GTItems.ELECTRIC_MOTORS, GTItemModules.MOVEMENT_SPEED_ATTR);
 
         EquipmentFoundryRecipeHelper.addEquipmentFoundryRecipe(provider, GTCEu.id("respiration"),
-                Ingredient.of(Tags.Items.ARMORS_HELMETS),
+                Ingredient.of(com.gregtechceu.gtceu.utils.TagUtil.holderSet(net.minecraft.core.registries.BuiltInRegistries.ITEM, ItemTags.HEAD_ARMOR)),
                 CustomTags.ELECTRIC_PUMPS, GTItemModules.AIR_SUPPLIER);
 
         EquipmentFoundryRecipeHelper.addEquipmentFoundryRecipe(provider, GTCEu.id("autoeat"),
-                Ingredient.of(Tags.Items.ARMORS_HELMETS),
+                Ingredient.of(com.gregtechceu.gtceu.utils.TagUtil.holderSet(net.minecraft.core.registries.BuiltInRegistries.ITEM, ItemTags.HEAD_ARMOR)),
                 CustomTags.ROBOT_ARMS, GTItemModules.AUTO_EAT);
 
         EquipmentFoundryRecipeHelper.addEquipmentFoundryRecipe(provider, GTCEu.id("swim_speed"),
-                Ingredient.of(Tags.Items.ARMORS_BOOTS),
+                Ingredient.of(com.gregtechceu.gtceu.utils.TagUtil.holderSet(net.minecraft.core.registries.BuiltInRegistries.ITEM, ItemTags.FOOT_ARMOR)),
                 GTItems.ELECTRIC_PUMPS, GTItemModules.SWIM_SPEED);
 
         EquipmentFoundryRecipeHelper.addEquipmentFoundryRecipe(provider, GTCEu.id("step_height"),
-                Ingredient.of(Tags.Items.ARMORS_BOOTS),
+                Ingredient.of(com.gregtechceu.gtceu.utils.TagUtil.holderSet(net.minecraft.core.registries.BuiltInRegistries.ITEM, ItemTags.FOOT_ARMOR)),
                 GTItems.ELECTRIC_PISTONS, GTItemModules.STEP_HEIGHT);
 
         EquipmentFoundryRecipeHelper.addEquipmentFoundryRecipe(provider, GTCEu.id("jump_boost"),
-                Ingredient.of(Tags.Items.ARMORS_LEGGINGS),
+                Ingredient.of(com.gregtechceu.gtceu.utils.TagUtil.holderSet(net.minecraft.core.registries.BuiltInRegistries.ITEM, ItemTags.LEG_ARMOR)),
                 GTItems.ELECTRIC_PISTONS, GTItemModules.JUMP_BOOST);
 
         EquipmentFoundryRecipeHelper.addEquipmentFoundryRecipe(provider, GTCEu.id("battery_modifier"),
-                Ingredient.of(Tags.Items.ARMORS),
+                // 26.x ingredients hold one tag; combine the armour tags with Fabric's "any" ingredient
+                net.fabricmc.fabric.api.recipe.v1.ingredient.DefaultCustomIngredients.any(
+                        armorTag(ItemTags.HEAD_ARMOR), armorTag(ItemTags.CHEST_ARMOR),
+                        armorTag(ItemTags.LEG_ARMOR), armorTag(ItemTags.FOOT_ARMOR)),
                 CustomTags.BATTERIES, GTItemModules.BATTERY);
 
         EquipmentFoundryRecipeHelper.addEquipmentFoundryRecipe(provider, GTCEu.id("night_vision"),
-                Ingredient.of(Tags.Items.ARMORS_HELMETS),
+                Ingredient.of(com.gregtechceu.gtceu.utils.TagUtil.holderSet(net.minecraft.core.registries.BuiltInRegistries.ITEM, ItemTags.HEAD_ARMOR)),
                 GTItems.NIGHTVISION_GOGGLES, GTItemModules.NIGHT_VISION);
 
         EquipmentFoundryRecipeHelper.addEquipmentFoundryRecipe(provider, GTCEu.id("ppe_helmet"),
-                Ingredient.of(Tags.Items.ARMORS_HELMETS),
+                Ingredient.of(com.gregtechceu.gtceu.utils.TagUtil.holderSet(net.minecraft.core.registries.BuiltInRegistries.ITEM, ItemTags.HEAD_ARMOR)),
                 GTItems.MASK_FILTER,
                 GTItemModules.PPE);
 
         EquipmentFoundryRecipeHelper.addEquipmentFoundryRecipe(provider, GTCEu.id("ppe_chestplate"),
-                Ingredient.of(Tags.Items.ARMORS_CHESTPLATES),
+                Ingredient.of(com.gregtechceu.gtceu.utils.TagUtil.holderSet(net.minecraft.core.registries.BuiltInRegistries.ITEM, ItemTags.CHEST_ARMOR)),
                 ChemicalHelper.get(plate, PolyvinylChloride),
                 GTItemModules.PPE);
 
         EquipmentFoundryRecipeHelper.addEquipmentFoundryRecipe(provider, GTCEu.id("ppe_leggings"),
-                Ingredient.of(Tags.Items.ARMORS_LEGGINGS),
+                Ingredient.of(com.gregtechceu.gtceu.utils.TagUtil.holderSet(net.minecraft.core.registries.BuiltInRegistries.ITEM, ItemTags.LEG_ARMOR)),
                 ChemicalHelper.get(plate, PolyvinylChloride),
                 GTItemModules.PPE);
 
         EquipmentFoundryRecipeHelper.addEquipmentFoundryRecipe(provider, GTCEu.id("ppe_boots"),
-                Ingredient.of(Tags.Items.ARMORS_BOOTS),
+                Ingredient.of(com.gregtechceu.gtceu.utils.TagUtil.holderSet(net.minecraft.core.registries.BuiltInRegistries.ITEM, ItemTags.FOOT_ARMOR)),
                 ChemicalHelper.get(plate, PolyvinylChloride),
                 GTItemModules.PPE);
 
         EquipmentFoundryRecipeHelper.addEquipmentFoundryRecipe(provider, GTCEu.id("sensor"),
-                Ingredient.of(Tags.Items.ARMORS_HELMETS),
+                Ingredient.of(com.gregtechceu.gtceu.utils.TagUtil.holderSet(net.minecraft.core.registries.BuiltInRegistries.ITEM, ItemTags.HEAD_ARMOR)),
                 GTItems.SENSORS, GTItemModules.SENSOR);
 
         EquipmentFoundryRecipeHelper.addEquipmentFoundryRecipe(provider, GTCEu.id("wireless_charger"),
-                Ingredient.of(Tags.Items.ARMORS_CHESTPLATES),
+                Ingredient.of(com.gregtechceu.gtceu.utils.TagUtil.holderSet(net.minecraft.core.registries.BuiltInRegistries.ITEM, ItemTags.CHEST_ARMOR)),
                 GTItems.SENSORS, GTItemModules.WIRELESS_CHARGER);
 
         EquipmentFoundryRecipeHelper.addEquipmentFoundryRecipe(provider, GTCEu.id("jetpack"),
-                Ingredient.of(Tags.Items.ARMORS_CHESTPLATES),
+                Ingredient.of(com.gregtechceu.gtceu.utils.TagUtil.holderSet(net.minecraft.core.registries.BuiltInRegistries.ITEM, ItemTags.CHEST_ARMOR)),
                 GTItems.POWER_THRUSTER, GTItemModules.JETPACK);
 
         EquipmentFoundryRecipeHelper.addEquipmentFoundryRecipe(provider, GTCEu.id("advanced_jetpack"),
-                Ingredient.of(Tags.Items.ARMORS_CHESTPLATES),
+                Ingredient.of(com.gregtechceu.gtceu.utils.TagUtil.holderSet(net.minecraft.core.registries.BuiltInRegistries.ITEM, ItemTags.CHEST_ARMOR)),
                 GTItems.POWER_THRUSTER_ADVANCED, GTItemModules.ADVANCED_JETPACK);
 
         EquipmentFoundryRecipeHelper.addEquipmentFoundryRecipe(provider, GTCEu.id("liquid_fuel_jetpack"),
-                Ingredient.of(Tags.Items.ARMORS_CHESTPLATES),
+                Ingredient.of(com.gregtechceu.gtceu.utils.TagUtil.holderSet(net.minecraft.core.registries.BuiltInRegistries.ITEM, ItemTags.CHEST_ARMOR)),
                 GTItems.LIQUID_FUEL_THRUSTER, GTItemModules.LIQUID_FUEL_JETPACK);
 
         EquipmentFoundryRecipeHelper.addEquipmentFoundryRecipe(provider, GTCEu.id("creative_flight"),
-                Ingredient.of(Tags.Items.ARMORS_CHESTPLATES),
+                Ingredient.of(com.gregtechceu.gtceu.utils.TagUtil.holderSet(net.minecraft.core.registries.BuiltInRegistries.ITEM, ItemTags.CHEST_ARMOR)),
                 GTItems.GRAVITATION_ENGINE, GTItemModules.CREATIVE_FLIGHT);
 
         EquipmentFoundryRecipeHelper.addEquipmentFoundryRecipe(provider, GTCEu.id("fluid_storage"),
-                Ingredient.of(Tags.Items.ARMORS_CHESTPLATES),
-                Ingredient.of(CustomTags.FLUID_CELLS), GTItemModules.FLUID_STORAGE);
+                Ingredient.of(com.gregtechceu.gtceu.utils.TagUtil.holderSet(net.minecraft.core.registries.BuiltInRegistries.ITEM, ItemTags.CHEST_ARMOR)),
+                Ingredient.of(com.gregtechceu.gtceu.utils.TagUtil.holderSet(net.minecraft.core.registries.BuiltInRegistries.ITEM, CustomTags.FLUID_CELLS)), GTItemModules.FLUID_STORAGE);
+    }
+
+    private static Ingredient armorTag(net.minecraft.tags.TagKey<net.minecraft.world.item.Item> tag) {
+        return Ingredient.of(com.gregtechceu.gtceu.utils.TagUtil.holderSet(
+                net.minecraft.core.registries.BuiltInRegistries.ITEM, tag));
     }
 }

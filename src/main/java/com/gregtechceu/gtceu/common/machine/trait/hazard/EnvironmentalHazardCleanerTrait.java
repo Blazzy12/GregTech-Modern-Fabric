@@ -6,7 +6,6 @@ import com.gregtechceu.gtceu.api.machine.trait.MachineTrait;
 import com.gregtechceu.gtceu.api.machine.trait.feature.IRecipeLogicModifierTrait;
 import com.gregtechceu.gtceu.common.blockentity.DuctPipeBlockEntity;
 import com.gregtechceu.gtceu.common.capability.EnvironmentalHazardSavedData;
-import com.gregtechceu.gtceu.common.network.GTNetwork;
 import com.gregtechceu.gtceu.common.network.packets.hazard.SPacketRemoveHazardZone;
 import com.gregtechceu.gtceu.utils.GTUtil;
 
@@ -15,7 +14,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.ChunkPos;
-import net.minecraft.world.level.chunk.LevelChunk;
+import com.gregtechceu.gtceu.compat.network.PacketDistributor;
 
 import it.unimi.dsi.fastutil.objects.Object2FloatMap;
 import it.unimi.dsi.fastutil.objects.Object2FloatOpenHashMap;
@@ -95,7 +94,7 @@ public class EnvironmentalHazardCleanerTrait extends MachineTrait implements IRe
             final ServerLevel serverLevel = (ServerLevel) getLevel();
             EnvironmentalHazardSavedData savedData = EnvironmentalHazardSavedData.getOrCreate(serverLevel);
 
-            final ChunkPos pos = new ChunkPos(getBlockPos());
+            final ChunkPos pos = ChunkPos.containing(getBlockPos());
             Object2FloatMap<ChunkPos> relativePositions = new Object2FloatOpenHashMap<>();
             if (cleaningRadius <= 0) {
                 // LV scrubber can only process the chunk it's in
@@ -103,7 +102,7 @@ public class EnvironmentalHazardCleanerTrait extends MachineTrait implements IRe
             } else {
                 for (int x = -cleaningRadius; x <= cleaningRadius; ++x) {
                     for (int z = -cleaningRadius; z <= cleaningRadius; ++z) {
-                        relativePositions.put(new ChunkPos(pos.x + x, pos.z + z), Mth.sqrt(Mth.abs(x * z)) + 1);
+                        relativePositions.put(new ChunkPos(pos.x() + x, pos.z() + z), Mth.sqrt(Mth.abs(x * z)) + 1);
                     }
                 }
             }
@@ -118,9 +117,9 @@ public class EnvironmentalHazardCleanerTrait extends MachineTrait implements IRe
                     removedLastSecond += toClean;
                     zone.removeStrength(toClean);
                     if (zone.strength() <= 0) {
-                        if (serverLevel.hasChunk(chunkPos.x, chunkPos.z)) {
-                            LevelChunk chunk = serverLevel.getChunk(chunkPos.x, chunkPos.z);
-                            GTNetwork.sendToAllPlayersTrackingChunk(chunk, new SPacketRemoveHazardZone(chunkPos));
+                        if (serverLevel.hasChunk(chunkPos.x(), chunkPos.z())) {
+                            PacketDistributor.sendToPlayersTrackingChunk(serverLevel, chunkPos,
+                                    new SPacketRemoveHazardZone(chunkPos));
                         }
                         return null;
                     } else return zone;

@@ -11,7 +11,7 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.block.entity.BlockEntity;
 
@@ -38,7 +38,7 @@ public class MachineModeProvider extends MachineInfoProvider<MetaMachine, Compou
                     if (recipeTypes[i] == currentRecipeType) {
                         currentRecipeTypeIndex = i;
                     }
-                    recipeTypesTagList.add(StringTag.valueOf(recipeTypes[i].registryName.toString()));
+                    recipeTypesTagList.add(StringTag.valueOf(recipeTypes[i].id.toString()));
                 }
                 compoundTag.put("RecipeTypes", recipeTypesTagList);
                 compoundTag.putInt("CurrentRecipeType", currentRecipeTypeIndex);
@@ -51,12 +51,12 @@ public class MachineModeProvider extends MachineInfoProvider<MetaMachine, Compou
     protected void addTooltip(CompoundTag data, ITooltip tooltip, Player player, BlockAccessor block,
                               BlockEntity blockEntity, IPluginConfig config) {
         if (data.contains("RecipeTypes") && data.contains("CurrentRecipeType")) {
-            int currentRecipeTypeIndex = data.getInt("CurrentRecipeType");
-            ListTag recipeTypesTagList = data.getList("RecipeTypes", StringTag.TAG_STRING);
+            int currentRecipeTypeIndex = data.getIntOr("CurrentRecipeType", 0);
+            ListTag recipeTypesTagList = data.getListOrEmpty("RecipeTypes");
             if (block.showDetails()) {
                 tooltip.add(Component.translatable("gtceu.top.machine_mode"));
                 for (int i = 0; i < recipeTypesTagList.size(); i++) {
-                    ResourceLocation recipeType = ResourceLocation.parse(recipeTypesTagList.getString(i));
+                    Identifier recipeType = Identifier.parse(recipeTypesTagList.getStringOr(i, ""));
                     MutableComponent text;
                     if (currentRecipeTypeIndex == i) {
                         text = Component.literal(" > ").withStyle(ChatFormatting.BLUE);
@@ -68,8 +68,8 @@ public class MachineModeProvider extends MachineInfoProvider<MetaMachine, Compou
                     tooltip.add(text);
                 }
             } else {
-                ResourceLocation recipeType = ResourceLocation.parse(
-                        recipeTypesTagList.getString(currentRecipeTypeIndex));
+                Identifier recipeType = Identifier.parse(
+                        recipeTypesTagList.getStringOr(currentRecipeTypeIndex, ""));
                 tooltip.add(Component.translatable("gtceu.top.machine_mode").append(
                         Component.translatable("%s.%s".formatted(recipeType.getNamespace(), recipeType.getPath()))));
             }

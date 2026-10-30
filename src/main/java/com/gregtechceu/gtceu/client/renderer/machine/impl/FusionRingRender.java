@@ -1,7 +1,8 @@
 package com.gregtechceu.gtceu.client.renderer.machine.impl;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import com.gregtechceu.gtceu.api.multiblock.util.RelativeDirection;
-import com.gregtechceu.gtceu.client.bloom.*;
 import com.gregtechceu.gtceu.client.renderer.GTRenderTypes;
 import com.gregtechceu.gtceu.client.renderer.machine.DynamicRender;
 import com.gregtechceu.gtceu.client.renderer.machine.DynamicRenderType;
@@ -9,27 +10,23 @@ import com.gregtechceu.gtceu.client.util.RenderBufferHelper;
 import com.gregtechceu.gtceu.common.machine.multiblock.electric.FusionReactorMachine;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.GameRenderer;
-import net.minecraft.client.renderer.MultiBufferSource;
+import com.gregtechceu.gtceu.compat.client.render.MultiBufferSource;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.*;
-import com.mojang.serialization.Codec;
-import lombok.RequiredArgsConstructor;
-import org.lwjgl.opengl.GL11;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.serialization.MapCodec;
 
-import static net.minecraft.util.FastColor.ARGB32.*;
+import static net.minecraft.util.ARGB.*;
 
 public class FusionRingRender extends DynamicRender<FusionReactorMachine, FusionRingRender> {
 
     // spotless:off
-    public static final Codec<FusionRingRender> CODEC = Codec.unit(FusionRingRender::new);
+    public static final MapCodec<FusionRingRender> CODEC = MapCodec.unit(FusionRingRender::new);
     public static final DynamicRenderType<FusionReactorMachine, FusionRingRender> TYPE = new DynamicRenderType<>(FusionRingRender.CODEC);
     // spotless:on
 
@@ -54,26 +51,13 @@ public class FusionRingRender extends DynamicRender<FusionReactorMachine, Fusion
             return;
         }
 
-        if (machine.getRegisteredBloomTicket().isValid() && !machine.isFormed()) {
-            machine.getRegisteredBloomTicket().invalidate();
-        }
-        if (!machine.getRegisteredBloomTicket().isValid() && BloomShaderManager.isBloomActive()) {
-            BloomRenderTicket ticket = BloomHandler.registerBloomRender(FusionBloomEffect.SETUP,
-                    new FusionBloomEffect(machine), machine);
-
-            machine.setRegisteredBloomTicket(ticket);
-        }
-
+        // without the bloom blur, the ring drawn here is all there is; no separate bloom render is registered
         renderLightRing(machine, partialTick, poseStack, buffer.getBuffer(GTRenderTypes.lightRing()));
     }
 
-    @OnlyIn(Dist.CLIENT)
+    @Environment(EnvType.CLIENT)
     private void renderLightRing(FusionReactorMachine machine, float partialTicks,
                                  PoseStack stack, VertexConsumer buffer) {
-        RenderSystem.disableCull();
-        RenderSystem.disableDepthTest();
-        RenderSystem.depthFunc(GL11.GL_ALWAYS);
-
         float alpha = 1f;
         if (machine.recipeLogic.isWorking()) {
             machine.lastColor = machine.getColor();
@@ -82,7 +66,7 @@ public class FusionRingRender extends DynamicRender<FusionReactorMachine, Fusion
             alpha = machine.delta / FADEOUT;
             machine.lastColor = color(Mth.floor(alpha * 255), red(machine.lastColor), green(machine.lastColor),
                     blue(machine.lastColor));
-            machine.delta -= Minecraft.getInstance().getDeltaFrameTime();
+            machine.delta -= Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(false);
         }
 
         final var lerpFactor = Math.abs((Math.abs(machine.getOffsetTimer() % 50) + partialTicks) - 25) / 25;
@@ -100,10 +84,6 @@ public class FusionRingRender extends DynamicRender<FusionReactorMachine, Fusion
                 back.getStepZ() * 7 + 0.5F,
                 6, 0.2F, 10, 20,
                 r, g, b, alpha, axis);
-
-        RenderSystem.enableCull();
-        RenderSystem.enableDepthTest();
-        RenderSystem.depthFunc(GL11.GL_LEQUAL);
     }
 
     @Override
@@ -114,43 +94,5 @@ public class FusionRingRender extends DynamicRender<FusionReactorMachine, Fusion
     @Override
     public AABB getRenderBoundingBox(FusionReactorMachine machine) {
         return new AABB(machine.getBlockPos()).inflate(getViewDistance() / 2.0D);
-    }
-
-    @RequiredArgsConstructor
-    private final class FusionBloomEffect implements IBloomEffect {
-
-        private final FusionReactorMachine machine;
-
-        private static final IRenderSetup SETUP = new IRenderSetup() {
-
-            @Override
-            @OnlyIn(Dist.CLIENT)
-            public void preDraw(BufferBuilder buffer) {
-                RenderSystem.setShader(GameRenderer::getPositionColorShader);
-                buffer.begin(VertexFormat.Mode.TRIANGLE_STRIP, DefaultVertexFormat.POSITION_COLOR);
-            }
-
-            @Override
-            @OnlyIn(Dist.CLIENT)
-            public void postDraw(BufferBuilder buffer) {
-                BufferUploader.drawWithShader(buffer.end());
-            }
-        };
-
-        @Override
-        public void renderBloomEffect(PoseStack poseStack, BufferBuilder buffer, EffectRenderContext context) {
-            BlockPos pos = machine.getBlockPos();
-
-            poseStack.pushPose();
-            poseStack.translate(pos.getX(), pos.getY(), pos.getZ());
-            FusionRingRender.this.renderLightRing(machine, context.partialTicks(), poseStack, buffer);
-            poseStack.popPose();
-        }
-
-        @Override
-        public boolean shouldRenderBloomEffect(EffectRenderContext context) {
-            return FusionRingRender.this.shouldRenderOffScreen(machine) &&
-                    context.frustum().isVisible(FusionRingRender.this.getRenderBoundingBox(machine));
-        }
     }
 }

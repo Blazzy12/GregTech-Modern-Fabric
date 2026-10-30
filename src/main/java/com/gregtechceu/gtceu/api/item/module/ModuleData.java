@@ -6,6 +6,7 @@ import net.minecraft.world.item.ItemStack;
 
 import com.mojang.datafixers.Products;
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import lombok.Getter;
 
@@ -13,35 +14,42 @@ import java.util.Objects;
 
 /**
  * The data for an item module attached to a specific item.<br>
- * This class and its inheritors must be immutable.<br>
+ * Inheriting classes must be immutable.<br>
  * Equals and hashcode must be implemented by inheritors.
  */
 public abstract class ModuleData {
 
     // spotless:off
-    public static final Codec<ModuleData> DISPATCH_CODEC = GTRegistries.ITEM_MODULES.codec()
+    public static final Codec<ModuleData> DISPATCH_CODEC = GTRegistries.ITEM_MODULES.byNameCodec()
             .dispatch("module", ModuleData::getModule, ItemModule::moduleDataCodec);
 
-    public static final Codec<BaseData> BASE_CODEC = RecordCodecBuilder.create(instance -> baseCodec(instance).apply(instance, ModuleData.BaseData::new));
+    public static final MapCodec<BaseData> BASE_CODEC = RecordCodecBuilder.mapCodec(instance -> baseCodec(instance).apply(instance, ModuleData.BaseData::new));
 
     public static <T extends ModuleData> Products.P4<RecordCodecBuilder.Mu<T>, Integer, ItemModule, ItemStack, Boolean> baseCodec(RecordCodecBuilder.Instance<T> instance) {
         return instance.group(
                 Codec.INT.fieldOf("slot").forGetter(ModuleData::getSlot),
-                GTRegistries.ITEM_MODULES.codec().fieldOf("module").forGetter(ModuleData::getModule),
-                ItemStack.CODEC.fieldOf("moduleItem").forGetter(ModuleData::getModuleItem),
+                GTRegistries.ITEM_MODULES.byNameCodec().fieldOf("module").forGetter(ModuleData::getModule),
+                ItemStack.OPTIONAL_CODEC.fieldOf("moduleItem").forGetter(ModuleData::getModuleItem),
                 Codec.BOOL.fieldOf("enabled").forGetter(ModuleData::isEnabled)
         );
     }
-    // spotless:on
+    //spotless:on
 
+    /**
+     * The slot this module is in.
+     */
     @Getter
     protected final int slot;
 
+    /**
+     * The {@link ItemModule} class for this module.
+     */
     @Getter
     protected final ItemModule module;
 
     /**
-     * The ItemStack currently in this module slot. Should not be modified.
+     * The ItemStack currently in this module slot.<br>
+     * <b>Do not modify</b>, changes will not be saved.
      */
     @Getter
     protected final ItemStack moduleItem;
@@ -49,9 +57,9 @@ public abstract class ModuleData {
     @Getter
     protected final boolean enabled;
 
-    public abstract ModuleData withEnabled(boolean enabled);
-
     public abstract ModuleData withModuleItem(ItemStack moduleItem);
+
+    public abstract ModuleData withEnabled(boolean enabled);
 
     /**
      * Must create a copy of most object fields, rather than using the same reference.
@@ -62,7 +70,7 @@ public abstract class ModuleData {
     public boolean equals(Object obj) {
         if (!(obj instanceof ModuleData other)) return false;
         return slot == other.slot && module.equals(other.module) &&
-                ItemStack.isSameItemSameTags(moduleItem, other.moduleItem) &&
+                ItemStack.isSameItemSameComponents(moduleItem, other.moduleItem) &&
                 enabled == other.enabled;
     }
 
@@ -90,13 +98,13 @@ public abstract class ModuleData {
         }
 
         @Override
-        public ModuleData withEnabled(boolean enabled) {
-            return new BaseData(getSlot(), getModule(), getModuleItem(), enabled);
+        public ModuleData withModuleItem(ItemStack moduleItem) {
+            return new BaseData(slot, module, moduleItem, enabled);
         }
 
         @Override
-        public ModuleData withModuleItem(ItemStack moduleItem) {
-            return new BaseData(slot, module, moduleItem, enabled);
+        public ModuleData withEnabled(boolean enabled) {
+            return new BaseData(getSlot(), getModule(), getModuleItem(), enabled);
         }
     }
 }

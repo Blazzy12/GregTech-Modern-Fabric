@@ -1,6 +1,6 @@
 package com.gregtechceu.gtceu.utils.memoization;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
 
 import org.jetbrains.annotations.Nullable;
 

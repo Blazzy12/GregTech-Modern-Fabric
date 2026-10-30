@@ -8,15 +8,14 @@ import com.gregtechceu.gtceu.api.sync_system.annotations.SyncToClient;
 import com.gregtechceu.gtceu.common.cover.data.VoidingMode;
 import com.gregtechceu.gtceu.common.mui.GTGuiTextures;
 import com.gregtechceu.gtceu.common.mui.GTMuiWidgets;
-import com.gregtechceu.gtceu.utils.GTUtil;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.items.IItemHandler;
+import com.gregtechceu.gtceu.compat.items.IItemHandler;
 
 import brachy.modularui.api.drawable.Text;
 import brachy.modularui.factory.SidedPosGuiData;
@@ -79,7 +78,7 @@ public class AdvancedItemVoidingCover extends ItemVoidingCover {
 
             for (int slot = 0; slot < handler.getSlots(); slot++) {
                 ItemStack is = handler.getStackInSlot(slot);
-                if (!is.isEmpty() && GTUtil.isSameItemSameTags(is, itemInfo.itemStack)) {
+                if (!is.isEmpty() && ItemStack.isSameItemSameComponents(is, itemInfo.itemStack)) {
                     ItemStack extracted = handler.extractItem(slot, itemToVoidAmount, false);
 
                     if (!extracted.isEmpty()) {
@@ -153,8 +152,8 @@ public class AdvancedItemVoidingCover extends ItemVoidingCover {
 
     @Override
     public void pasteConfig(ServerPlayer player, CompoundTag tag) {
-        setVoidingMode(VoidingMode.values()[tag.getInt("voidingMode")]);
-        globalVoidingLimit = tag.getInt("voidSize");
+        setVoidingMode(VoidingMode.values()[tag.getIntOr("voidingMode", 0)]);
+        globalVoidingLimit = tag.getIntOr("voidSize", 0);
         super.pasteConfig(player, tag);
     }
 }

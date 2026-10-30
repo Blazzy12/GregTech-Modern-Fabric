@@ -9,16 +9,14 @@ import com.gregtechceu.gtceu.api.item.module.ModuleContext;
 import com.gregtechceu.gtceu.common.item.armor.PowerlessJetpack;
 
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Objects;
-
 public class LiquidFuelJetpackModule extends ArmorLogicItemModule implements ITieredItemModule {
 
-    public LiquidFuelJetpackModule(ResourceLocation id) {
+    public LiquidFuelJetpackModule(Identifier id) {
         super(id);
     }
 
@@ -35,7 +33,7 @@ public class LiquidFuelJetpackModule extends ArmorLogicItemModule implements ITi
     @Override
     public boolean canApplyTo(ItemStack stack) {
         var modular = GTCapabilityHelper.getModularItem(stack);
-        return super.canApplyTo(stack) && Objects.requireNonNull(modular).getAllModuleInstances().stream()
+        return super.canApplyTo(stack) && modular.getAllModuleInstances().stream()
                 .noneMatch(context -> context.getModule() instanceof CreativeFlightModule ||
                         context.getModule() instanceof JetpackModule ||
                         context.getModule() instanceof LiquidFuelJetpackModule);

@@ -12,32 +12,35 @@ import com.gregtechceu.gtceu.api.recipe.content.ContentModifier;
 import com.gregtechceu.gtceu.api.recipe.content.SerializerIngredient;
 import com.gregtechceu.gtceu.api.recipe.ingredient.IntCircuitIngredient;
 import com.gregtechceu.gtceu.api.recipe.ingredient.IntProviderIngredient;
-import com.gregtechceu.gtceu.api.recipe.ingredient.SizedIngredient;
+import com.gregtechceu.gtceu.api.recipe.ingredient.SizedIngredientExtensions;
 import com.gregtechceu.gtceu.api.recipe.lookup.ingredient.AbstractMapIngredient;
 import com.gregtechceu.gtceu.api.recipe.lookup.ingredient.item.*;
 import com.gregtechceu.gtceu.api.recipe.modifier.ParallelLogic;
 import com.gregtechceu.gtceu.common.valueprovider.*;
-import com.gregtechceu.gtceu.core.mixins.IngredientAccessor;
-import com.gregtechceu.gtceu.core.mixins.TagValueAccessor;
-import com.gregtechceu.gtceu.core.mixins.forge.IntersectionIngredientAccessor;
 import com.gregtechceu.gtceu.utils.*;
 
+import net.minecraft.core.component.DataComponentPatch;
+import net.minecraft.tags.TagKey;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
-import net.minecraftforge.common.crafting.IntersectionIngredient;
+import com.gregtechceu.gtceu.compat.common.crafting.*;
 
 import brachy.modularui.integration.recipeviewer.entry.item.ItemEntryList;
 import brachy.modularui.integration.recipeviewer.entry.item.ItemStackList;
 import brachy.modularui.integration.recipeviewer.entry.item.ItemTagList;
 import it.unimi.dsi.fastutil.objects.*;
+import lombok.experimental.ExtensionMethod;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Unmodifiable;
 
 import java.util.*;
+import java.util.function.UnaryOperator;
 
 import static com.gregtechceu.gtceu.api.recipe.RecipeHelper.addToRecipeHandlerMap;
 
-public class ItemRecipeCapability extends RecipeCapability<Ingredient> {
+@ExtensionMethod(SizedIngredientExtensions.class)
+public class ItemRecipeCapability extends RecipeCapability<SizedIngredient> {
 
     public final static ItemRecipeCapability CAP = new ItemRecipeCapability();
 
@@ -46,36 +49,38 @@ public class ItemRecipeCapability extends RecipeCapability<Ingredient> {
     }
 
     @Override
-    public Ingredient copyInner(Ingredient content) {
-        return SizedIngredient.copy(content);
+    public SizedIngredient copyInner(SizedIngredient content) {
+        return content;
     }
 
     @Override
-    public Ingredient copyWithModifier(Ingredient content, ContentModifier modifier) {
-        if (content instanceof SizedIngredient sizedIngredient) {
-            return SizedIngredient.create(sizedIngredient.getInner(),
-                    modifier.apply(sizedIngredient.getAmount()));
-        } else if (content instanceof IntProviderIngredient provider) {
-            return IntProviderIngredient.of(provider.getInner(),
-                    ModifiedIntProvider.of(provider.getCountProvider(), modifier));
+    public SizedIngredient copyWithModifier(SizedIngredient content, ContentModifier modifier) {
+        if (content.getContainedCustom() instanceof IntProviderIngredient provider) {
+            return new SizedIngredient(IntProviderIngredient.of(provider.getInner(),
+                    ModifiedIntProvider.of(provider.getCountProvider(), modifier)).toVanilla(), content.count());
         }
-        return SizedIngredient.create(content, modifier.apply(1));
+        return content.copyWithCount(modifier.apply(content.count()));
+    }
+
+    public IntProviderIngredient copyWithModifier(IntProviderIngredient content, ContentModifier modifier) {
+        return IntProviderIngredient.of(content.getInner(),
+                ModifiedIntProvider.of(content.getCountProvider(), modifier));
     }
 
     @Override
     public List<Object> compressIngredients(@Unmodifiable Collection<Object> ingredients) {
         List<Object> list = new ObjectArrayList<>(ingredients.size());
         for (Object item : ingredients) {
-            if (item instanceof Ingredient ingredient) {
+            if (item instanceof SizedIngredient ingredient) {
                 boolean isEqual = false;
                 for (Object obj : list) {
-                    if (obj instanceof Ingredient ingredient1) {
-                        if (IngredientEquality.ingredientEquals(ingredient, ingredient1)) {
+                    if (obj instanceof SizedIngredient ingredient1) {
+                        if (ingredient.ingredient().equals(ingredient1.ingredient())) {
                             isEqual = true;
                             break;
                         }
                     } else if (obj instanceof ItemStack stack) {
-                        if (ingredient.test(stack)) {
+                        if (ingredient.ingredient().test(stack)) {
                             isEqual = true;
                             break;
                         }
@@ -83,11 +88,8 @@ public class ItemRecipeCapability extends RecipeCapability<Ingredient> {
                 }
                 if (isEqual) continue;
                 // spotless:off
-                if (ingredient instanceof IntCircuitIngredient) {
-                    list.add(0, ingredient);
-                } else if (ingredient instanceof SizedIngredient sized &&
-                        sized.getInner() instanceof IntCircuitIngredient) {
-                    list.add(0, ingredient);
+                if (ingredient.getContainedCustom() instanceof IntCircuitIngredient) {
+                    list.addFirst(ingredient);
                 } else {
                     list.add(ingredient);
                 }
@@ -101,7 +103,7 @@ public class ItemRecipeCapability extends RecipeCapability<Ingredient> {
                             break;
                         }
                     } else if (obj instanceof ItemStack stack1) {
-                        if (GTUtil.isSameItemSameTags(stack, stack1)) {
+                        if (ItemStack.isSameItemSameComponents(stack, stack1)) {
                             isEqual = true;
                             break;
                         }
@@ -117,7 +119,9 @@ public class ItemRecipeCapability extends RecipeCapability<Ingredient> {
     @Override
     public @Nullable List<AbstractMapIngredient> getDefaultMapIngredient(Object object) {
         if (object instanceof Ingredient ingredient) {
-            return CustomMapIngredient.from(ingredient);
+            return CustomItemMapIngredient.from(ingredient);
+        } else if (object instanceof SizedIngredient sized) {
+            return getDefaultMapIngredient(sized.ingredient());
         } else {
             return Collections.emptyList();
         }
@@ -143,14 +147,16 @@ public class ItemRecipeCapability extends RecipeCapability<Ingredient> {
         int maxMultiplier = multiplier;
 
         int maxCount = 0;
-        List<Ingredient> ingredients = new ArrayList<>(outputContents.size());
+        List<SizedIngredient> ingredients = new ArrayList<>(outputContents.size());
         for (var content : outputContents) {
             var ing = of(content.content());
 
             int count;
-            if (ing instanceof SizedIngredient sized) count = sized.getAmount();
-            else if (ing instanceof IntProviderIngredient provider) count = provider.getMaxRoll();
-            else count = 1;
+            if (ing.getContainedCustom() instanceof IntProviderIngredient provider) {
+                count = provider.getMaxRoll();
+            } else {
+                count = ing.count();
+            }
 
             maxCount = Math.max(maxCount, count);
             ingredients.add(ing);
@@ -162,13 +168,13 @@ public class ItemRecipeCapability extends RecipeCapability<Ingredient> {
         }
 
         while (minMultiplier != maxMultiplier) {
-            List<Ingredient> copied = new ArrayList<>();
+            List<SizedIngredient> copied = new ArrayList<>();
             for (final var ing : ingredients) {
                 copied.add(copyWithModifier(ing, ContentModifier.multiplier(multiplier)));
             }
             for (var handler : handlers) {
                 // noinspection unchecked
-                copied = (List<Ingredient>) handler.handleRecipe(IO.OUT, recipe, copied, true);
+                copied = (List<SizedIngredient>) handler.handleRecipe(IO.OUT, recipe, copied, true);
                 if (copied.isEmpty()) break;
             }
             int[] bin = ParallelLogic.adjustMultiplier(copied.isEmpty(), minMultiplier, multiplier, maxMultiplier);
@@ -193,16 +199,17 @@ public class ItemRecipeCapability extends RecipeCapability<Ingredient> {
 
         // map the recipe ingredients to account for duplicated and notConsumable ingredients.
         // notConsumable ingredients are not counted towards the max ratio
-        var nonConsumables = new Object2LongOpenHashMap<Ingredient>();
-        var consumables = new Object2LongOpenHashMap<Ingredient>();
+
+        var nonConsumables = new Object2LongOpenHashMap<SizedIngredient>();
+        var consumables = new Object2LongOpenHashMap<SizedIngredient>();
         for (Content content : inputs) {
-            Ingredient ing = of(content.content());
-            if (ing instanceof IntCircuitIngredient) continue;
+            SizedIngredient ing = of(content.content());
+            if (ing.getContainedCustom() instanceof IntCircuitIngredient) continue;
 
             int count;
-            if (ing instanceof SizedIngredient sized) count = sized.getAmount();
-            else if (ing instanceof IntProviderIngredient provider) count = provider.getMaxRoll();
-            else count = 1;
+            if (ing.getContainedCustom() instanceof IntProviderIngredient provider)
+                count = provider.getMaxRoll();
+            else count = ing.count();
 
             if (content.chance() == 0) {
                 nonConsumables.addTo(ing, count);
@@ -231,10 +238,10 @@ public class ItemRecipeCapability extends RecipeCapability<Ingredient> {
             // Check for enough NC in inventory group
             boolean satisfied = true;
             for (var ncEntry : Object2LongMaps.fastIterable(nonConsumables)) {
-                Ingredient ingredient = ncEntry.getKey();
+                SizedIngredient ingredient = ncEntry.getKey();
                 long needed = ncEntry.getLongValue();
                 for (var stackEntry : Object2LongMaps.fastIterable(group)) {
-                    if (ingredient.test(stackEntry.getKey())) {
+                    if (ingredient.ingredient().test(stackEntry.getKey())) {
                         long count = stackEntry.getLongValue();
                         long lesser = Math.min(needed, count);
                         count -= lesser;
@@ -255,14 +262,15 @@ public class ItemRecipeCapability extends RecipeCapability<Ingredient> {
 
             int invMultiplier = Integer.MAX_VALUE;
             // Loop over all consumables
+
             for (var cEntry : Object2LongMaps.fastIterable(consumables)) {
-                Ingredient ingredient = cEntry.getKey();
+                SizedIngredient ingredient = cEntry.getKey();
                 final long needed = cEntry.getLongValue();
                 final long maxNeeded = needed * limit;
                 long available = 0;
                 // Search stacks in our inventory group, summing them up
                 for (var stackEntry : Object2LongMaps.fastIterable(group)) {
-                    if (ingredient.test(stackEntry.getKey())) {
+                    if (ingredient.ingredient().test(stackEntry.getKey())) {
                         available += stackEntry.getLongValue();
                         // We can stop if we already have enough for max parallel
                         if (available >= maxNeeded) break;
@@ -336,54 +344,53 @@ public class ItemRecipeCapability extends RecipeCapability<Ingredient> {
     }
 
     // Maps ingredients to an ItemEntryList for XEI: either an ItemTagList or an ItemStackList
-    public static ItemEntryList mapIngredientToEntryList(final Ingredient ingredient) {
-        if (ingredient instanceof SizedIngredient sizedIngredient) {
-            final int amount = sizedIngredient.getAmount();
-            var mapped = tryMapInner(sizedIngredient.getInner(), amount);
+    public static ItemEntryList mapIngredientToEntryList(final SizedIngredient ingredient) {
+        if (ingredient.getContainedCustom() instanceof IntProviderIngredient intProvider) {
+            var mapped = tryMapInner(intProvider.getInner(), 1);
             if (mapped != null) return mapped;
-
-            if (sizedIngredient.getInner() instanceof IntProviderIngredient intProvider) {
-                ItemStackList stackList = new ItemStackList();
-                for (ItemStack i : intProvider.getInner().getItems()) {
-                    stackList.add(i);
-                }
-                return stackList;
-            }
-        } else if (ingredient instanceof IntProviderIngredient intProvider) {
-            final int amount = 1;
-            var mapped = tryMapInner(intProvider.getInner(), amount);
-            if (mapped != null) return mapped;
-
-            ItemStackList stackList = new ItemStackList();
-            for (ItemStack i : intProvider.getInner().getItems()) {
-                stackList.add(i);
-            }
-            return stackList;
-        } else if (ingredient instanceof IntersectionIngredient intersection) {
-            return mapIntersection(intersection, -1);
-        } else {
-            var tagList = tryMapTag(ingredient, 1);
+        } else if (ingredient.getContainedCustom() instanceof IntersectionIngredient intersection) {
+            return mapIntersection(intersection, ingredient.count());
+        } else if (!ingredient.ingredient().isCustom()) {
+            var tagList = tryMapTag(ingredient.ingredient(), ingredient.count());
             if (tagList != null) return tagList;
         }
-
         ItemStackList stackList = new ItemStackList();
-        for (ItemStack i : ingredient.getItems()) {
-            stackList.add(i);
-        }
+        boolean isIntProvider = ingredient.getContainedCustom() instanceof IntProviderIngredient;
+
+        UnaryOperator<ItemStack> setCount = stack -> isIntProvider ? stack.copyWithCount(1) : stack;
+        Arrays.stream(ingredient.getItems())
+                .map(setCount)
+                .forEach(stackList::add);
         return stackList;
     }
 
-    private static @Nullable ItemEntryList tryMapInner(final Ingredient inner, int amount) {
-        if (inner instanceof IntersectionIngredient intersection) return mapIntersection(intersection, amount);
-        return tryMapTag(inner, amount);
+    @SuppressWarnings("SameParameterValue")
+    private static @Nullable ItemEntryList tryMapInner(final Ingredient inner, int count) {
+        if (inner.getCustomIngredient() instanceof IntProviderIngredient intProvider) {
+            var mapped = tryMapInner(intProvider.getInner(), 1);
+            if (mapped != null) return mapped;
+        } else if (inner.getCustomIngredient() instanceof IntersectionIngredient intersection) {
+            return mapIntersection(intersection, count);
+        } else if (!inner.isCustom()) {
+            var tagList = tryMapTag(inner, count);
+            if (tagList != null) return tagList;
+        }
+        ItemStackList stackList = new ItemStackList();
+        boolean isIntProvider = inner.getCustomIngredient() instanceof IntProviderIngredient;
+
+        UnaryOperator<ItemStack> setCount = (stack) -> isIntProvider ? stack.copyWithCount(1) : stack;
+        Arrays.stream(inner.getItems())
+                .map(setCount)
+                .forEach(stackList::add);
+        return stackList;
     }
 
     // Map intersection ingredients to the items inside, as recipe viewers don't support them.
     private static ItemEntryList mapIntersection(final IntersectionIngredient intersection, int amount) {
-        List<Ingredient> children = ((IntersectionIngredientAccessor) intersection).getChildren();
+        List<Ingredient> children = intersection.children();
         if (children.isEmpty()) return new ItemStackList();
 
-        var childList = mapIngredientToEntryList(children.get(0));
+        var childList = mapIngredientToEntryList(new SizedIngredient(children.getFirst(), amount));
         ItemStackList stackList = new ItemStackList();
         for (var stack : childList.getStacks()) {
             if (children.stream().skip(1).allMatch(child -> child.test(stack))) {
@@ -395,16 +402,16 @@ public class ItemRecipeCapability extends RecipeCapability<Ingredient> {
     }
 
     private static @Nullable ItemTagList tryMapTag(final Ingredient ingredient, int amount) {
-        var values = ((IngredientAccessor) ingredient).getValues();
-        if (values.length > 0 && values[0] instanceof Ingredient.TagValue tagValue) {
-            return ItemTagList.of(((TagValueAccessor) tagValue).getTag(), amount, null);
+        if (ingredient.isCustom()) {
+            GTCEu.LOGGER.error("tried to map unexpected ingredient type {}", ingredient.getCustomIngredient());
+            return null;
+        }
+
+        var tag = ingredient.getTag();
+        if (tag.isPresent()) {
+            return ItemTagList.of(tag.get(), amount, DataComponentPatch.EMPTY);
         }
         return null;
-    }
-
-    @Override
-    public Object2IntMap<Ingredient> makeChanceCache() {
-        return new Object2IntOpenCustomHashMap<>(IngredientEquality.IngredientHashStrategy.INSTANCE);
     }
 
     public interface ICustomParallel {

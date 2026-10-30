@@ -1,11 +1,9 @@
 package com.gregtechceu.gtceu.common.loot.condition;
 
-import com.gregtechceu.gtceu.common.data.loot.GTLootConditions;
 import com.gregtechceu.gtceu.config.ConfigHolder;
 
 import net.minecraft.world.level.storage.loot.LootContext;
 import net.minecraft.world.level.storage.loot.predicates.LootItemCondition;
-import net.minecraft.world.level.storage.loot.predicates.LootItemConditionType;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
@@ -33,8 +31,9 @@ public class GTConfigValueCondition implements LootItemCondition {
     protected GTConfigValueCondition(String configField) {
         this.configField = configField;
 
+        // the config library separates path segments with '/'
         Optional<IConfigValue<Boolean>> configEntry = ConfigHolder.INTERNAL_INSTANCE
-                .getConfigValue(configField, Boolean.class);
+                .getConfigValue(configField.replace('.', '/'), Boolean.class);
         this.configValueGetter = () -> configEntry.map(IConfigValue::get).orElse(false);
     }
 
@@ -44,8 +43,8 @@ public class GTConfigValueCondition implements LootItemCondition {
     }
 
     @Override
-    public LootItemConditionType getType() {
-        return GTLootConditions.CONFIG_VALUE.get();
+    public MapCodec<GTConfigValueCondition> codec() {
+        return CODEC;
     }
 
     public static LootItemCondition.Builder configEnabled(String configField) {

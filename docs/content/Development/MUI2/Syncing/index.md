@@ -1,1 +1,0 @@
-Syncing is the concept of synchronising data between client and server. This folder will contain files relevant to setting up syncing on your UIs.

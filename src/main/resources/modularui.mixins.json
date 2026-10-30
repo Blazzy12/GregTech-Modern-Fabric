@@ -1,0 +1,40 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "refmap": "modularui.refmap.json",
+  "package": "brachy.modularui.core.mixins",
+  "compatibilityLevel": "JAVA_21",
+  "plugin": "brachy.modularui.core.ModularUIMixinPlugin",
+  "client": [
+    "client.AbstractContainerScreenAccessor",
+    "client.AbstractContainerScreenMixin",
+    "client.AbstractWidgetMixin",
+    "client.MinecraftMixin",
+    "client.ScreenAccessor",
+    "client.StringSplitterAccessor",
+    "client.GuiScreenMixin",
+    "jei.IngredientListOverlayAccessor",
+    "jei.RecipeGuiLogicMixin",
+    "jei.RecipeLayoutAccessor",
+    "jei.RecipeLayoutBuilderAccessor",
+    "jei.RecipeLayoutMixin",
+    "jei.RecipeSlotAccessor"
+  ],
+  "mixins": [
+    "common.AbstractContainerMenuAccessor",
+    "common.CombinedInvWrapperAccessor",
+    "common.ComponentMixin",
+    "common.ComponentSerializationMixin",
+    "common.SlotAccessor",
+    "common.RegistryFriendlyByteBufMixin",
+    "common.ServerPlayerAccessor",
+    "common.TextColorMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1,
+    "maxShiftBy": 5
+  },
+  "mixinextras": {
+    "minVersion": "0.5.0"
+  }
+}

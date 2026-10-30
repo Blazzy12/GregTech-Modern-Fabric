@@ -1,6 +1,7 @@
 package com.gregtechceu.gtceu.core.config;
 
-import net.minecraftforge.fml.loading.FMLLoader;
+import com.gregtechceu.gtceu.compat.fml.loading.FMLLoader;
+import com.gregtechceu.gtceu.compat.data.loading.DatagenModLoader;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -16,7 +17,8 @@ import java.util.*;
  */
 public class GTEarlyConfig {
 
-    public static final String SAFE_MODE = "client.bloom.safe_mode.";
+    public static final String BLOOM_SAFE_MODE = "client.bloom.safe_mode.";
+    public static final String FACE_LAYER_SAFE_MODE = "client.face_layer.safe_mode.";
 
     private static final Logger LOGGER = LogManager.getLogger("GTEarlyConfig");
 
@@ -29,37 +31,25 @@ public class GTEarlyConfig {
         // Defines the default rules which can be configured by the user or other mods.
         // You must manually add a rule for any new mixins not covered by an existing package rule.
 
-        Option option = addMixinRule(SAFE_MODE, true);
-        option.addComment(
+        Option bloomSafeMode = addMixinRule(BLOOM_SAFE_MODE, false);
+        bloomSafeMode.addComment(
                 "Whether to use a 'safe mode' for bloom rendering",
                 "NOTE: may be slower than 'normal' logic, but is considerably more stable and less prone to compatibility issues with other mods.",
                 "Requires restarting the client to take effect.");
 
-        addDelegateRule("client.bloom.safemode", SAFE_MODE, false);
-        addDelegateRule("client.bloom.normal", SAFE_MODE, true);
+        addDelegateRule("client.bloom.safemode", BLOOM_SAFE_MODE, false);
+        addDelegateRule("client.bloom.normal", BLOOM_SAFE_MODE, true);
+
+        Option faceLayerSafeMode = addMixinRule(FACE_LAYER_SAFE_MODE, false);
+        faceLayerSafeMode.addComment(
+                "Whether to use a 'safe mode' for layered block faces",
+                "NOTE: uses the standard chunk render path, which may restore visual artifacts, but is considerably more stable and less prone to compatibility issues with other mods.",
+                "Requires restarting the client to take effect.");
 
         // hidden rules for dev-only mixins
         addHiddenRule("dev", !FMLLoader.isProduction());
-        addHiddenRule("dev.datagen", FMLLoader.getLaunchHandler().isData());
-
-        // hidden rules for mod dependencies
-        enableIfModPresent("emi", "emi");
-        enableIfModPresent("jei", "jei");
-        enableIfModPresent("rei", "roughlyenoughitems");
-
-        final String[] EMBEDDIUM_MOD_IDS = { "embeddium", "sodium" };
-        final String[] OCULUS_MOD_IDS = { "oculus", "iris" };
-        enableIfModPresent("embeddium", EMBEDDIUM_MOD_IDS);
-        enableIfModPresent("oculus", OCULUS_MOD_IDS);
-        enableIfModPresent("client.bloom.normal.embeddium", EMBEDDIUM_MOD_IDS);
-        enableIfModPresent("client.bloom.normal.oculus", OCULUS_MOD_IDS);
-        enableIfModPresent("client.bloom.safemode.embeddium", EMBEDDIUM_MOD_IDS);
-
-        enableIfModPresent("top", "top");
-
-        enableIfModPresent("ftbchunks", "ftbchunks");
-        enableIfModPresent("xaerominimap", "xaerominimap");
-        enableIfModPresent("xaeroworldmap", "xaeroworldmap");
+        // mixins that target DatagenModLoader (MixinTargetAlreadyLoadedException).
+        addHiddenRule("dev.datagen", !FMLLoader.isProduction() && DatagenModLoader.isRunningDataGen());
 
         // bind non-empty parents
         for (Map.Entry<String, Option> entry : this.options.entrySet()) {
@@ -277,7 +267,7 @@ public class GTEarlyConfig {
             writer.write("# Available options:\n");
             var entries = this.options.entrySet().stream()
                     .filter(entry -> !entry.getValue().isHidden())
-                    .sorted()
+                    .sorted(Map.Entry.comparingByKey())
                     .toList();
 
             for (var entry : entries) {

@@ -1,8 +1,7 @@
 package com.gregtechceu.gtceu.client.model.pipe;
 
 import com.gregtechceu.gtceu.api.block.PipeBlock;
-import com.gregtechceu.gtceu.api.block.property.GTBlockStateProperties;
-import com.gregtechceu.gtceu.api.registry.registrate.GTBlockBuilder;
+import com.gregtechceu.gtceu.api.registry.registrate.builder.GTBlockBuilder;
 import com.gregtechceu.gtceu.api.registry.registrate.provider.GTBlockstateProvider;
 import com.gregtechceu.gtceu.data.model.builder.PipeModelBuilder;
 import com.gregtechceu.gtceu.data.pack.event.RegisterDynamicResourcesEvent;
@@ -10,9 +9,9 @@ import com.gregtechceu.gtceu.utils.GTUtil;
 
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.data.models.blockstates.MultiVariantGenerator;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.client.model.generators.*;
+import com.gregtechceu.gtceu.compat.data.models.blockstates.MultiVariantGenerator;
+import net.minecraft.resources.Identifier;
+import com.gregtechceu.gtceu.compat.client.model.generators.*;
 
 import com.tterrag.registrate.util.nullness.NonNullBiConsumer;
 import lombok.Getter;
@@ -85,8 +84,7 @@ public class PipeModel {
             SIDE_OVERLAY_KEY   = "side_overlay",
             END_OVERLAY_KEY    = "end_overlay";
     // spotless:on
-    protected static final ResourceLocation RENDERTYPE_CUTOUT_MIPPED = ResourceLocation
-            .withDefaultNamespace("cutout_mipped");
+    protected static final String RENDERTYPE_CUTOUT_MIPPED = "cutout_mipped";
 
     public static final Set<PipeModel> DYNAMIC_MODELS = new HashSet<>();
 
@@ -98,7 +96,7 @@ public class PipeModel {
 
     @Getter
     protected final PipeBlock<?, ?, ?> block;
-    public final @NotNull ResourceLocation blockId;
+    public final @NotNull Identifier blockId;
     protected final GTBlockstateProvider provider;
 
     /**
@@ -116,11 +114,11 @@ public class PipeModel {
      */
     protected final float maxCoord;
     @Setter
-    public ResourceLocation side, end;
+    public Identifier side, end;
     @Setter
-    public @Nullable ResourceLocation sideSecondary, endSecondary;
+    public @Nullable Identifier sideSecondary, endSecondary;
     @Setter
-    public @Nullable ResourceLocation sideOverlay, endOverlay;
+    public @Nullable Identifier sideOverlay, endOverlay;
 
     /// Use {@link #getOrCreateBlockModel()} instead of referencing this field directly.
     private BlockModelBuilder blockModel;
@@ -133,7 +131,7 @@ public class PipeModel {
     private BlockModelBuilder connectionElement;
 
     public PipeModel(PipeBlock<?, ?, ?> block, GTBlockstateProvider provider,
-                     float thickness, ResourceLocation side, ResourceLocation end) {
+                     float thickness, Identifier side, Identifier end) {
         this.block = block;
         this.blockId = BuiltInRegistries.BLOCK.getKey(this.block);
         this.provider = provider;
@@ -272,7 +270,7 @@ public class PipeModel {
      * @param max  The maximum X/Y coordinate.
      * @return An item model builder.
      */
-    protected ItemModelBuilder createItemModel(ResourceLocation name, float min, float max) {
+    protected ItemModelBuilder createItemModel(Identifier name, float min, float max) {
         ItemModelBuilder model = this.provider.itemModels().getBuilder(name.toString())
                 .parent(this.getOrCreateCenterElement());
         makePartModelElement(model, Direction.NORTH, false, true, 0.0f, 0, 1,
@@ -298,7 +296,7 @@ public class PipeModel {
      * @param z2      max Z coordinate in the range [-16,32]
      * @implNote The coordinates must be in the correct order or the resulting model's cubes will be inside out!
      */
-    protected BlockModelBuilder makeElementModel(ResourceLocation name, @Nullable Direction endFace,
+    protected BlockModelBuilder makeElementModel(Identifier name, @Nullable Direction endFace,
                                                  final float x1, final float y1, final float z1,
                                                  final float x2, final float y2, final float z2) {
         BlockModelBuilder model = this.provider.models().getBuilder(name.toString())
@@ -319,8 +317,8 @@ public class PipeModel {
                                                                     float offset, int sideTintIndex, int endTintIndex,
                                                                     final float x1, final float y1, final float z1,
                                                                     final float x2, final float y2, final float z2,
-                                                                    @Nullable ResourceLocation sideTexture,
-                                                                    @Nullable ResourceLocation endTexture,
+                                                                    @Nullable Identifier sideTexture,
+                                                                    @Nullable Identifier endTexture,
                                                                     String sideKey, String endKey) {
         makePartModelElement(model, endFace, useEndWithFullCube, false,
                 offset, sideTintIndex, endTintIndex, x1, y1, z1, x2, y2, z2,
@@ -332,8 +330,8 @@ public class PipeModel {
                                                                     float offset, int sideTintIndex, int endTintIndex,
                                                                     final float x1, final float y1, final float z1,
                                                                     final float x2, final float y2, final float z2,
-                                                                    @Nullable ResourceLocation sideTexture,
-                                                                    @Nullable ResourceLocation endTexture,
+                                                                    @Nullable Identifier sideTexture,
+                                                                    @Nullable Identifier endTexture,
                                                                     String sideKey, String endKey) {
         makePartModelElement(model, endFace, useEndWithFullCube, alwaysAddEnd,
                 offset, sideTintIndex, endTintIndex, x1, y1, z1, x2, y2, z2,
@@ -345,8 +343,8 @@ public class PipeModel {
                                                                     float offset, int sideTintIndex, int endTintIndex,
                                                                     final float x1, final float y1, final float z1,
                                                                     final float x2, final float y2, final float z2,
-                                                                    @Nullable ResourceLocation sideTexture,
-                                                                    @Nullable ResourceLocation endTexture,
+                                                                    @Nullable Identifier sideTexture,
+                                                                    @Nullable Identifier endTexture,
                                                                     String sideKey, String endKey,
                                                                     FaceConfigurator<T> faceConfigurator) {
         if (sideTexture == null && (endFace == null || endTexture == null)) {
@@ -410,7 +408,7 @@ public class PipeModel {
          *                <b>Note that the String does NOT begin with {@code #}</b>.
          * @param builder The face builder.
          * @see #makePartModelElement(ModelBuilder, Direction, boolean, float, int, int, float, float, float, float,
-         *      float, float, ResourceLocation, ResourceLocation, String, String)
+         *      float, float, Identifier, Identifier, String, String)
          *      ActivablePipeModel.makePartModelElement
          */
         void accept(Direction face, String texture, ModelBuilder<T>.ElementBuilder.FaceBuilder builder);

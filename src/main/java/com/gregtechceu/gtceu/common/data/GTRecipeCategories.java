@@ -1,52 +1,46 @@
 package com.gregtechceu.gtceu.common.data;
 
 import com.gregtechceu.gtceu.GTCEu;
-import com.gregtechceu.gtceu.api.GTCEuAPI;
-import com.gregtechceu.gtceu.api.recipe.GTRecipeType;
 import com.gregtechceu.gtceu.api.recipe.category.GTRecipeCategory;
 import com.gregtechceu.gtceu.api.registry.GTRegistries;
-import com.gregtechceu.gtceu.integration.kjs.GTRegistryInfo;
 import com.gregtechceu.gtceu.integration.recipeviewer.CategoryIcon;
 
-import net.minecraftforge.fml.ModLoader;
+import net.minecraft.core.Holder;
 
-import org.jetbrains.annotations.NotNull;
+import static com.gregtechceu.gtceu.common.registry.GTRegistration.REGISTRATE;
 
 public class GTRecipeCategories {
 
-    public static final GTRecipeCategory ORE_CRUSHING = register("ore_crushing", GTRecipeTypes.MACERATOR_RECIPES);
-    public static final GTRecipeCategory ORE_FORGING = register("ore_forging", GTRecipeTypes.FORGE_HAMMER_RECIPES);
-    public static final GTRecipeCategory ORE_BATHING = register("ore_bathing", GTRecipeTypes.CHEMICAL_BATH_RECIPES);
-    public static final GTRecipeCategory CHEM_DYES = register("chem_dyes", GTRecipeTypes.CHEMICAL_BATH_RECIPES);
-    public static final GTRecipeCategory INGOT_MOLDING = register("ingot_molding", GTRecipeTypes.ALLOY_SMELTER_RECIPES);
+    public static final Holder<GTRecipeCategory> ORE_CRUSHING = REGISTRATE.recipeCategory("ore_crushing",
+            GTRecipeTypes.MACERATOR_RECIPES, "Ore Grinding");
+    public static final Holder<GTRecipeCategory> ORE_FORGING = REGISTRATE.recipeCategory("ore_forging",
+            GTRecipeTypes.FORGE_HAMMER_RECIPES, "Ore Crushing");
+    public static final Holder<GTRecipeCategory> ORE_BATHING = REGISTRATE.recipeCategory("ore_bathing",
+            GTRecipeTypes.CHEMICAL_BATH_RECIPES, "Ore Treating");
+    public static final Holder<GTRecipeCategory> CHEM_DYES = REGISTRATE.recipeCategory("chem_dyes",
+            GTRecipeTypes.CHEMICAL_BATH_RECIPES, "Chemical Dyeing");
+    public static final Holder<GTRecipeCategory> INGOT_MOLDING = REGISTRATE.recipeCategory("ingot_molding",
+            GTRecipeTypes.ALLOY_SMELTER_RECIPES, "Metal Molding");
 
-    public static final GTRecipeCategory ARC_FURNACE_RECYCLING = register("arc_furnace_recycling",
-            GTRecipeTypes.ARC_FURNACE_RECIPES)
-            .setIcon(new CategoryIcon(GTCEu.id("textures/gui/icon/category/arc_furnace_recycling.png")));
+    public static final Holder<GTRecipeCategory> ARC_FURNACE_RECYCLING = REGISTRATE.recipeCategory(
+            "arc_furnace_recycling",
+            GTRecipeTypes.ARC_FURNACE_RECIPES,
+            new CategoryIcon(GTCEu.id("textures/gui/icon/category/arc_furnace_recycling.png")),
+            "Arc Scrapping");
 
-    public static final GTRecipeCategory MACERATOR_RECYCLING = register("macerator_recycling",
-            GTRecipeTypes.MACERATOR_RECIPES)
-            .setIcon(new CategoryIcon(GTCEu.id("textures/gui/icon/category/macerator_recycling.png")));
+    public static final Holder<GTRecipeCategory> MACERATOR_RECYCLING = REGISTRATE.recipeCategory("macerator_recycling",
+            GTRecipeTypes.MACERATOR_RECIPES,
+            new CategoryIcon(GTCEu.id("textures/gui/icon/category/macerator_recycling.png")),
+            "Part Grinding");
 
-    public static final GTRecipeCategory EXTRACTOR_RECYCLING = register("extractor_recycling",
-            GTRecipeTypes.EXTRACTOR_RECIPES)
-            .setIcon(new CategoryIcon(GTCEu.id("textures/gui/icon/category/extractor_recycling.png")));
+    public static final Holder<GTRecipeCategory> EXTRACTOR_RECYCLING = REGISTRATE.recipeCategory("extractor_recycling",
+            GTRecipeTypes.EXTRACTOR_RECIPES,
+            new CategoryIcon(GTCEu.id("textures/gui/icon/category/extractor_recycling.png")),
+            "Scrap Remelting");
 
-    public static GTRecipeCategory register(String categoryName, @NotNull GTRecipeType recipeType) {
-        GTRecipeCategory category = new GTRecipeCategory(categoryName, recipeType);
-        GTRegistries.RECIPE_CATEGORIES.register(category.registryKey, category);
-        return category;
-    }
-
-    public static void init() {
-        if (GTCEu.Mods.isKubeJSLoaded()) {
-            GTRegistryInfo.registerFor(GTRegistries.RECIPE_CATEGORIES.getRegistryName());
-        }
-        ModLoader.get().postEvent(new GTCEuAPI.RegisterEvent<>(GTRegistries.RECIPE_CATEGORIES, GTRecipeCategory.class));
-        GTRegistries.RECIPE_CATEGORIES.freeze();
-    }
+    public static void init() {}
 
     public static GTRecipeCategory get(String name) {
-        return GTRegistries.RECIPE_CATEGORIES.get(GTCEu.id(name));
+        return GTRegistries.RECIPE_CATEGORIES.getValue(GTCEu.id(name));
     }
 }

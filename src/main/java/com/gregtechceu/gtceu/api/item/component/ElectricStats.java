@@ -1,18 +1,18 @@
 package com.gregtechceu.gtceu.api.item.component;
 
+import net.minecraft.world.InteractionResult;
+
 import com.gregtechceu.gtceu.api.capability.GTCapability;
 import com.gregtechceu.gtceu.api.capability.GTCapabilityHelper;
 import com.gregtechceu.gtceu.api.capability.IElectricItem;
 import com.gregtechceu.gtceu.api.item.capability.ElectricItem;
-import com.gregtechceu.gtceu.api.item.component.forge.IComponentCapability;
 import com.gregtechceu.gtceu.client.renderer.item.ToolChargeBarRenderer;
 
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.core.NonNullList;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.CreativeModeTab;
@@ -20,11 +20,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.common.util.LazyOptional;
-
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import com.gregtechceu.gtceu.compat.capabilities.RegisterCapabilitiesEvent;
 
 import java.util.List;
 
@@ -51,9 +47,12 @@ public class ElectricStats implements IInteractionItem, ISubItemHandler, IAddInf
     }
 
     @Override
-    public @NotNull <T> LazyOptional<T> getCapability(ItemStack itemStack, @NotNull Capability<T> capability) {
-        return GTCapability.CAPABILITY_ELECTRIC_ITEM.orEmpty(capability,
-                LazyOptional.of(() -> new ElectricItem(itemStack, maxCharge, tier, chargeable, dischargeable)));
+    public void attachCapabilities(RegisterCapabilitiesEvent event, Item item) {
+        event.registerItem(GTCapability.CAPABILITY_ELECTRIC_ITEM, (stack, unused) -> createItem(stack), item);
+    }
+
+    public IElectricItem createItem(ItemStack stack) {
+        return new ElectricItem(stack, maxCharge, tier, chargeable, dischargeable);
     }
 
     public static float getStoredPredicate(ItemStack itemStack) {
@@ -66,11 +65,11 @@ public class ElectricStats implements IInteractionItem, ISubItemHandler, IAddInf
     }
 
     @Override
-    public InteractionResultHolder<ItemStack> use(Item item, Level level, Player player, InteractionHand usedHand) {
-        var itemStack = player.getItemInHand(usedHand);
-        var electricItem = GTCapabilityHelper.getElectricItem(itemStack);
-        if (electricItem != null) return electricItem.use(itemStack, level, player, usedHand);
-        return InteractionResultHolder.pass(itemStack);
+    public InteractionResult use(ItemStack item, Level level, Player player,
+                                                  InteractionHand usedHand) {
+        var electricItem = GTCapabilityHelper.getElectricItem(item);
+        if (electricItem != null) return electricItem.use(item, level, player, usedHand);
+        return InteractionResult.PASS;
     }
 
     @Override
@@ -80,10 +79,10 @@ public class ElectricStats implements IInteractionItem, ISubItemHandler, IAddInf
     }
 
     @Override
-    public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltipComponents,
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context, List<Component> tooltipComponents,
                                 TooltipFlag isAdvanced) {
         IElectricItem electricItem = GTCapabilityHelper.getElectricItem(stack);
-        if (electricItem != null) electricItem.appendHoverText(stack, level, tooltipComponents, isAdvanced);
+        if (electricItem != null) electricItem.appendHoverText(stack, context, tooltipComponents, isAdvanced);
     }
 
     @Override
@@ -98,19 +97,19 @@ public class ElectricStats implements IInteractionItem, ISubItemHandler, IAddInf
     }
 
     public static ElectricStats createElectricItem(long maxCharge, int tier) {
-        return ElectricStats.create(maxCharge, tier, true, false);
+        return new ElectricStats(maxCharge, tier, true, false);
     }
 
     public static ElectricStats createRechargeableBattery(long maxCharge, int tier) {
-        return ElectricStats.create(maxCharge, tier, true, true);
+        return new ElectricStats(maxCharge, tier, true, true);
     }
 
     public static ElectricStats createBattery(long maxCharge, int tier, boolean rechargeable) {
-        return ElectricStats.create(maxCharge, tier, rechargeable, true);
+        return new ElectricStats(maxCharge, tier, rechargeable, true);
     }
 
     @Override
-    public boolean render(GuiGraphics guiGraphics, Font font, ItemStack stack, int xOffset, int yOffset) {
+    public boolean render(GuiGraphicsExtractor guiGraphics, Font font, ItemStack stack, int xOffset, int yOffset) {
         var electricItem = GTCapabilityHelper.getElectricItem(stack);
         if (electricItem != null) {
             return ToolChargeBarRenderer.renderElectricBar(guiGraphics, electricItem.getCharge(),

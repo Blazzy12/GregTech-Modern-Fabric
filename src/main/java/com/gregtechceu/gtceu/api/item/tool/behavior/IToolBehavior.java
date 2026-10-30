@@ -1,35 +1,33 @@
 package com.gregtechceu.gtceu.api.item.tool.behavior;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import com.gregtechceu.gtceu.api.item.IGTTool;
-import com.gregtechceu.gtceu.common.data.item.GTToolActions;
+import com.gregtechceu.gtceu.common.data.item.GTItemAbilities;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.common.ToolAction;
-import net.minecraftforge.common.ToolActions;
+import com.gregtechceu.gtceu.compat.common.ItemAbilities;
+import com.gregtechceu.gtceu.compat.common.ItemAbility;
 
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
 /**
  * Describes generic behaviour attachable to tools. Multiple behaviours can be attached to one tool.
  */
-public interface IToolBehavior {
+public interface IToolBehavior<T extends IToolBehavior<T>> {
 
     default void init(IGTTool toolItem) {}
 
@@ -95,13 +93,14 @@ public interface IToolBehavior {
 
     /**
      * Queries if an item can perform the given action.
-     * See {@link ToolActions} for a description of each stock action and {@link GTToolActions} for GTCEu's ones
+     * See {@link ItemAbilities} for a description of each stock action
+     * and {@link GTItemAbilities} for GTCEu's ones
      *
      * @param stack  The stack being used
-     * @param action The action being queried
-     * @return {@code true} if the stack can perform the action
+     * @param action The ability being queried
+     * @return True if the stack can perform the action
      */
-    default boolean canPerformAction(ItemStack stack, ToolAction action) {
+    default boolean canPerformAction(ItemStack stack, ItemAbility action) {
         return false;
     }
 
@@ -123,9 +122,9 @@ public interface IToolBehavior {
      * @param hand   the hand holding the item
      */
     @NotNull
-    default InteractionResultHolder<ItemStack> onItemRightClick(@NotNull Level world, @NotNull Player player,
+    default InteractionResult onItemRightClick(@NotNull Level world, @NotNull Player player,
                                                                 @NotNull InteractionHand hand) {
-        return InteractionResultHolder.pass(player.getItemInHand(hand));
+        return InteractionResult.PASS;
     }
 
     /**
@@ -151,15 +150,9 @@ public interface IToolBehavior {
         return true;
     }
 
-    @OnlyIn(Dist.CLIENT)
-    default void addInformation(@NotNull ItemStack stack, @Nullable Level world, @NotNull List<Component> tooltip,
+    @Environment(EnvType.CLIENT)
+    default void addInformation(@NotNull ItemStack stack, Item.TooltipContext context, @NotNull List<Component> tooltip,
                                 @NotNull TooltipFlag flag) {}
 
-    /**
-     * Add the necessary NBT information to the tool
-     * 
-     * @param stack the tool
-     * @param tag   the nbt tag to add to
-     */
-    default void addBehaviorNBT(@NotNull ItemStack stack, @NotNull CompoundTag tag) {}
+    ToolBehaviorType<T> getType();
 }

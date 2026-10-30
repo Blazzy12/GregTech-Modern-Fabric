@@ -5,6 +5,7 @@ import com.gregtechceu.gtceu.api.item.tool.GTToolType;
 import com.gregtechceu.gtceu.api.item.tool.MaterialToolTier;
 import com.gregtechceu.gtceu.config.ConfigHolder;
 
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.enchantment.Enchantment;
 
 import it.unimi.dsi.fastutil.objects.Object2IntArrayMap;
@@ -119,8 +120,7 @@ public class ToolProperty implements IMaterialProperty {
     /**
      * Enchantment to be applied to tools made from this Material.
      */
-    @Getter
-    private final Object2IntMap<Enchantment> enchantments = new Object2IntArrayMap<>();
+    private final Object2IntMap<ResourceKey<Enchantment>> enchantments = new Object2IntArrayMap<>();
 
     public ToolProperty(float harvestSpeed, float attackDamage, int durability, int harvestLevel, GTToolType[] types) {
         this.harvestSpeed = harvestSpeed;
@@ -141,6 +141,10 @@ public class ToolProperty implements IMaterialProperty {
         this(1.0F, 1.0F, 100, 2, GTToolType.getTypes().values().toArray(GTToolType[]::new));
     }
 
+    public Object2IntMap<ResourceKey<Enchantment>> getEnchantments() {
+        return enchantments;
+    }
+
     @Override
     public void verifyProperty(MaterialProperties properties) {
         if (!properties.hasProperty(PropertyKey.WOOD)) {
@@ -148,7 +152,7 @@ public class ToolProperty implements IMaterialProperty {
         }
     }
 
-    public void addEnchantmentForTools(Enchantment enchantment, int level) {
+    public void addEnchantmentForTools(ResourceKey<Enchantment> enchantment, int level) {
         if (ConfigHolder.INSTANCE.recipes.enchantedTools) {
             enchantments.put(enchantment, level);
         }
@@ -222,7 +226,7 @@ public class ToolProperty implements IMaterialProperty {
                     WRENCH_LV,
                     WRENCH_HV,
                     WRENCH_IV,
-                    BUZZSAW,
+                    BUZZSAW_LV,
                     SCREWDRIVER_LV,
                     SCREWDRIVER_HV,
                     SCREWDRIVER_IV,
@@ -304,7 +308,7 @@ public class ToolProperty implements IMaterialProperty {
          * @param enchantment The default enchantment, applied on crafting the tool.
          * @param level       The level of the enchantment.
          */
-        public Builder enchantment(Enchantment enchantment, int level) {
+        public Builder enchantment(ResourceKey<Enchantment> enchantment, int level) {
             toolProperty.addEnchantmentForTools(enchantment, level);
             return this;
         }

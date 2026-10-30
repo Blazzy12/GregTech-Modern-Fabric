@@ -5,14 +5,14 @@ import com.gregtechceu.gtceu.api.sync_system.TypeDeclaration;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.resources.RegistryOps;
 
 import org.jetbrains.annotations.Nullable;
 
 /**
  * Represents an object that provides a set of methods for encoding/decoding a value of type {@code <T>} into a
- * {@link Tag} and {@link FriendlyByteBuf}
+ * {@link Tag} and {@link RegistryFriendlyByteBuf}
  * 
  * @param <T> The type which this transformer can encode
  */
@@ -74,13 +74,13 @@ public interface ValueTransformer<T> {
     T deserializeNBT(Tag tag, TransformerContext<T> context);
 
     /**
-     * Writes this value to a {@link FriendlyByteBuf} to be sent to the client.
+     * Writes this value to a {@link RegistryFriendlyByteBuf} to be sent to the client.
      */
-    void writeToPacket(FriendlyByteBuf buf, T value, TransformerContext<T> context);
+    void writeToPacket(RegistryFriendlyByteBuf buf, T value, TransformerContext<T> context);
 
     /**
-     * Reads this value from a {@link FriendlyByteBuf}.
+     * Reads this value from a {@link RegistryFriendlyByteBuf}.
      */
     @Nullable
-    T readFromPacket(FriendlyByteBuf buf, TransformerContext<T> context);
+    T readFromPacket(RegistryFriendlyByteBuf buf, TransformerContext<T> context);
 }

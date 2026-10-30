@@ -1,7 +1,7 @@
 package com.gregtechceu.gtceu.api.data.chemical.material.event;
 
-import net.minecraftforge.eventbus.api.Event;
-import net.minecraftforge.fml.event.IModBusEvent;
+import com.gregtechceu.gtceu.compat.bus.Event;
+import com.gregtechceu.gtceu.compat.fml.event.IModBusEvent;
 
 /**
  * Event to modify and perform post-processing on materials

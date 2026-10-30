@@ -1,9 +1,7 @@
 package com.gregtechceu.gtceu.common.block.explosive;
 
 import com.gregtechceu.gtceu.common.entity.GTExplosiveEntity;
-import com.gregtechceu.gtceu.data.recipe.CustomTags;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
@@ -14,7 +12,8 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.entity.projectile.Arrow;
+import net.minecraft.world.entity.projectile.arrow.Arrow;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.BlockGetter;
@@ -27,6 +26,7 @@ import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.BlockHitResult;
+import com.gregtechceu.gtceu.compat.common.ItemAbilities;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -34,12 +34,9 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Collections;
 import java.util.List;
 
-import javax.annotation.ParametersAreNonnullByDefault;
-
-@ParametersAreNonnullByDefault
-@MethodsReturnNonnullByDefault
 @SuppressWarnings("deprecation")
-public abstract class GTExplosiveBlock extends Block {
+public abstract class GTExplosiveBlock extends Block implements com.gregtechceu.gtceu.core.fabric.IBlockTooltip,
+                                       com.gregtechceu.gtceu.core.fabric.IIgnitableBlock {
 
     private final boolean canRedstoneActivate;
     private final boolean explodeOnMine;
@@ -78,54 +75,52 @@ public abstract class GTExplosiveBlock extends Block {
     }
 
     public void explode(Level level, BlockPos pos, @Nullable LivingEntity exploder) {
-        if (!level.isClientSide) {
+        if (!level.isClientSide()) {
             GTExplosiveEntity entity = createEntity(level, pos, exploder);
             entity.setFuse(fuseLength);
             level.addFreshEntity(entity);
-            level.playSound(null, entity.getX(), entity.getY(), entity.getZ(), SoundEvents.TNT_PRIMED,
-                    SoundSource.BLOCKS, 1.0f, 1.0f);
+            level.playSound(null, entity, SoundEvents.TNT_PRIMED, SoundSource.BLOCKS, 1.0f, 1.0f);
             level.gameEvent(entity, GameEvent.PRIME_FUSE, pos);
         }
     }
 
     @Override
-    public void wasExploded(Level level, BlockPos pos, Explosion explosion) {
-        if (!level.isClientSide) {
+    public void wasExploded(net.minecraft.server.level.ServerLevel level, BlockPos pos, Explosion explosion) {
+        if (!level.isClientSide()) {
             GTExplosiveEntity entity = createEntity(level, pos, explosion.getIndirectSourceEntity());
-            entity.setFuse(level.random.nextInt(fuseLength / 4) + fuseLength / 8);
+            entity.setFuse(level.getRandom().nextInt(fuseLength / 4) + fuseLength / 8);
             level.addFreshEntity(entity);
         }
     }
 
     @Override
-    public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand,
-                                 BlockHitResult hit) {
-        ItemStack stack = player.getItemInHand(hand);
-        if (!stack.isEmpty() && stack.is(CustomTags.TOOLS_IGNITER)) {
+    protected InteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos,
+                                              Player player, InteractionHand hand, BlockHitResult hit) {
+        if (stack.canPerformAction(ItemAbilities.FIRESTARTER_LIGHT)) {
             this.explode(level, pos, player);
             level.removeBlock(pos, false);
             if (stack.isDamageableItem()) {
-                stack.hurtAndBreak(1, player, p -> p.broadcastBreakEvent(hand));
+                stack.hurtAndBreak(1, player, hand);
             } else if (!player.isCreative()) {
                 stack.shrink(1);
             }
             return InteractionResult.SUCCESS;
         }
-        return super.use(state, level, pos, player, hand, hit);
+        return super.useItemOn(stack, state, level, pos, player, hand, hit);
     }
 
     @Override
-    public void playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {
+    public BlockState playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {
         if (explodeOnMine && !player.isShiftKeyDown()) {
             this.explode(level, pos, player);
         }
-        super.playerWillDestroy(level, pos, state, player);
+        return super.playerWillDestroy(level, pos, state, player);
     }
 
     @Override
-    public void entityInside(BlockState state, Level level, BlockPos pos, Entity entity) {
-        super.entityInside(state, level, pos, entity);
-        if (!level.isClientSide && entity instanceof Arrow arrow) {
+    protected void entityInside(BlockState state, Level level, BlockPos pos, Entity entity, net.minecraft.world.entity.InsideBlockEffectApplier effectApplier, boolean isPrecise) {
+        super.entityInside(state, level, pos, entity, effectApplier, isPrecise);
+        if (!level.isClientSide() && entity instanceof Arrow arrow) {
             if (arrow.isOnFire()) {
                 this.explode(level, pos, arrow.getOwner() instanceof LivingEntity living ? living : null);
                 level.removeBlock(pos, false);
@@ -157,8 +152,8 @@ public abstract class GTExplosiveBlock extends Block {
     }
 
     @Override
-    public void neighborChanged(BlockState state, Level level, BlockPos pos, Block neighborBlock, BlockPos neighborPos,
-                                boolean movedByPiston) {
+    protected void neighborChanged(BlockState state, Level level, BlockPos pos, Block neighborBlock,
+            @org.jetbrains.annotations.Nullable net.minecraft.world.level.redstone.Orientation orientation, boolean movedByPiston) {
         if (canRedstoneActivate) {
             if (level.hasNeighborSignal(pos)) {
                 this.explode(level, pos, null);
@@ -167,10 +162,7 @@ public abstract class GTExplosiveBlock extends Block {
         }
     }
 
-    @Override
-    public void appendHoverText(ItemStack stack, @Nullable BlockGetter level, List<Component> tooltip,
-                                TooltipFlag flag) {
-        super.appendHoverText(stack, level, tooltip, flag);
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
         if (explodeOnMine) {
             tooltip.add(Component.translatable("block.gtceu.explosive.breaking_tooltip"));
         }

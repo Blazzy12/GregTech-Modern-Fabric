@@ -2,7 +2,7 @@ package com.gregtechceu.gtceu.api.mui.modular_item;
 
 import com.gregtechceu.gtceu.GTCEu;
 
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
 
@@ -21,7 +21,7 @@ public class ModularItemUIFactory extends AbstractUIFactory<PlayerInventoryGuiDa
 
     public void openFromHand(Player player, InteractionHand hand) {
         GuiManager.open(
-                this, PlayerInventoryGuiData.of(player, InventoryTypes.PLAYER, null, player.getInventory().selected),
+                this, PlayerInventoryGuiData.of(player, InventoryTypes.PLAYER, null, player.getInventory().getSelectedSlot()),
                 verifyServerSide(player));
     }
 
@@ -31,22 +31,22 @@ public class ModularItemUIFactory extends AbstractUIFactory<PlayerInventoryGuiDa
     }
 
     @Override
-    public void writeGuiData(PlayerInventoryGuiData<?> guiData, FriendlyByteBuf buffer) {
+    public void writeGuiData(PlayerInventoryGuiData<?> guiData, RegistryFriendlyByteBuf buffer) {
         guiData.getInventoryType().write(buffer);
         writeContext(buffer, guiData.getInventoryType(), guiData.getContext());
         buffer.writeVarInt(guiData.getSlotIndex());
     }
 
-    private static <T> void writeContext(FriendlyByteBuf buffer, InventoryType<T> type, Object context) {
+    private static <T> void writeContext(RegistryFriendlyByteBuf buffer, InventoryType<T> type, Object context) {
         type.writeContext(buffer, type.castContext(context));
     }
 
     @Override
-    public PlayerInventoryGuiData<?> readGuiData(Player player, FriendlyByteBuf buffer) {
+    public PlayerInventoryGuiData<?> readGuiData(Player player, RegistryFriendlyByteBuf buffer) {
         return readContext(player, buffer, InventoryType.read(buffer));
     }
 
-    private static <T> PlayerInventoryGuiData<?> readContext(Player player, FriendlyByteBuf buffer,
+    private static <T> PlayerInventoryGuiData<?> readContext(Player player, RegistryFriendlyByteBuf buffer,
                                                              InventoryType<T> inventoryType) {
         return PlayerInventoryGuiData.of(player, inventoryType, inventoryType.readContext(buffer), buffer.readVarInt());
     }

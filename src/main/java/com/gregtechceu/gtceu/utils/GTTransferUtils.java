@@ -1,10 +1,9 @@
 package com.gregtechceu.gtceu.utils;
 
+import com.gregtechceu.gtceu.api.capability.GTCapability;
+import com.gregtechceu.gtceu.api.capability.IEnergyContainer;
 import com.gregtechceu.gtceu.api.machine.trait.notifiable.NotifiableFluidTank;
 import com.gregtechceu.gtceu.api.transfer.fluid.FluidHandlerList;
-import com.gregtechceu.gtceu.api.transfer.item.IBundleInsertable;
-import com.gregtechceu.gtceu.api.transfer.item.ITransferAmountLimiter;
-import com.gregtechceu.gtceu.api.transfer.item.IVirtualItemHandler;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -12,31 +11,24 @@ import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.common.util.LazyOptional;
-import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.FluidUtil;
-import net.minecraftforge.fluids.capability.IFluidHandler;
-import net.minecraftforge.fluids.capability.IFluidHandler.FluidAction;
-import net.minecraftforge.items.IItemHandler;
-import net.minecraftforge.items.IItemHandlerModifiable;
-import net.minecraftforge.items.ItemHandlerHelper;
+import com.gregtechceu.gtceu.compat.capabilities.Capabilities;
+import com.gregtechceu.gtceu.compat.fluids.FluidStack;
+import com.gregtechceu.gtceu.compat.fluids.FluidUtil;
+import com.gregtechceu.gtceu.compat.fluids.capability.IFluidHandler;
+import com.gregtechceu.gtceu.compat.fluids.capability.IFluidHandler.FluidAction;
+import com.gregtechceu.gtceu.compat.items.IItemHandler;
+import com.gregtechceu.gtceu.compat.items.IItemHandlerModifiable;
+import com.gregtechceu.gtceu.compat.items.ItemHandlerHelper;
 
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
-import it.unimi.dsi.fastutil.objects.Object2ObjectOpenCustomHashMap;
-import lombok.AllArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
+import java.util.Optional;
 import java.util.function.Predicate;
-import java.util.function.ToIntFunction;
 
 public class GTTransferUtils {
 
@@ -48,7 +40,7 @@ public class GTTransferUtils {
      * @param facing Direction to get the FluidHandler from
      * @return LazyOpt of the IFluidHandler described above
      */
-    public static LazyOptional<IFluidHandler> getAdjacentFluidHandler(Level level, BlockPos pos, Direction facing) {
+    public static Optional<IFluidHandler> getAdjacentFluidHandler(Level level, BlockPos pos, Direction facing) {
         return FluidUtil.getFluidHandler(level, pos.relative(facing), facing.getOpposite());
     }
 
@@ -65,25 +57,35 @@ public class GTTransferUtils {
      * @param side  Side of block
      * @return LazyOpt of ItemHandler of given block
      */
-    public static LazyOptional<IItemHandler> getItemHandler(Level level, BlockPos pos, @Nullable Direction side) {
-        BlockState state = level.getBlockState(pos);
-        if (state.hasBlockEntity()) {
-            BlockEntity blockEntity = level.getBlockEntity(pos);
-            if (blockEntity != null) {
-                return blockEntity.getCapability(ForgeCapabilities.ITEM_HANDLER, side);
-            }
-        }
-        return LazyOptional.empty();
+    public static Optional<IItemHandler> getItemHandler(Level level, BlockPos pos, @Nullable Direction side) {
+        return Optional.ofNullable(level.getCapability(Capabilities.ItemHandler.BLOCK, pos, side));
     }
 
     // Same as getAdjacentFluidHandler, but for ItemHandler
-    public static LazyOptional<IItemHandler> getAdjacentItemHandler(Level level, BlockPos pos, Direction facing) {
+    public static Optional<IItemHandler> getAdjacentItemHandler(Level level, BlockPos pos, Direction facing) {
         return getItemHandler(level, pos.relative(facing), facing.getOpposite());
     }
 
     // Same as above, but returns the presence
     public static boolean hasAdjacentItemHandler(Level level, BlockPos pos, Direction facing) {
         return getAdjacentItemHandler(level, pos, facing).isPresent();
+    }
+
+    /**
+     * Get the EnergyContainer Capability from the given block
+     *
+     * @param level Level of block
+     * @param pos   BlockPos of block
+     * @param side  Side of block
+     * @return LazyOpt of ItemHandler of given block
+     */
+    public static Optional<IEnergyContainer> getEnergyContainer(Level level, BlockPos pos, @Nullable Direction side) {
+        return Optional.ofNullable(level.getCapability(GTCapability.CAPABILITY_ENERGY_CONTAINER, pos, side));
+    }
+
+    // Same as getAdjacentFluidHandler, but for EnergyContainer
+    public static Optional<IEnergyContainer> getAdjacentEnergyContainer(Level level, BlockPos pos, Direction facing) {
+        return getEnergyContainer(level, pos.relative(facing), facing.getOpposite());
     }
 
     /**
@@ -102,7 +104,7 @@ public class GTTransferUtils {
             FluidStack fluid = source.getFluidInTank(i);
             if (fluid.isEmpty() || !filter.test(fluid)) continue;
 
-            fluid = new FluidStack(fluid, toTransfer);
+            fluid = fluid.copyWithAmount(toTransfer);
             var transferred = FluidUtil.tryFluidTransfer(dest, source, fluid, true);
             toTransfer -= transferred.getAmount();
             if (toTransfer <= 0) break;
@@ -280,7 +282,7 @@ public class GTTransferUtils {
             ItemStack slotStack = handler.getStackInSlot(i);
             if (slotStack.isEmpty()) {
                 emptySlots.add(i);
-            } else if (ItemHandlerHelper.canItemStacksStack(stack, slotStack)) {
+            } else if (ItemStack.isSameItemSameComponents(stack, slotStack)) {
                 stack = handler.insertItem(i, stack, simulate);
                 if (stack.isEmpty()) {
                     return ItemStack.EMPTY;
@@ -328,135 +330,5 @@ public class GTTransferUtils {
 
         if (!simulate) player.inventoryMenu.broadcastChanges();
         return true;
-    }
-
-    /// Attempts to insert the provided item stack in the given item handler as a single, indivisible unit that should
-    /// not be split over multiple
-    /// inventories if the target item handler represents a virtual inventory backing some kind of item distribution
-    /// system.
-    /// This is only a hint to the compatible implementation that the given item stack should not be split, which can be
-    /// ignored.
-    public static ItemStack insertItemBundle(IItemHandler targetInventory, ItemStack stack, boolean simulate) {
-        return targetInventory instanceof IBundleInsertable bundle ?
-                bundle.insertItemBundle(stack, simulate) :
-                ItemHandlerHelper.insertItem(targetInventory, stack, simulate);
-    }
-
-    @AllArgsConstructor
-    private static class GroupItemInfo {
-
-        public final ItemStack itemStack;
-        public int totalCount;
-    }
-
-    /// Convenience wrapper around main stockInventoryItems overload that takes max transfer amount in items, and
-    /// returns the amount of items that have been transferred
-    public static int stockInventoryItems(IItemHandler sourceInventory, IItemHandler targetInventory,
-                                          int maxTransferAmount, ToIntFunction<ItemStack> itemKeepAmountProvider) {
-        TotalTransferAmountLimiter transferAmountLimiter = new TotalTransferAmountLimiter(maxTransferAmount);
-        stockInventoryItems(sourceInventory, targetInventory, transferAmountLimiter, itemKeepAmountProvider);
-        return maxTransferAmount - transferAmountLimiter.getTotalRemainingTransferAmount();
-    }
-
-    /// Similar to moveInventoryItems, but instead attempts to maintain amount of items per type as provided by
-    /// itemKeepAmountProvider in target inventory.
-    public static void stockInventoryItems(IItemHandler sourceInventory, IItemHandler targetInventory,
-                                           ITransferAmountLimiter transferAmountLimiter,
-                                           ToIntFunction<ItemStack> itemKeepAmountProvider) {
-        // Delegate to the virtual item handler specific implementation if possible
-        if (targetInventory instanceof IVirtualItemHandler virtualItemHandler) {
-            virtualItemHandler.stockInventoryItems(sourceInventory, transferAmountLimiter, itemKeepAmountProvider);
-            return;
-        }
-
-        Predicate<ItemStack> itemStackPredicate = itemStack -> itemKeepAmountProvider.applyAsInt(itemStack) > 0;
-        Map<ItemStack, GroupItemInfo> targetItemAmounts = countInventoryItemsByMatchSlot(targetInventory,
-                itemStackPredicate);
-        Map<ItemStack, GroupItemInfo> sourceItemAmounts = countInventoryItemsByMatchSlot(sourceInventory,
-                itemStackPredicate);
-
-        Iterator<ItemStack> iterator = sourceItemAmounts.keySet().iterator();
-        while (iterator.hasNext()) {
-            ItemStack filteredItem = iterator.next();
-            GroupItemInfo sourceInfo = sourceItemAmounts.get(filteredItem);
-            int itemToKeepAmount = itemKeepAmountProvider.applyAsInt(sourceInfo.itemStack);
-
-            int itemAmount = 0;
-            if (targetItemAmounts.containsKey(filteredItem)) {
-                GroupItemInfo destItemInfo = targetItemAmounts.get(filteredItem);
-                itemAmount = destItemInfo.totalCount;
-            }
-            if (itemAmount < itemToKeepAmount) {
-                sourceInfo.totalCount = itemToKeepAmount - itemAmount;
-            } else {
-                iterator.remove();
-            }
-        }
-
-        moveInventoryItemGroups(sourceInventory, targetInventory, sourceItemAmounts, transferAmountLimiter,
-                itemStackPredicate);
-    }
-
-    /// Moves inventory items between item handlers in specified groups
-    private static void moveInventoryItemGroups(IItemHandler sourceInventory, IItemHandler targetInventory,
-                                                Map<ItemStack, GroupItemInfo> itemInfos,
-                                                ITransferAmountLimiter transferAmountLimiter,
-                                                Predicate<ItemStack> itemStackPredicate) {
-        for (int i = 0; i < sourceInventory.getSlots(); i++) {
-            ItemStack itemStack = sourceInventory.getStackInSlot(i);
-            if (itemStack.isEmpty() || !itemStackPredicate.test(itemStack) || !itemInfos.containsKey(itemStack)) {
-                continue;
-            }
-
-            GroupItemInfo itemInfo = itemInfos.get(itemStack);
-
-            ItemStack extractedStack = sourceInventory.extractItem(i,
-                    Math.min(itemInfo.totalCount, Math.min(transferAmountLimiter.getRemainingTransferAmount(itemStack),
-                            itemStack.getCount())),
-                    true);
-
-            ItemStack remainderStack = ItemHandlerHelper.insertItemStacked(targetInventory, extractedStack, true);
-            int amountToInsert = extractedStack.getCount() - remainderStack.getCount();
-
-            if (amountToInsert > 0) {
-                extractedStack = sourceInventory.extractItem(i, amountToInsert, false);
-
-                if (!extractedStack.isEmpty()) {
-
-                    ItemHandlerHelper.insertItemStacked(targetInventory, extractedStack, false);
-                    transferAmountLimiter.notifyItemTransferred(extractedStack);
-                    itemInfo.totalCount -= extractedStack.getCount();
-
-                    if (itemInfo.totalCount == 0) {
-                        itemInfos.remove(itemStack);
-                        if (itemInfos.isEmpty()) {
-                            break;
-                        }
-                    }
-                    if (!transferAmountLimiter.canTransferMoreItems()) {
-                        break;
-                    }
-                }
-            }
-        }
-    }
-
-    /// Groups identical items together and calculates total amount of items per type in inventory
-    private static Map<ItemStack, GroupItemInfo> countInventoryItemsByMatchSlot(IItemHandler inventory,
-                                                                                Predicate<ItemStack> itemStackPredicate) {
-        Map<ItemStack, GroupItemInfo> result = new Object2ObjectOpenCustomHashMap<>(
-                ItemStackHashStrategy.comparingAllButCount());
-
-        for (int srcIndex = 0; srcIndex < inventory.getSlots(); srcIndex++) {
-            ItemStack itemStack = inventory.getStackInSlot(srcIndex);
-            if (itemStack.isEmpty() || !itemStackPredicate.test(itemStack)) {
-                continue;
-            }
-
-            var itemInfo = result.computeIfAbsent(itemStack, s -> new GroupItemInfo(s, 0));
-
-            itemInfo.totalCount += itemStack.getCount();
-        }
-        return result;
     }
 }

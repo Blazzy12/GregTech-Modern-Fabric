@@ -1,25 +1,18 @@
 package com.gregtechceu.gtceu.api.data.medicalcondition;
 
-import com.gregtechceu.gtceu.api.data.damagesource.DamageTypeData;
-import com.gregtechceu.gtceu.api.registry.GTRegistries;
-import com.gregtechceu.gtceu.common.capability.MedicalConditionTracker;
 import com.gregtechceu.gtceu.data.recipe.builder.GTRecipeBuilder;
 import com.gregtechceu.gtceu.data.recipe.misc.AirScrubberRecipes;
 import com.gregtechceu.gtceu.utils.FormattingUtil;
 
+import net.minecraft.core.registries.Registries;
 import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.tags.DamageTypeTags;
-import net.minecraft.world.damagesource.DamageScaling;
-import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.level.Level;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.damagesource.DamageType;
 
-import com.mojang.serialization.Codec;
 import lombok.Getter;
-import lombok.Setter;
 import lombok.experimental.Accessors;
-import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 import java.util.function.Consumer;
@@ -27,7 +20,6 @@ import java.util.function.Consumer;
 @Accessors(chain = true)
 public class MedicalCondition {
 
-    public static final Codec<MedicalCondition> CODEC = GTRegistries.MEDICAL_CONDITIONS.codec();
     public static final String AFFECTED_SUFFIX = ".affected";
 
     /**
@@ -41,11 +33,10 @@ public class MedicalCondition {
      * the command will display "Player &lt;player&gt; has cancer" instead of "... has Carcinogenic"
      * </p>
      */
-    public final ResourceLocation id;
+    public final Identifier id;
     public final int color;
     public final float maxProgression; // amount of seconds until maximum progression is reached
     public final Set<Symptom.ConfiguredSymptom> symptoms = new HashSet<>();
-    private final DamageTypeData damageTypeData;
     public final IdleProgressionType idleProgressionType;
     public final float idleProgressionRate;
     public final boolean canBePermanent;
@@ -54,40 +45,36 @@ public class MedicalCondition {
      * condition.
      */
     @Getter
-    @Setter
-    @NotNull
-    public Consumer<GTRecipeBuilder> recipeModifier = builder -> {};
+    public final Consumer<GTRecipeBuilder> recipeModifier;
 
-    public MedicalCondition(ResourceLocation id, int color,
+    public MedicalCondition(Identifier id, int color,
                             int maxProgression, IdleProgressionType progressionType, float progressionRate,
-                            boolean canBePermanent, Symptom.ConfiguredSymptom... symptoms) {
+                            boolean canBePermanent, Consumer<GTRecipeBuilder> recipeModifier,
+                            Symptom.ConfiguredSymptom... symptoms) {
         this.id = id;
         this.color = color;
         this.maxProgression = maxProgression;
-        this.damageTypeData = new DamageTypeData.Builder()
-                .simpleId(id.withPrefix("medical_condition/"))
-                .scaling(DamageScaling.NEVER)
-                // all medical conditions' damage types MUST have the bypasses_invulnerability and bypasses_cooldown
-                // tags so the death symptom works properly
-                .tag(DamageTypeTags.BYPASSES_ARMOR, DamageTypeTags.BYPASSES_RESISTANCE,
-                        DamageTypeTags.BYPASSES_INVULNERABILITY, DamageTypeTags.BYPASSES_COOLDOWN)
-                .build();
 
         for (Symptom.ConfiguredSymptom symptom : symptoms) {
             symptom.addedToCondition(this, this.symptoms.size());
             this.symptoms.add(symptom);
         }
+
         this.idleProgressionType = progressionType;
         this.idleProgressionRate = progressionRate;
         this.canBePermanent = canBePermanent;
+        this.recipeModifier = recipeModifier;
     }
 
-    public DamageSource getDamageSource(MedicalConditionTracker tracker) {
-        return this.damageTypeData.source(tracker.getPlayer().level());
+    public MedicalCondition(Identifier id, int color,
+                            int maxProgression, IdleProgressionType progressionType, float progressionRate,
+                            boolean canBePermanent,
+                            Symptom.ConfiguredSymptom... symptoms) {
+        this(id, color, maxProgression, progressionType, progressionRate, canBePermanent, $ -> {}, symptoms);
     }
 
-    public DamageSource getDamageSource(Level level) {
-        return this.damageTypeData.source(level);
+    public ResourceKey<DamageType> getDamageType() {
+        return ResourceKey.create(Registries.DAMAGE_TYPE, id.withPrefix("medical_condition/"));
     }
 
     public String getTranslationKey() {
@@ -113,11 +100,11 @@ public class MedicalCondition {
         stringJoiner.add("color=#" + FormattingUtil.HEX_FORMAT.toHexDigits(this.color));
         stringJoiner.add("maxProgression=" + this.maxProgression);
         stringJoiner.add("symptoms=" + this.symptoms);
-        stringJoiner.add("damageType=" + this.damageTypeData.id);
+        stringJoiner.add("damageType=" + this.getDamageType());
         stringJoiner.add("idleProgressionType=" + this.idleProgressionType.name().toLowerCase(Locale.ROOT));
         stringJoiner.add("idleProgressionRate=" + this.idleProgressionRate);
 
-        return this.id.toString() + stringJoiner.toString();
+        return this.id.toString() + stringJoiner;
     }
 
     public enum IdleProgressionType {

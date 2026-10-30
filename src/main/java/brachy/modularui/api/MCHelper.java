@@ -1,0 +1,73 @@
+package brachy.modularui.api;
+
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
+import brachy.modularui.network.ModularNetwork;
+
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+
+import org.jetbrains.annotations.Nullable;
+
+import java.util.List;
+
+@Environment(EnvType.CLIENT)
+public class MCHelper {
+
+    @SuppressWarnings("DataFlowIssue")
+    @Nullable
+    public static Minecraft getMc() {
+        return Minecraft.getInstance();
+    }
+
+    @Nullable
+    public static Player getPlayer() {
+        return getMc() == null ? null : getMc().player;
+    }
+
+    public static void closeScreen() {
+        getMc().gui.setScreen(null);
+    }
+
+    public static void popScreen(boolean openParentOnClose, Screen parent) {
+        Player player = MCHelper.getPlayer();
+        if (player != null) {
+            // container should not just be closed here
+            // instead they are kept in a stack until all screens are closed
+            // prepareCloseContainer(player);
+            if (openParentOnClose) {
+                Minecraft.getInstance().gui.setScreen(parent);
+                ModularNetwork.CLIENT.reopenSyncerOf(parent);
+            } else {
+                Minecraft.getInstance().gui.setScreen(null);
+            }
+        } else {
+            // we are currently not in a world and want to display the previous screen
+            Minecraft.getInstance().gui.setScreen(parent);
+        }
+    }
+
+    public static void setScreen(Screen screen) {
+        if (screen == null) {
+            closeScreen();
+        } else {
+            getMc().gui.setScreen(screen);
+        }
+    }
+
+    public static Screen getCurrentScreen() {
+        return getMc() == null ? null : getMc().gui.screen();
+    }
+
+    public static Font getFont() {
+        return getMc() == null ? null : getMc().font;
+    }
+
+    public static List<Component> getItemToolTip(ItemStack item) {
+        return Screen.getTooltipFromItem(getMc(), item);
+    }
+}

@@ -2,7 +2,6 @@ package com.gregtechceu.gtceu.common.capability;
 
 import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.api.GTValues;
-import com.gregtechceu.gtceu.api.capability.GTCapability;
 import com.gregtechceu.gtceu.api.data.chemical.material.Material;
 import com.gregtechceu.gtceu.api.data.chemical.material.properties.HazardProperty;
 import com.gregtechceu.gtceu.api.data.chemical.material.properties.PropertyKey;
@@ -13,29 +12,26 @@ import com.gregtechceu.gtceu.api.data.medicalcondition.Symptom;
 import com.gregtechceu.gtceu.api.data.medicalcondition.Symptom.ConfiguredSymptom;
 import com.gregtechceu.gtceu.api.registry.GTRegistries;
 
-import net.minecraft.core.Direction;
+import net.minecraft.core.Holder;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
-import net.minecraft.nbt.Tag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.util.Mth;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.common.capabilities.ICapabilitySerializable;
-import net.minecraftforge.common.util.LazyOptional;
+import com.gregtechceu.gtceu.compat.common.util.INBTSerializable;
 
 import it.unimi.dsi.fastutil.objects.*;
 import lombok.Getter;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.VisibleForTesting;
 
 import java.util.*;
 
-public class MedicalConditionTracker implements ICapabilitySerializable<CompoundTag> {
+public class MedicalConditionTracker implements INBTSerializable<CompoundTag> {
 
     @Getter
     @VisibleForTesting
@@ -43,14 +39,12 @@ public class MedicalConditionTracker implements ICapabilitySerializable<Compound
     private final Set<MedicalCondition> permanentConditions = new ReferenceOpenHashSet<>();
     @Getter
     private final Object2IntMap<ConfiguredSymptom> activeSymptoms = new Object2IntOpenHashMap<>();
-    private final Reference2IntMap<MobEffect> activeMobEffects = new Reference2IntOpenHashMap<>();
+    private final Reference2IntMap<Holder<MobEffect>> activeMobEffects = new Reference2IntOpenHashMap<>();
 
     private final Set<MedicalCondition> flaggedForRemoval = new ReferenceOpenHashSet<>();
 
     @Getter
     private final Player player;
-
-    private final LazyOptional<MedicalConditionTracker> holder = LazyOptional.of(() -> this);
 
     public MedicalConditionTracker(Player player) {
         this.player = player;
@@ -84,15 +78,17 @@ public class MedicalConditionTracker implements ICapabilitySerializable<Compound
 
     public void progressRelatedCondition(@NotNull Material material, int count) {
         HazardProperty materialHazard = material.getProperty(PropertyKey.HAZARD);
+        if (materialHazard == null) return;
         float strength = (float) count * materialHazard.progressionMultiplier;
-        progressCondition(materialHazard.condition, strength);
+        progressCondition(materialHazard.condition.value(), strength);
     }
 
     public void progressRelatedCondition(@NotNull MaterialEntry materialEntry, int count) {
         HazardProperty materialHazard = materialEntry.material().getProperty(PropertyKey.HAZARD);
+        if (materialHazard == null) return;
         float strength = (float) (materialEntry.getMaterialAmount() / GTValues.M) * count *
                 materialHazard.progressionMultiplier;
-        progressCondition(materialHazard.condition, strength);
+        progressCondition(materialHazard.condition.value(), strength);
     }
 
     /**
@@ -212,7 +208,7 @@ public class MedicalConditionTracker implements ICapabilitySerializable<Compound
         }
     }
 
-    public void setMobEffect(MobEffect effect, int amplifier) {
+    public void setMobEffect(Holder<MobEffect> effect, int amplifier) {
         if (amplifier <= 0) {
             activeMobEffects.removeInt(effect);
             return;
@@ -221,7 +217,7 @@ public class MedicalConditionTracker implements ICapabilitySerializable<Compound
     }
 
     @Override
-    public CompoundTag serializeNBT() {
+    public CompoundTag serializeNBT(HolderLookup.Provider provider) {
         CompoundTag tag = new CompoundTag();
 
         ListTag effectsTag = new ListTag();
@@ -243,37 +239,33 @@ public class MedicalConditionTracker implements ICapabilitySerializable<Compound
     }
 
     @Override
-    public void deserializeNBT(CompoundTag arg) {
+    public void deserializeNBT(HolderLookup.Provider provider, CompoundTag arg) {
         // ensure the medical condition map(s) is actually empty before loading.
         // IDK if this actually happens, but better be safe than sorry.
         medicalConditions.clear();
         permanentConditions.clear();
 
-        ListTag medicalConditionsTag = arg.getList("medical_conditions", Tag.TAG_COMPOUND);
+        ListTag medicalConditionsTag = arg.getListOrEmpty("medical_conditions");
         for (int i = 0; i < medicalConditionsTag.size(); ++i) {
-            CompoundTag compoundTag = medicalConditionsTag.getCompound(i);
-            ResourceLocation id = GTCEu.id(compoundTag.getString("condition"));
-            if (!GTRegistries.MEDICAL_CONDITIONS.containsKey(id)) {
+            CompoundTag compoundTag = medicalConditionsTag.getCompoundOrEmpty(i);
+            ResourceKey<MedicalCondition> id = ResourceKey.create(GTRegistries.Keys.MEDICAL_CONDITION,
+                    GTCEu.id(compoundTag.getStringOr("condition", "")));
+            var holder = provider.get(id);
+            if (holder.isEmpty()) {
                 continue;
             }
-            MedicalCondition condition = GTRegistries.MEDICAL_CONDITIONS.get(id);
-            float progression = compoundTag.getFloat("progression");
+            MedicalCondition condition = holder.get().value();
+            float progression = compoundTag.getFloatOr("progression", 0f);
 
             medicalConditions.put(condition, progression);
         }
 
-        ListTag permanentConditionsTag = arg.getList("permanent_conditions", Tag.TAG_STRING);
+        ListTag permanentConditionsTag = arg.getListOrEmpty("permanent_conditions");
         for (int i = 0; i < permanentConditionsTag.size(); ++i) {
-            ResourceLocation id = GTCEu.id(permanentConditionsTag.getString(i));
-            if (!GTRegistries.MEDICAL_CONDITIONS.containsKey(id)) {
-                continue;
-            }
-            permanentConditions.add(GTRegistries.MEDICAL_CONDITIONS.get(id));
+            ResourceKey<MedicalCondition> id = ResourceKey.create(GTRegistries.Keys.MEDICAL_CONDITION,
+                    GTCEu.id(permanentConditionsTag.getStringOr(i, "")));
+            var holder = provider.get(id);
+            holder.ifPresent(h -> permanentConditions.add(h.value()));
         }
-    }
-
-    @Override
-    public @NotNull <T> LazyOptional<T> getCapability(@NotNull Capability<T> cap, @Nullable Direction side) {
-        return GTCapability.CAPABILITY_MEDICAL_CONDITION_TRACKER.orEmpty(cap, this.holder);
     }
 }

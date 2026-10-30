@@ -1,13 +1,13 @@
 package com.gregtechceu.gtceu.api.cover;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import com.gregtechceu.gtceu.api.mui.GTGuiScreen;
 import com.gregtechceu.gtceu.common.mui.GTGuiTextures;
 import com.gregtechceu.gtceu.common.mui.GTGuiTheme;
 import com.gregtechceu.gtceu.common.mui.GTMuiWidgets;
 
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 
 import brachy.modularui.api.IUIHolder;
 import brachy.modularui.factory.SidedPosGuiData;
@@ -39,7 +39,7 @@ public interface IMuiCover extends IUIHolder<SidedPosGuiData> {
     }
 
     @Override
-    @OnlyIn(Dist.CLIENT)
+    @Environment(EnvType.CLIENT)
     default ModularScreen createScreen(SidedPosGuiData data, ModularPanel<?> mainPanel) {
         return new GTGuiScreen(mainPanel);
     }

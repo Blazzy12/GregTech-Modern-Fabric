@@ -20,6 +20,7 @@
     }
   ],
   "textures": {
-    "steam_vent": "gtceu:block/overlay/machine/overlay_steam_vent"
+    "steam_vent": "gtceu:block/overlay/machine/overlay_steam_vent",
+    "particle": "gtceu:block/overlay/machine/overlay_steam_vent"
   }
 }

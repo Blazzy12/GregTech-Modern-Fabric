@@ -5,6 +5,7 @@ import com.gregtechceu.gtceu.api.data.chemical.material.Material;
 
 import lombok.Getter;
 import lombok.Setter;
+import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
@@ -33,14 +34,17 @@ public class MaterialProperties {
         return propertyMap.isEmpty();
     }
 
+    @Contract(pure = true)
     public <T extends IMaterialProperty> @Nullable T getProperty(PropertyKey<T> key) {
         return key.cast(propertyMap.get(key));
     }
 
+    @Contract(pure = true)
     public <T extends IMaterialProperty> T getPropertyOrThrow(PropertyKey<T> key) {
         return Objects.requireNonNull(getProperty(key), "Material missing %s property".formatted(key));
     }
 
+    @Contract(pure = true)
     public <T extends IMaterialProperty> boolean hasProperty(PropertyKey<T> key) {
         return propertyMap.containsKey(key);
     }
@@ -67,11 +71,16 @@ public class MaterialProperties {
         if (!hasProperty(key)) {
             propertyMap.put(key, key.constructDefault());
             propertyMap.remove(PropertyKey.EMPTY);
-            if (verify) verify();
         }
-        return Objects.requireNonNull(getProperty(key), "Property null after ensureSet");
+        return Objects.requireNonNull(getProperty(key), "Property %s is null after ensureSet".formatted(key));
     }
 
+    /**
+     * Ensures that the given property exists, creating it if absent.
+     *
+     * @param key The property key.
+     * @return The existing property, or the newly created property.
+     */
     public <T extends IMaterialProperty> T ensureSet(PropertyKey<T> key) {
         return ensureSet(key, false);
     }

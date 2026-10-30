@@ -2,11 +2,10 @@ package com.gregtechceu.gtceu.api.sync_system.data_transformers.collections;
 
 import com.gregtechceu.gtceu.api.sync_system.data_transformers.ValueTransformer;
 import com.gregtechceu.gtceu.api.sync_system.data_transformers.ValueTransformers;
-import com.gregtechceu.gtceu.utils.data.TagCompatibilityFixer;
 
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -51,16 +50,17 @@ public class ListTransformer<T> implements ValueTransformer<List<T>> {
         ListTag listTag = ValueTransformer.assertTagType(ListTag.class, tag, context);
         if (current != null) current.clear();
         else current = new ArrayList<>(listTag.size());
+        List<T> finalCurrent = current;
         for (var t : listTag) {
-            T val = getElemTransformer(context).deserializeNBT(TagCompatibilityFixer.stripLDLibPayloadWrapper(t),
+            T val = getElemTransformer(context).deserializeNBT(t,
                     getInnerElemContext(null, context));
-            if (val != null) current.add(val);
+            if (val != null) finalCurrent.add(val);
         }
         return current;
     }
 
     @Override
-    public void writeToPacket(FriendlyByteBuf buf, List<T> value, TransformerContext<List<T>> context) {
+    public void writeToPacket(RegistryFriendlyByteBuf buf, List<T> value, TransformerContext<List<T>> context) {
         buf.writeVarInt(value.size());
         for (T elem : value) {
             getElemTransformer(context).writeToPacket(buf, elem, getInnerElemContext(elem, context));
@@ -68,7 +68,7 @@ public class ListTransformer<T> implements ValueTransformer<List<T>> {
     }
 
     @Override
-    public @Nullable List<T> readFromPacket(FriendlyByteBuf buf, TransformerContext<List<T>> context) {
+    public @Nullable List<T> readFromPacket(RegistryFriendlyByteBuf buf, TransformerContext<List<T>> context) {
         var len = buf.readVarInt();
         var current = context.currentValue();
 

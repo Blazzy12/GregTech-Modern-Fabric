@@ -14,7 +14,7 @@ import com.gregtechceu.gtceu.config.ConfigHolder;
 import com.gregtechceu.gtceu.data.recipe.StoneTypeEntry;
 import com.gregtechceu.gtceu.data.recipe.VanillaRecipeHelper;
 
-import net.minecraft.data.recipes.FinishedRecipe;
+import net.minecraft.data.recipes.RecipeOutput;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
@@ -22,14 +22,13 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.function.Consumer;
 
 import static com.gregtechceu.gtceu.api.GTValues.*;
 import static com.gregtechceu.gtceu.common.data.GTRecipeTypes.ASSEMBLER_RECIPES;
 
 public class StoneMachineRecipes {
 
-    public static void init(Consumer<FinishedRecipe> provider) {
+    public static void init(RecipeOutput provider) {
         registerStoneRecipes(provider);
     }
 
@@ -265,58 +264,58 @@ public class StoneMachineRecipes {
                             .registerAllMaterialInfo()
                             .build(),
                     new StoneTypeEntry.Builder(mcModID, "cut_copper")
-                            .stone(Items.CUT_COPPER)
-                            .slab(Items.CUT_COPPER_SLAB)
-                            .stair(Items.CUT_COPPER_STAIRS)
+                            .stone(Items.CUT_COPPER.weathering().unaffected())
+                            .slab(Items.CUT_COPPER_SLAB.weathering().unaffected())
+                            .stair(Items.CUT_COPPER_STAIRS.weathering().unaffected())
                             .material(GTMaterials.Copper, 9 * GTValues.M / 4)
                             .registerAllMaterialInfo()
                             .build(),
                     new StoneTypeEntry.Builder(mcModID, "exposed_cut_copper")
-                            .stone(Items.EXPOSED_CUT_COPPER)
-                            .slab(Items.EXPOSED_CUT_COPPER_SLAB)
-                            .stair(Items.EXPOSED_CUT_COPPER_STAIRS)
+                            .stone(Items.CUT_COPPER.weathering().exposed())
+                            .slab(Items.CUT_COPPER_SLAB.weathering().exposed())
+                            .stair(Items.CUT_COPPER_STAIRS.weathering().exposed())
                             .material(GTMaterials.Copper, 9 * GTValues.M / 4)
                             .registerAllMaterialInfo()
                             .build(),
                     new StoneTypeEntry.Builder(mcModID, "oxidized_cut_copper")
-                            .stone(Items.OXIDIZED_CUT_COPPER)
-                            .slab(Items.OXIDIZED_CUT_COPPER_SLAB)
-                            .stair(Items.OXIDIZED_CUT_COPPER_STAIRS)
+                            .stone(Items.CUT_COPPER.weathering().oxidized())
+                            .slab(Items.CUT_COPPER_SLAB.weathering().oxidized())
+                            .stair(Items.CUT_COPPER_STAIRS.weathering().oxidized())
                             .material(GTMaterials.Copper, 9 * GTValues.M / 4)
                             .registerAllMaterialInfo()
                             .build(),
                     new StoneTypeEntry.Builder(mcModID, "weathered_cut_copper")
-                            .stone(Items.WEATHERED_CUT_COPPER)
-                            .slab(Items.WEATHERED_CUT_COPPER_SLAB)
-                            .stair(Items.WEATHERED_CUT_COPPER_STAIRS)
+                            .stone(Items.CUT_COPPER.weathering().weathered())
+                            .slab(Items.CUT_COPPER_SLAB.weathering().weathered())
+                            .stair(Items.CUT_COPPER_STAIRS.weathering().weathered())
                             .material(GTMaterials.Copper, 9 * GTValues.M / 4)
                             .registerAllMaterialInfo()
                             .build(),
                     new StoneTypeEntry.Builder(mcModID, "waxed_cut_copper")
-                            .stone(Items.WAXED_CUT_COPPER)
-                            .slab(Items.WAXED_CUT_COPPER_SLAB)
-                            .stair(Items.WAXED_CUT_COPPER_STAIRS)
+                            .stone(Items.CUT_COPPER.waxed().unaffected())
+                            .slab(Items.CUT_COPPER_SLAB.waxed().unaffected())
+                            .stair(Items.CUT_COPPER_STAIRS.waxed().unaffected())
                             .material(GTMaterials.Copper, 9 * GTValues.M / 4)
                             .registerAllMaterialInfo()
                             .build(),
                     new StoneTypeEntry.Builder(mcModID, "waxed_exposed_cut_copper")
-                            .stone(Items.WAXED_EXPOSED_CUT_COPPER)
-                            .slab(Items.WAXED_EXPOSED_CUT_COPPER_SLAB)
-                            .stair(Items.WAXED_EXPOSED_CUT_COPPER_STAIRS)
+                            .stone(Items.CUT_COPPER.waxed().exposed())
+                            .slab(Items.CUT_COPPER_SLAB.waxed().exposed())
+                            .stair(Items.CUT_COPPER_STAIRS.waxed().exposed())
                             .material(GTMaterials.Copper, 9 * GTValues.M / 4)
                             .registerAllMaterialInfo()
                             .build(),
                     new StoneTypeEntry.Builder(mcModID, "waxed_oxidized_cut_copper")
-                            .stone(Items.WAXED_OXIDIZED_CUT_COPPER)
-                            .slab(Items.WAXED_OXIDIZED_CUT_COPPER_SLAB)
-                            .stair(Items.WAXED_OXIDIZED_CUT_COPPER_STAIRS)
+                            .stone(Items.CUT_COPPER.waxed().oxidized())
+                            .slab(Items.CUT_COPPER_SLAB.waxed().oxidized())
+                            .stair(Items.CUT_COPPER_STAIRS.waxed().oxidized())
                             .material(GTMaterials.Copper, 9 * GTValues.M / 4)
                             .registerAllMaterialInfo()
                             .build(),
                     new StoneTypeEntry.Builder(mcModID, "waxed_weathered_cut_copper")
-                            .stone(Items.WAXED_WEATHERED_CUT_COPPER)
-                            .slab(Items.WAXED_WEATHERED_CUT_COPPER_SLAB)
-                            .stair(Items.WAXED_WEATHERED_CUT_COPPER_STAIRS)
+                            .stone(Items.CUT_COPPER.waxed().weathered())
+                            .slab(Items.CUT_COPPER_SLAB.waxed().weathered())
+                            .stair(Items.CUT_COPPER_STAIRS.waxed().weathered())
                             .material(GTMaterials.Copper, 9 * GTValues.M / 4)
                             .registerAllMaterialInfo()
                             .build(),
@@ -426,7 +425,7 @@ public class StoneMachineRecipes {
 
     public static void registerStoneMaterialInfo(@NotNull StoneTypeEntry entry) {
         if (entry.material != null && entry.stone != null) {
-            if (entry.addStoneOreDict) {
+            if (entry.addStoneTag) {
                 ItemMaterialData.registerMaterialEntry(entry.stone, TagPrefix.block, entry.material);
             }
             if (entry.addStoneMaterialInfo) {
@@ -436,7 +435,7 @@ public class StoneMachineRecipes {
         }
 
         if (entry.material != null && entry.polishedStone != null) {
-            if (entry.addStoneOreDict) {
+            if (entry.addStoneTag) {
                 ItemMaterialData.registerMaterialEntry(entry.polishedStone, TagPrefix.block, entry.material);
             }
             if (entry.addPolishedStoneMaterialInfo) {
@@ -446,7 +445,7 @@ public class StoneMachineRecipes {
         }
 
         if (entry.material != null && entry.smeltStone != null) {
-            if (entry.addStoneOreDict) {
+            if (entry.addStoneTag) {
                 ItemMaterialData.registerMaterialEntry(entry.smeltStone, TagPrefix.block, entry.material);
             }
             if (entry.addSmeltStoneMaterialInfo) {
@@ -456,7 +455,7 @@ public class StoneMachineRecipes {
         }
 
         if (entry.material != null && entry.chiselStone != null) {
-            if (entry.addStoneOreDict) {
+            if (entry.addStoneTag) {
                 ItemMaterialData.registerMaterialEntry(entry.chiselStone, TagPrefix.block, entry.material);
             }
             if (entry.addChiselStoneMaterialInfo) {
@@ -466,7 +465,7 @@ public class StoneMachineRecipes {
         }
 
         if (entry.material != null && entry.crackedStone != null) {
-            if (entry.addStoneOreDict) {
+            if (entry.addStoneTag) {
                 ItemMaterialData.registerMaterialEntry(entry.crackedStone, TagPrefix.block, entry.material);
             }
             if (entry.addCrackedStoneMaterialInfo) {
@@ -476,7 +475,7 @@ public class StoneMachineRecipes {
         }
 
         if (entry.material != null && entry.slab != null) {
-            if (entry.addSlabOreDict) {
+            if (entry.addSlabTag) {
                 ItemMaterialData.registerMaterialEntry(entry.slab, TagPrefix.slab, entry.material);
             }
             if (entry.addSlabMaterialInfo) {
@@ -486,7 +485,7 @@ public class StoneMachineRecipes {
         }
 
         if (entry.material != null && entry.stair != null) {
-            if (entry.addStairOreDict) {
+            if (entry.addStairTag) {
                 ItemMaterialData.registerMaterialEntry(entry.stair, TagPrefix.stairs, entry.material);
             }
             if (entry.addStairMaterialInfo) {
@@ -496,7 +495,7 @@ public class StoneMachineRecipes {
         }
 
         if (entry.material != null && entry.wall != null) {
-            if (entry.addWallOreDict) {
+            if (entry.addWallTag) {
                 ItemMaterialData.registerMaterialEntry(entry.wall, TagPrefix.fence, entry.material);
             }
             if (entry.addWallMaterialInfo) {
@@ -516,13 +515,13 @@ public class StoneMachineRecipes {
         }
     }
 
-    private static void registerStoneRecipes(Consumer<FinishedRecipe> provider) {
+    private static void registerStoneRecipes(RecipeOutput provider) {
         for (StoneTypeEntry entry : getDefaultEntries()) {
             registerStoneTypeRecipes(provider, entry);
         }
     }
 
-    public static void registerStoneTypeRecipes(Consumer<FinishedRecipe> provider, @NotNull StoneTypeEntry entry) {
+    public static void registerStoneTypeRecipes(RecipeOutput provider, @NotNull StoneTypeEntry entry) {
         if (entry.stone == null) {
             GTCEu.LOGGER.error("Could not find stone form of StoneTypeEntry, id: {}", entry.stoneName);
             return;

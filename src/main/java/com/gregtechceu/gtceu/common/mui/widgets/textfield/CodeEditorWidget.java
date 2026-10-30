@@ -1,10 +1,11 @@
 package com.gregtechceu.gtceu.common.mui.widgets.textfield;
 
-import com.gregtechceu.gtceu.common.mui.GTByteBufAdapters;
-import com.gregtechceu.gtceu.common.mui.GTGuiTextures;
-import com.gregtechceu.gtceu.utils.GTUtil;
+import net.minecraft.network.chat.FontDescription;
 
-import net.minecraft.Util;
+import com.gregtechceu.gtceu.common.mui.GTGuiTextures;
+
+import net.minecraft.util.Util;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
@@ -13,6 +14,7 @@ import brachy.modularui.api.value.IStringValue;
 import brachy.modularui.api.value.ISyncOrValue;
 import brachy.modularui.screen.viewport.ModularGuiContext;
 import brachy.modularui.theme.TextFieldTheme;
+import brachy.modularui.utils.serialization.network.ByteBufAdapters;
 import brachy.modularui.value.sync.GenericListSyncHandler;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -51,9 +53,9 @@ public class CodeEditorWidget<T> extends TextEditorWidget<CodeEditorWidget<T>> {
 
     public CodeEditorWidget(@Nullable LanguageDefinition<T> language) {
         this.language = language;
-        GenericListSyncHandler<Component> formattedTextSync = new GenericListSyncHandler<>(
-                this::getTextAsComponents, this::formattedText, GTByteBufAdapters.COMPONENT,
-                GTByteBufAdapters.COMPONENT, GTByteBufAdapters.COMPONENT, Component::copy);
+        GenericListSyncHandler<RegistryFriendlyByteBuf, Component> formattedTextSync = new GenericListSyncHandler<>(
+                this::getTextAsComponents, this::formattedText, ByteBufAdapters.COMPONENT,
+                ByteBufAdapters.COMPONENT, ByteBufAdapters.COMPONENT, Component::copy);
         setSyncOrValue(formattedTextSync);
     }
 
@@ -102,10 +104,10 @@ public class CodeEditorWidget<T> extends TextEditorWidget<CodeEditorWidget<T>> {
 
     @Override
     protected void drawText(ModularGuiContext context, TextFieldTheme widgetTheme) {
-        context.graphicsPose().pushPose();
-        context.graphicsPose().translate(-1, 3, 0);
+        context.graphicsPose().pushMatrix();
+        context.graphicsPose().translate(-1, 3);
         this.renderer.draw(context.getGraphics(), getTextAsComponents());
-        context.graphicsPose().popPose();
+        context.graphicsPose().popMatrix();
         getScrollArea().getScrollX().setScrollSize(Math.max(0, (int) (this.renderer.getLastWidth() + 0.5f)));
     }
 
@@ -157,18 +159,18 @@ public class CodeEditorWidget<T> extends TextEditorWidget<CodeEditorWidget<T>> {
                                 .toList();
                         if (lines.isEmpty()) return Optional.empty();
                         if (!output.isEmpty()) {
-                            GTUtil.getLast(output).append(lines.get(0));
+                            output.getLast().append(lines.getFirst());
                             for (int i = 1; i < lines.size(); i++) output.add(lines.get(i));
                         } else output.addAll(lines);
                         return Optional.empty();
                     }, Style.EMPTY);
             return output.stream()
-                    .map(c -> (Component) c.withStyle(style -> style.withFont(GTGuiTextures.MONOCRAFT_FONT))).toList();
+                    .map(c -> (Component) c.withStyle(style -> style.withFont(new FontDescription.Resource(GTGuiTextures.MONOCRAFT_FONT)))).toList();
         }
     }
 
     public interface ITokenFormatter<T> {
 
-        Component apply(String s, @Nullable T context);
+        Component apply(String s, T context);
     }
 }

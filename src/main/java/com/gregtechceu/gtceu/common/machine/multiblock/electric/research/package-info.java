@@ -1,4 +1,9 @@
-@NotNullByDefault
+@ParametersAreNonnullByDefault
+@MethodsReturnNonnullByDefault
+@FieldsAreNonnullByDefault
 package com.gregtechceu.gtceu.common.machine.multiblock.electric.research;
 
-import org.jetbrains.annotations.NotNullByDefault;
+import com.gregtechceu.gtceu.compat.FieldsAreNonnullByDefault;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
+
+import javax.annotation.ParametersAreNonnullByDefault;

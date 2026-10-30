@@ -4,17 +4,18 @@ import com.gregtechceu.gtceu.api.capability.GTCapabilityHelper;
 import com.gregtechceu.gtceu.api.capability.IElectricItem;
 import com.gregtechceu.gtceu.api.item.IComponentItem;
 import com.gregtechceu.gtceu.api.item.component.*;
+import com.gregtechceu.gtceu.api.item.datacomponents.GTArmor;
+import com.gregtechceu.gtceu.common.data.item.GTDataComponents;
 import com.gregtechceu.gtceu.data.recipe.CustomTags;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.*;
-import net.minecraft.world.level.Level;
 
 import lombok.experimental.Accessors;
 import org.jetbrains.annotations.Nullable;
@@ -25,18 +26,20 @@ import java.util.List;
 @Accessors(chain = true)
 public class ModularArmorItem extends ArmorComponentItem implements IComponentItem {
 
-    public static final String NETHERITE_PLATED_TAG = "netherite_plated";
-
-    public ModularArmorItem(ArmorMaterial material, Type type, Properties properties) {
+    public ModularArmorItem(net.minecraft.world.item.equipment.ArmorMaterial material, net.minecraft.world.item.equipment.ArmorType type, Properties properties) {
         super(material, type, properties);
     }
 
     @Override
-    public void inventoryTick(ItemStack stack, Level level, Entity entity, int slotId, boolean isSelected) {
-        super.inventoryTick(stack, level, entity, slotId, isSelected);
-        if (level.isClientSide || getEquipmentSlot() != EquipmentSlot.CHEST ||
+    public void inventoryTick(ItemStack stack, net.minecraft.server.level.ServerLevel level, Entity entity,
+                              @org.jetbrains.annotations.Nullable net.minecraft.world.entity.EquipmentSlot slot) {
+        // 26.x only ticks on the server and passes the equipment slot instead of an inventory index
+        int slotId = slot == null ? -1 : slot.getIndex();
+        boolean isSelected = slot == net.minecraft.world.entity.EquipmentSlot.MAINHAND;
+        super.inventoryTick(stack, level, entity, slot);
+        if (level.isClientSide() || getEquipmentSlot() != EquipmentSlot.CHEST ||
                 !(entity instanceof Player player) || player.getItemBySlot(EquipmentSlot.CHEST) != stack ||
-                !(stack.getTag() != null && stack.getTag().getBoolean("DischargeMode")))
+                !stack.getOrDefault(GTDataComponents.ARMOR_DATA, GTArmor.EMPTY).canShare())
             return;
         IElectricItem battery = GTCapabilityHelper.getElectricItem(stack);
         if (battery != null) ArmorUtils.chargeCarriedItems(player, stack, battery, battery.getTransferLimit());
@@ -76,22 +79,21 @@ public class ModularArmorItem extends ArmorComponentItem implements IComponentIt
     @Override
     public Component getName(ItemStack stack) {
         Component name = super.getName(stack);
-        if (stack.hasTag() && stack.getOrCreateTag().contains(NETHERITE_PLATED_TAG)) {
-            return Component.translatable("item.gtceu.netherite_plated", name);
-        }
-        return name;
+        return stack.has(GTDataComponents.NETHERITE_PLATED) ?
+                Component.translatable("item.gtceu.netherite_plated", name) : name;
     }
 
     @Override
-    public @Nullable String getArmorTexture(ItemStack stack, Entity entity, EquipmentSlot slot, String type) {
+    public @Nullable Identifier getArmorTexture(ItemStack stack, Entity entity, EquipmentSlot slot,
+                                                      com.gregtechceu.gtceu.api.item.armor.ArmorLayer layer, boolean innerModel) {
         var modular = GTCapabilityHelper.getModularItem(stack);
-        if (modular == null) return super.getArmorTexture(stack, entity, slot, type);
+        if (modular == null) return super.getArmorTexture(stack, entity, slot, layer, innerModel);
 
         for (var module : modular.getAllModuleInstances()) {
-            ResourceLocation texture = module.getModule().getArmorTexture(module, entity, slot, type);
-            if (texture != null) return texture.toString();
+            Identifier texture = module.getModule().getArmorTexture(module, entity, slot, layer, innerModel);
+            if (texture != null) return texture;
         }
-        return super.getArmorTexture(stack, entity, slot, type);
+        return super.getArmorTexture(stack, entity, slot, layer, innerModel);
     }
 
     @Override

@@ -156,7 +156,7 @@ public class ConfigHolder {
         @Configurable.Comment({
                 "Whether tools should have enchants or not. Like the flint sword getting fire aspect.",
                 "Default: false" })
-        @Configurable.UpdateRestriction(UpdateRestrictions.MAIN_MENU)
+        @Configurable.UpdateRestriction(UpdateRestrictions.GAME_RESTART)
         public boolean enchantedTools = false;
 
         @Configurable
@@ -401,13 +401,11 @@ public class ConfigHolder {
         @Configurable
         @Configurable.Comment({
                 "Whether to increase number of rolls for dungeon chests. Increases dungeon loot drastically.",
-                "Default: true", "WARNING: Currently unimplemented." })
-        @Configurable.UpdateRestriction(UpdateRestrictions.MAIN_MENU)
+                "Default: true" })
         public boolean increaseDungeonLoot = true;
         @Configurable
         @Configurable.Comment({ "Allow GregTech to add additional GregTech Items as loot in various structures.",
                 "Default: true" })
-        @Configurable.UpdateRestriction(UpdateRestrictions.MAIN_MENU)
         public boolean addLoot = true;
 
         @Configurable
@@ -608,9 +606,9 @@ public class ConfigHolder {
         public boolean onlyOwnerBreak = false;
         @Configurable
         @Configurable.Comment({ "Minimum op level to bypass the ownership checks", "Default: 2" })
-        @Configurable.Range(min = Commands.LEVEL_ALL, max = Commands.LEVEL_OWNERS)
+        @Configurable.Range(min = 0, max = 4)
         @Configurable.Synchronized
-        public int ownerOPBypass = Commands.LEVEL_GAMEMASTERS;
+        public int ownerOPBypass = 2; // 26.x Commands.LEVEL_* are permission checks, not numbers
 
         /**
          * <strong>Addons mods should not reference this config directly.</strong>
@@ -794,6 +792,11 @@ public class ConfigHolder {
     public static class GameplayConfigs {
 
         @Configurable
+        @Configurable.Comment({ "Allow Fortune to multiply GregTech ore drops after base yields and hammer conversion.",
+                "Does not affect Silk Touch drops. Default: false" })
+        public boolean enableOreFortune = false;
+
+        @Configurable
         @Configurable.Comment({ "Enable hazardous materials", "Default: true" })
         @Configurable.Synchronized
         public boolean hazardsEnabled = true;
@@ -831,6 +834,7 @@ public class ConfigHolder {
                 "Disable if experiencing performance issues.", "Default: true" })
         public boolean machinesHaveBERsByDefault = true;
         @Configurable
+        @Configurable.Comment({ "Whether april fools \"features\" should always be enabled.", "Default: false" })
         public boolean aprilFoolsMode = false;
         @Configurable
         @Configurable.Comment({ "Whether or not sounds should be played when using tools outside of crafting.",
@@ -858,7 +862,7 @@ public class ConfigHolder {
         @Configurable
         public ArmorHud armorHud = new ArmorHud();
         @Configurable
-        public Renderers renderer = new Renderers();
+        public RendererOptions renderer = new RendererOptions();
         @Configurable
         @Configurable.Comment("Config options for bloom and other post-processing effects")
         public BloomOptions bloom = new BloomOptions();
@@ -893,7 +897,7 @@ public class ConfigHolder {
 
             @Configurable
             @Configurable.Comment({ "Bloom Algorithm",
-                    "Requires reloading all chunks ",
+                    "Requires reloading all chunks",
                     "UNITY - Unity-like Bloom (rescale)",
                     "UNREAL - Unreal-like Bloom (gaussian blur)",
                     "DISABLED - No bloom",
@@ -939,12 +943,12 @@ public class ConfigHolder {
             public float strength = 1.5f;
 
             @Configurable
-            @Configurable.Comment({ "Blur Step (bloom range)", "Default: 1" })
+            @Configurable.Comment({ "Blur Sample Step (bloom range)", "Default: 1.0" })
             @Configurable.DecimalRange(min = 0)
-            public float step = 1.0f;
+            public float blurSampleStep = 1.0f;
         }
 
-        public static class Renderers {
+        public static class RendererOptions {
 
             @Configurable
             @Configurable.Comment({ "Render fluids in multiblocks that support them?", "Default: true" })
@@ -976,6 +980,10 @@ public class ConfigHolder {
             @Configurable.StringPattern(value = "#[0-9a-fA-F]{1,6}")
             @Configurable.Gui.ColorValue
             public String assemblyLineLaser = "#1FA1FC";
+
+            public int getAssemblyLineLaserColor() {
+                return Long.decode(assemblyLineLaser).intValue() | 0xff000000;
+            }
         }
 
         public static class TankItemFluidPreview {

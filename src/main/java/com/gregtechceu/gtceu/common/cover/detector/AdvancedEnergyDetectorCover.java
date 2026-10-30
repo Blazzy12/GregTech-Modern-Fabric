@@ -10,7 +10,7 @@ import com.gregtechceu.gtceu.common.mui.GTGuiTextures;
 import com.gregtechceu.gtceu.common.mui.GTMuiWidgets;
 import com.gregtechceu.gtceu.utils.GTMath;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
@@ -185,9 +185,9 @@ public class AdvancedEnergyDetectorCover extends EnergyDetectorCover implements 
 
     @Override
     public void pasteConfig(ServerPlayer player, CompoundTag tag) {
-        setMinValue(tag.getLong("min"));
-        setMaxValue(tag.getLong("max"));
-        setUsePercent(tag.getBoolean("percent"));
+        setMinValue(tag.getLongOr("min", 0L));
+        setMaxValue(tag.getLongOr("max", 0L));
+        setUsePercent(tag.getBooleanOr("percent", false));
         super.pasteConfig(player, tag);
     }
 }

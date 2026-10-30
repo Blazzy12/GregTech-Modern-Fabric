@@ -15,8 +15,8 @@ import com.gregtechceu.gtceu.common.blockentity.ItemPipeBlockEntity;
 
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraftforge.items.IItemHandlerModifiable;
-import net.minecraftforge.items.wrapper.EmptyHandler;
+import com.gregtechceu.gtceu.compat.items.IItemHandlerModifiable;
+import com.gregtechceu.gtceu.compat.items.wrapper.EmptyItemHandler;
 
 import lombok.Getter;
 import org.jetbrains.annotations.Nullable;
@@ -70,10 +70,10 @@ public class PipeCoverContainer implements ICoverable, ISyncManaged {
     }
 
     @Override
-    public IItemHandlerModifiable getItemHandlerCap(Direction side, boolean useCoverCapability) {
+    public IItemHandlerModifiable getItemHandlerCap(@Nullable Direction side, boolean useCoverCapability) {
         if (pipeTile instanceof ItemPipeBlockEntity itemPipe) {
             return getLevel() instanceof ServerLevel ? itemPipe.getHandler(side, useCoverCapability) :
-                    (IItemHandlerModifiable) EmptyHandler.INSTANCE;
+                    (IItemHandlerModifiable) EmptyItemHandler.INSTANCE;
         } else {
             return null;
         }

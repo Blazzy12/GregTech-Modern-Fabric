@@ -1,7 +1,6 @@
 package com.gregtechceu.gtceu.common.blockentity;
 
 import com.gregtechceu.gtceu.api.blockentity.PipeBlockEntity;
-import com.gregtechceu.gtceu.api.capability.GTCapability;
 import com.gregtechceu.gtceu.api.capability.GTCapabilityHelper;
 import com.gregtechceu.gtceu.api.capability.IHazardParticleContainer;
 import com.gregtechceu.gtceu.api.data.medicalcondition.MedicalCondition;
@@ -16,12 +15,8 @@ import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.common.util.LazyOptional;
 
 import lombok.Getter;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.lang.ref.WeakReference;
 import java.util.EnumMap;
@@ -40,34 +35,14 @@ public class DuctPipeBlockEntity extends PipeBlockEntity<DuctPipeType, DuctPipeP
         super(type, pos, blockState);
     }
 
-    public static void onBlockEntityRegister(BlockEntityType<DuctPipeBlockEntity> ductBlockEntityBlockEntityType) {}
-
-    @Override
-    public @NotNull <T> LazyOptional<T> getCapability(@NotNull Capability<T> cap, @Nullable Direction side) {
-        if (cap == GTCapability.CAPABILITY_HAZARD_CONTAINER) {
-            if (getLevel().isClientSide())
-                return GTCapability.CAPABILITY_HAZARD_CONTAINER.orEmpty(cap, LazyOptional.of(() -> clientCapability));
-
-            if (handlers.isEmpty()) {
-                initHandlers();
-            }
-            checkNetwork();
-
-            if (defaultHandler == null) {
-                // if the default handler is null, return LazyOptional.empty because that means the pipenet is invalid
-                return LazyOptional.empty();
-            }
-            return GTCapability.CAPABILITY_HAZARD_CONTAINER.orEmpty(cap,
-                    LazyOptional.of(() -> handlers.getOrDefault(side, defaultHandler)));
-        } else if (cap == GTCapability.CAPABILITY_COVERABLE) {
-            return GTCapability.CAPABILITY_COVERABLE.orEmpty(cap, LazyOptional.of(this::getCoverContainer));
-        }
-        return super.getCapability(cap, side);
-    }
-
     @Override
     public boolean canHaveBlockedFaces() {
         return false;
+    }
+
+    public void ensureHandlersInitialized() {
+        if (getHandlers().isEmpty())
+            initHandlers();
     }
 
     public void initHandlers() {
@@ -92,7 +67,7 @@ public class DuctPipeBlockEntity extends PipeBlockEntity<DuctPipeType, DuctPipeP
     }
 
     public DuctPipeNet getDuctPipeNet() {
-        if (level == null || level.isClientSide) {
+        if (level == null || level.isClientSide()) {
             return null;
         }
         DuctPipeNet currentPipeNet = this.currentPipeNet.get();

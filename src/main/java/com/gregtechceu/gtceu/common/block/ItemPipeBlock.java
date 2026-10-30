@@ -2,6 +2,7 @@ package com.gregtechceu.gtceu.common.block;
 
 import com.gregtechceu.gtceu.api.block.MaterialPipeBlock;
 import com.gregtechceu.gtceu.api.blockentity.PipeBlockEntity;
+import com.gregtechceu.gtceu.api.capability.GTCapability;
 import com.gregtechceu.gtceu.api.data.chemical.material.Material;
 import com.gregtechceu.gtceu.api.data.chemical.material.properties.ItemPipeProperties;
 import com.gregtechceu.gtceu.api.data.chemical.material.properties.PropertyKey;
@@ -13,26 +14,21 @@ import com.gregtechceu.gtceu.common.data.GTBlockEntities;
 import com.gregtechceu.gtceu.common.pipelike.item.ItemPipeType;
 import com.gregtechceu.gtceu.common.pipelike.item.LevelItemPipeNet;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.level.BlockGetter;
-import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntityType;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-
-import org.jetbrains.annotations.Nullable;
+import com.gregtechceu.gtceu.compat.capabilities.Capabilities;
+import com.gregtechceu.gtceu.compat.capabilities.RegisterCapabilitiesEvent;
 
 import java.util.List;
 
-import javax.annotation.ParametersAreNonnullByDefault;
-
-@ParametersAreNonnullByDefault
-@MethodsReturnNonnullByDefault
-public class ItemPipeBlock extends MaterialPipeBlock<ItemPipeType, ItemPipeProperties, LevelItemPipeNet> {
+public class ItemPipeBlock extends MaterialPipeBlock<ItemPipeType, ItemPipeProperties, LevelItemPipeNet> implements com.gregtechceu.gtceu.core.fabric.IBlockTooltip {
 
     public ItemPipeBlock(Properties properties, ItemPipeType itemPipeType, Material material) {
         super(properties, itemPipeType, material);
@@ -41,6 +37,26 @@ public class ItemPipeBlock extends MaterialPipeBlock<ItemPipeType, ItemPipePrope
     @Override
     protected ItemPipeProperties createProperties(ItemPipeType itemPipeType, Material material) {
         return itemPipeType.modifyProperties(material.getProperty(PropertyKey.ITEM_PIPE));
+    }
+
+    public void attachCapabilities(RegisterCapabilitiesEvent event) {
+        event.registerBlock(Capabilities.ItemHandler.BLOCK, (level, pos, state, blockEntity, side) -> {
+            if (level.isClientSide()) return null;
+            if (blockEntity instanceof ItemPipeBlockEntity itemPipeBlockEntity) {
+                if (side != null && itemPipeBlockEntity.isConnected(side)) {
+                    itemPipeBlockEntity.ensureHandlersInitialized();
+                    itemPipeBlockEntity.checkNetwork();
+                    return itemPipeBlockEntity.getHandler(side, true);
+                }
+            }
+            return null;
+        }, this);
+        event.registerBlock(GTCapability.CAPABILITY_COVERABLE, (level, pos, state, blockEntity, side) -> {
+            if (blockEntity instanceof PipeBlockEntity<?, ?> fluidPipeBlockEntity) {
+                return fluidPipeBlockEntity.getCoverContainer();
+            }
+            return null;
+        }, this);
     }
 
     @Override
@@ -63,10 +79,7 @@ public class ItemPipeBlock extends MaterialPipeBlock<ItemPipeType, ItemPipePrope
         return GTBlockEntities.ITEM_PIPE.get();
     }
 
-    @Override
-    public void appendHoverText(ItemStack stack, @Nullable BlockGetter level, List<Component> tooltip,
-                                TooltipFlag flag) {
-        super.appendHoverText(stack, level, tooltip, flag);
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
         ItemPipeProperties properties = createProperties(defaultBlockState(), stack);
 
         if (properties.getTransferRate() % 1 != 0) {
@@ -88,8 +101,7 @@ public class ItemPipeBlock extends MaterialPipeBlock<ItemPipeType, ItemPipePrope
 
     @Override
     public boolean canPipeConnectToBlock(IPipeNode<ItemPipeType, ItemPipeProperties> selfTile, Direction side,
-                                         @Nullable BlockEntity tile) {
-        return tile != null &&
-                tile.getCapability(ForgeCapabilities.ITEM_HANDLER, side.getOpposite()).isPresent();
+                                         Level level, BlockPos pos) {
+        return level.getCapability(Capabilities.ItemHandler.BLOCK, pos, side.getOpposite()) != null;
     }
 }

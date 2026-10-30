@@ -1,102 +1,69 @@
 package com.gregtechceu.gtceu.common.item.tool.behavior;
 
-import com.gregtechceu.gtceu.api.item.tool.aoe.AoESymmetrical;
-import com.gregtechceu.gtceu.api.item.tool.behavior.IToolUIBehavior;
+import com.mojang.serialization.MapCodec;
 
-import net.minecraft.nbt.CompoundTag;
+import com.gregtechceu.gtceu.api.item.datacomponents.AoESymmetrical;
+import com.gregtechceu.gtceu.api.item.tool.behavior.IToolUIBehavior;
+import com.gregtechceu.gtceu.api.item.tool.behavior.ToolBehaviorType;
+import com.gregtechceu.gtceu.common.data.GTToolBehaviors;
+import com.gregtechceu.gtceu.common.data.item.GTDataComponents;
+
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 
 import brachy.modularui.api.drawable.Text;
 import brachy.modularui.drawable.GuiTextures;
+import brachy.modularui.drawable.Icon;
 import brachy.modularui.factory.PlayerInventoryGuiData;
 import brachy.modularui.screen.ModularPanel;
 import brachy.modularui.screen.UISettings;
 import brachy.modularui.value.sync.InteractionSyncHandler;
 import brachy.modularui.value.sync.PanelSyncManager;
 import brachy.modularui.widgets.ButtonWidget;
-import brachy.modularui.widgets.TextWidget;
 import brachy.modularui.widgets.layout.Flow;
+import com.mojang.serialization.Codec;
+import io.netty.buffer.ByteBuf;
 import org.jetbrains.annotations.NotNull;
 
-import static com.gregtechceu.gtceu.api.item.tool.ToolHelper.getBehaviorsTag;
-import static com.gregtechceu.gtceu.api.item.tool.ToolHelper.getMaxAoEDefinition;
+import static com.gregtechceu.gtceu.api.item.tool.ToolHelper.getAoEStateMutable;
 
-public class AOEConfigUIBehavior implements IToolUIBehavior {
+public class AOEConfigUIBehavior implements IToolUIBehavior<AOEConfigUIBehavior> {
 
     public static final AOEConfigUIBehavior INSTANCE = new AOEConfigUIBehavior();
-
-    // @Override
-    // public boolean openUI(@NotNull Player player, @NotNull InteractionHand hand) {
-    // return player.isShiftKeyDown() && !getMaxAoEDefinition(player.getItemInHand(hand)).isZero();
-    // }
-    //
-    // @Override
-    // public ModularUI createUI(Player player, HeldItemUIFactory.HeldItemHolder holder) {
-    // var tag = getBehaviorsTag(holder.getHeld());
-    // var defaultDefinition = getMaxAoEDefinition(holder.getHeld());
-    // return new ModularUI(120, 80, holder, player).background(GuiTextures.BACKGROUND)
-    // .widget(new LabelWidget(6, 10, "item.gtceu.tool.aoe.columns"))
-    // .widget(new LabelWidget(49, 10, "item.gtceu.tool.aoe.rows"))
-    // .widget(new LabelWidget(79, 10, "item.gtceu.tool.aoe.layers"))
-    // .widget(new ButtonWidget(15, 24, 20, 20, new TextTexture("+"), (data) -> {
-    // AoESymmetrical.increaseColumn(tag, defaultDefinition);
-    // holder.markAsDirty();
-    // }))
-    // .widget(new ButtonWidget(15, 44, 20, 20, new TextTexture("-"), (data) -> {
-    // AoESymmetrical.decreaseColumn(tag, defaultDefinition);
-    // holder.markAsDirty();
-    // }))
-    // .widget(new ButtonWidget(50, 24, 20, 20, new TextTexture("+"), (data) -> {
-    // AoESymmetrical.increaseRow(tag, defaultDefinition);
-    // holder.markAsDirty();
-    // }))
-    // .widget(new ButtonWidget(50, 44, 20, 20, new TextTexture("-"), (data) -> {
-    // AoESymmetrical.decreaseRow(tag, defaultDefinition);
-    // holder.markAsDirty();
-    // }))
-    // .widget(new ButtonWidget(85, 24, 20, 20, new TextTexture("+"), (data) -> {
-    // AoESymmetrical.increaseLayer(tag, defaultDefinition);
-    // holder.markAsDirty();
-    // }))
-    // .widget(new ButtonWidget(85, 44, 20, 20, new TextTexture("-"), (data) -> {
-    // AoESymmetrical.decreaseLayer(tag, defaultDefinition);
-    // holder.markAsDirty();
-    // }))
-    // .widget(new LabelWidget(23, 65,
-    // () -> Integer.toString(1 +
-    // 2 * AoESymmetrical.getColumn(getBehaviorsTag(holder.getHeld()), defaultDefinition))))
-    // .widget(new LabelWidget(58, 65,
-    // () -> Integer.toString(
-    // 1 + 2 * AoESymmetrical.getRow(getBehaviorsTag(holder.getHeld()), defaultDefinition))))
-    // .widget(new LabelWidget(93, 65, () -> Integer
-    // .toString(1 + AoESymmetrical.getLayer(getBehaviorsTag(holder.getHeld()), defaultDefinition))));
-    // }
+    public static final Codec<AOEConfigUIBehavior> CODEC = MapCodec.unitCodec(INSTANCE);
+    public static final StreamCodec<ByteBuf, AOEConfigUIBehavior> STREAM_CODEC = StreamCodec.unit(INSTANCE);
 
     @Override
     public boolean shouldOpenUI(@NotNull Player player, @NotNull InteractionHand hand) {
-        return player.isShiftKeyDown() && !getMaxAoEDefinition(player.getItemInHand(hand)).isZero();
+        return player.isShiftKeyDown() &&
+                !player.getItemInHand(hand).getOrDefault(GTDataComponents.MAX_AOE, AoESymmetrical.ZERO).isZero();
     }
 
     @Override
     public ModularPanel<?> buildUI(PlayerInventoryGuiData<?> data, PanelSyncManager syncManager, UISettings settings) {
         ItemStack held = data.getUsedItemStack();
-        CompoundTag tag = getBehaviorsTag(held);
-        AoESymmetrical defaultDefinition = getMaxAoEDefinition(held);
+        final AoESymmetrical.Mutable definition = getAoEStateMutable(held);
+
+        // spotless:off
         InteractionSyncHandler minusCols = new InteractionSyncHandler();
-        minusCols.setOnMousePressed(data1 -> AoESymmetrical.decreaseColumn(tag, defaultDefinition));
+        minusCols.setOnMousePressed(data1 -> held.set(GTDataComponents.AOE, definition.decreaseColumn().toImmutable()));
         InteractionSyncHandler plusCols = new InteractionSyncHandler();
-        plusCols.setOnMousePressed(data1 -> AoESymmetrical.increaseColumn(tag, defaultDefinition));
+        plusCols.setOnMousePressed(data1 -> held.set(GTDataComponents.AOE, definition.increaseColumn().toImmutable()));
         InteractionSyncHandler minusRows = new InteractionSyncHandler();
-        minusRows.setOnMousePressed(data1 -> AoESymmetrical.decreaseRow(tag, defaultDefinition));
+        minusRows.setOnMousePressed(data1 -> held.set(GTDataComponents.AOE, definition.decreaseRow().toImmutable()));
         InteractionSyncHandler plusRows = new InteractionSyncHandler();
-        plusRows.setOnMousePressed(data1 -> AoESymmetrical.increaseRow(tag, defaultDefinition));
+        plusRows.setOnMousePressed(data1 -> held.set(GTDataComponents.AOE, definition.increaseRow().toImmutable()));
         InteractionSyncHandler minusLayers = new InteractionSyncHandler();
-        minusLayers.setOnMousePressed(data1 -> AoESymmetrical.decreaseLayer(tag, defaultDefinition));
+        minusLayers.setOnMousePressed(data1 -> held.set(GTDataComponents.AOE, definition.decreaseLayer().toImmutable()));
         InteractionSyncHandler plusLayers = new InteractionSyncHandler();
-        plusLayers.setOnMousePressed(data1 -> AoESymmetrical.increaseLayer(tag, defaultDefinition));
+        plusLayers.setOnMousePressed(data1 -> held.set(GTDataComponents.AOE, definition.increaseLayer().toImmutable()));
+
+        final Icon addOverlay = GuiTextures.ADD.asIcon().size(10);
+        final Icon removeOverlay = GuiTextures.REMOVE.asIcon().size(10);
+
         return new ModularPanel<>("aoe_config")
                 .coverChildren()
                 .child(Flow.row()
@@ -118,57 +85,51 @@ public class AOEConfigUIBehavior implements IToolUIBehavior {
                                         .childPadding(2)
                                         .child(new ButtonWidget<>()
                                                 .size(12)
-                                                .background(GuiTextures.MC_BUTTON,
-                                                        GuiTextures.REMOVE.asIcon().size(10))
-                                                .hoverBackground(GuiTextures.MC_BUTTON_HOVERED,
-                                                        GuiTextures.REMOVE.asIcon().size(10))
+                                                .background(GuiTextures.MC_BUTTON, removeOverlay)
+                                                .hoverBackground(GuiTextures.MC_BUTTON_HOVERED, removeOverlay)
                                                 .syncHandler(minusCols))
-                                        .child(new TextWidget<>(Text.dynamic(() -> Component.literal(Integer.toString(
-                                                2 * AoESymmetrical.getColumn(tag, defaultDefinition) + 1)))))
+                                        .child(Text.dynamic(() -> Component.literal(Integer.toString(2 * definition.column() + 1)))
+                                                .asWidget())
                                         .child(new ButtonWidget<>()
                                                 .size(12)
-                                                .background(GuiTextures.MC_BUTTON,
-                                                        GuiTextures.ADD.asIcon().size(10))
-                                                .hoverBackground(GuiTextures.MC_BUTTON_HOVERED,
-                                                        GuiTextures.ADD.asIcon().size(10))
+                                                .background(GuiTextures.MC_BUTTON, addOverlay)
+                                                .hoverBackground(GuiTextures.MC_BUTTON_HOVERED, addOverlay)
                                                 .syncHandler(plusCols)))
                                 .child(Flow.row()
                                         .coverChildren()
                                         .childPadding(2)
                                         .child(new ButtonWidget<>()
                                                 .size(12)
-                                                .background(GuiTextures.MC_BUTTON,
-                                                        GuiTextures.REMOVE.asIcon().size(10))
-                                                .hoverBackground(GuiTextures.MC_BUTTON_HOVERED,
-                                                        GuiTextures.REMOVE.asIcon().size(10))
+                                                .background(GuiTextures.MC_BUTTON, removeOverlay)
+                                                .hoverBackground(GuiTextures.MC_BUTTON_HOVERED, removeOverlay)
                                                 .syncHandler(minusRows))
-                                        .child(new TextWidget<>(Text.dynamic(() -> Component.literal(Integer.toString(
-                                                2 * AoESymmetrical.getRow(tag, defaultDefinition) + 1)))))
+                                        .child(Text.dynamic(() -> Component.literal(Integer.toString(2 * definition.row + 1)))
+                                                .asWidget())
                                         .child(new ButtonWidget<>()
                                                 .size(12)
-                                                .background(GuiTextures.MC_BUTTON,
-                                                        GuiTextures.ADD.asIcon().size(10))
-                                                .hoverBackground(GuiTextures.MC_BUTTON_HOVERED,
-                                                        GuiTextures.ADD.asIcon().size(10))
+                                                .background(GuiTextures.MC_BUTTON, addOverlay)
+                                                .hoverBackground(GuiTextures.MC_BUTTON_HOVERED, addOverlay)
                                                 .syncHandler(plusRows)))
                                 .child(Flow.row()
                                         .coverChildren()
                                         .childPadding(2)
                                         .child(new ButtonWidget<>()
                                                 .size(12)
-                                                .background(GuiTextures.MC_BUTTON,
-                                                        GuiTextures.REMOVE.asIcon().size(10))
-                                                .hoverBackground(GuiTextures.MC_BUTTON_HOVERED,
-                                                        GuiTextures.REMOVE.asIcon().size(10))
+                                                .background(GuiTextures.MC_BUTTON, removeOverlay)
+                                                .hoverBackground(GuiTextures.MC_BUTTON_HOVERED, removeOverlay)
                                                 .syncHandler(minusLayers))
-                                        .child(new TextWidget<>(Text.dynamic(() -> Component.literal(Integer.toString(
-                                                AoESymmetrical.getLayer(tag, defaultDefinition) + 1)))))
+                                        .child(Text.dynamic(() -> Component.literal(Integer.toString(definition.layer + 1)))
+                                                .asWidget())
                                         .child(new ButtonWidget<>()
                                                 .size(12)
-                                                .background(GuiTextures.MC_BUTTON,
-                                                        GuiTextures.ADD.asIcon().size(10))
-                                                .hoverBackground(GuiTextures.MC_BUTTON_HOVERED,
-                                                        GuiTextures.ADD.asIcon().size(10))
+                                                .background(GuiTextures.MC_BUTTON, addOverlay)
+                                                .hoverBackground(GuiTextures.MC_BUTTON_HOVERED, addOverlay)
                                                 .syncHandler(plusLayers)))));
+        // spotless:on
+    }
+
+    @Override
+    public ToolBehaviorType<AOEConfigUIBehavior> getType() {
+        return GTToolBehaviors.AOE_CONFIG_UI.value();
     }
 }

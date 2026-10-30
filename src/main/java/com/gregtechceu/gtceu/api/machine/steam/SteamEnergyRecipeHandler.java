@@ -7,11 +7,11 @@ import com.gregtechceu.gtceu.api.capability.recipe.RecipeCapability;
 import com.gregtechceu.gtceu.api.machine.trait.notifiable.NotifiableFluidTank;
 import com.gregtechceu.gtceu.api.recipe.GTRecipe;
 import com.gregtechceu.gtceu.api.recipe.ingredient.EnergyStack;
-import com.gregtechceu.gtceu.api.recipe.ingredient.FluidIngredient;
 import com.gregtechceu.gtceu.common.data.GTMaterials;
 import com.gregtechceu.gtceu.utils.GTMath;
 
-import net.minecraftforge.fluids.FluidStack;
+import com.gregtechceu.gtceu.compat.fluids.FluidStack;
+import com.gregtechceu.gtceu.compat.fluids.crafting.SizedFluidIngredient;
 
 import lombok.Getter;
 
@@ -42,15 +42,15 @@ public class SteamEnergyRecipeHandler implements IRecipeHandler<EnergyStack> {
             long totalEU = stack.getTotalEU();
             int totalSteam = GTMath.saturatedCast((long) Math.ceil(totalEU * conversionRate));
             if (totalSteam > 0) {
-                var steam = io == IO.IN ? FluidIngredient.of(GTMaterials.Steam.getFluidTag(), totalSteam) :
-                        FluidIngredient.of(GTMaterials.Steam.getFluid(totalSteam));
-                var list = new ArrayList<FluidIngredient>();
+                var steam = io == IO.IN ? SizedFluidIngredient.of(GTMaterials.Steam.getFluidTag(), totalSteam) :
+                        SizedFluidIngredient.of(GTMaterials.Steam.getFluid(totalSteam));
+                List<SizedFluidIngredient> list = new ArrayList<>();
                 list.add(steam);
-                var leftSteam = steamTank.handleRecipeInner(io, recipe, list, simulate);
+                List<SizedFluidIngredient> leftSteam = steamTank.handleRecipeInner(io, recipe, list, simulate);
                 if (leftSteam.isEmpty()) {
                     it.remove();
                 } else {
-                    totalEU = (long) (leftSteam.get(0).getAmount() / conversionRate);
+                    totalEU = (long) (leftSteam.get(0).amount() / conversionRate);
                     it.set(new EnergyStack(totalEU));
                 }
             }

@@ -1,6 +1,6 @@
 {
   "parent": "minecraft:block/block",
-  "loader": "gtceu:machine",
+  "fabric:type": "gtceu:machine",
   "machine": "gtceu:me_stocking_input_bus",
   "replaceable_textures": [
     "bottom",

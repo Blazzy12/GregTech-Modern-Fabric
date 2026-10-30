@@ -6,30 +6,15 @@ import com.gregtechceu.gtceu.common.valueprovider.CastedFloat;
 import com.gregtechceu.gtceu.common.valueprovider.FlooredInt;
 import com.gregtechceu.gtceu.common.valueprovider.MultipliedFloat;
 
-import net.minecraft.core.registries.Registries;
-import net.minecraft.util.valueproviders.FloatProviderType;
-import net.minecraft.util.valueproviders.IntProviderType;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.registries.DeferredRegister;
-import net.minecraftforge.registries.RegistryObject;
+import net.minecraft.core.Registry;
+import net.minecraft.core.registries.BuiltInRegistries;
 
 public class GTValueProviderTypes {
 
-    // spotless:off
-    public static final DeferredRegister<IntProviderType<?>> INT_PROVIDER_TYPE_REGISTER = DeferredRegister.create(Registries.INT_PROVIDER_TYPE, GTCEu.MOD_ID);
-    public static final DeferredRegister<FloatProviderType<?>> FLOAT_PROVIDER_TYPE_REGISTER = DeferredRegister.create(Registries.FLOAT_PROVIDER_TYPE, GTCEu.MOD_ID);
-
-
-    public static final RegistryObject<IntProviderType<FlooredInt>> FLOORED = INT_PROVIDER_TYPE_REGISTER.register("floored", () -> () -> FlooredInt.CODEC);
-
-    public static final RegistryObject<FloatProviderType<MultipliedFloat>> MULTIPLIED = FLOAT_PROVIDER_TYPE_REGISTER.register("multiplied", () -> () -> MultipliedFloat.CODEC);
-    public static final RegistryObject<FloatProviderType<AddedFloat>> ADDED = FLOAT_PROVIDER_TYPE_REGISTER.register("added", () -> () -> AddedFloat.CODEC);
-    public static final RegistryObject<FloatProviderType<CastedFloat>> CASTED = FLOAT_PROVIDER_TYPE_REGISTER.register("casted", () -> () -> CastedFloat.CODEC);
-
-    // spotless:on
-
-    public static void init(IEventBus bus) {
-        INT_PROVIDER_TYPE_REGISTER.register(bus);
-        FLOAT_PROVIDER_TYPE_REGISTER.register(bus);
+    public static void init() {
+        Registry.register(BuiltInRegistries.INT_PROVIDER_TYPE, GTCEu.id("floored"), FlooredInt.CODEC);
+        Registry.register(BuiltInRegistries.FLOAT_PROVIDER_TYPE, GTCEu.id("multiplied"), MultipliedFloat.CODEC);
+        Registry.register(BuiltInRegistries.FLOAT_PROVIDER_TYPE, GTCEu.id("added"), AddedFloat.CODEC);
+        Registry.register(BuiltInRegistries.FLOAT_PROVIDER_TYPE, GTCEu.id("casted"), CastedFloat.CODEC);
     }
 }

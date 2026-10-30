@@ -1,6 +1,6 @@
 {
   "parent": "minecraft:block/block",
-  "loader": "gtceu:machine",
+  "fabric:type": "gtceu:machine",
   "machine": "gtceu:hv_transformer_1a",
   "variants": {
     "transform_up=false": {

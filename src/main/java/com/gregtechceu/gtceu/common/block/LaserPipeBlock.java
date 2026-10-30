@@ -1,10 +1,13 @@
 package com.gregtechceu.gtceu.common.block;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.api.block.PipeBlock;
 import com.gregtechceu.gtceu.api.block.property.GTBlockStateProperties;
 import com.gregtechceu.gtceu.api.blockentity.PipeBlockEntity;
 import com.gregtechceu.gtceu.api.capability.GTCapability;
+import com.gregtechceu.gtceu.api.capability.GTCapabilityHelper;
 import com.gregtechceu.gtceu.api.item.tool.GTToolType;
 import com.gregtechceu.gtceu.api.pipenet.IPipeNode;
 import com.gregtechceu.gtceu.api.registry.registrate.provider.GTBlockstateProvider;
@@ -16,25 +19,20 @@ import com.gregtechceu.gtceu.common.pipelike.laser.LaserPipeProperties;
 import com.gregtechceu.gtceu.common.pipelike.laser.LaserPipeType;
 import com.gregtechceu.gtceu.common.pipelike.laser.LevelLaserPipeNet;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
-import net.minecraft.client.color.block.BlockColor;
+import com.gregtechceu.gtceu.compat.client.color.BlockColor;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
+import com.gregtechceu.gtceu.compat.capabilities.RegisterCapabilitiesEvent;
 
 import org.jetbrains.annotations.Nullable;
 
-import javax.annotation.ParametersAreNonnullByDefault;
-
-@ParametersAreNonnullByDefault
-@MethodsReturnNonnullByDefault
 public class LaserPipeBlock extends PipeBlock<LaserPipeType, LaserPipeProperties, LevelLaserPipeNet> {
 
     private final LaserPipeProperties properties;
@@ -46,7 +44,29 @@ public class LaserPipeBlock extends PipeBlock<LaserPipeType, LaserPipeProperties
         registerDefaultState(defaultBlockState().setValue(GTBlockStateProperties.ACTIVE, false));
     }
 
-    @OnlyIn(Dist.CLIENT)
+    public void attachCapabilities(RegisterCapabilitiesEvent event) {
+        event.registerBlock(GTCapability.CAPABILITY_LASER, (level, pos, state, blockEntity, side) -> {
+            if (blockEntity instanceof LaserPipeBlockEntity laserPipeBlockEntity) {
+                if (level.isClientSide()) {
+                    return laserPipeBlockEntity.clientCapability;
+                }
+                if (laserPipeBlockEntity.getHandlers().isEmpty()) {
+                    laserPipeBlockEntity.initHandlers();
+                }
+                laserPipeBlockEntity.checkNetwork();
+                return laserPipeBlockEntity.getHandlers().getOrDefault(side, laserPipeBlockEntity.getDefaultHandler());
+            }
+            return null;
+        }, this);
+        event.registerBlock(GTCapability.CAPABILITY_COVERABLE, (level, pos, state, blockEntity, side) -> {
+            if (blockEntity instanceof PipeBlockEntity<?, ?> pipe) {
+                return pipe.getCoverContainer();
+            }
+            return null;
+        }, this);
+    }
+
+    @Environment(EnvType.CLIENT)
     public static BlockColor tintedColor() {
         return (state, level, pos, index) -> {
             if (pos != null && level != null &&
@@ -117,8 +137,8 @@ public class LaserPipeBlock extends PipeBlock<LaserPipeType, LaserPipeProperties
 
     @Override
     public boolean canPipeConnectToBlock(IPipeNode<LaserPipeType, LaserPipeProperties> selfTile, Direction side,
-                                         @Nullable BlockEntity tile) {
-        return tile != null && tile.getCapability(GTCapability.CAPABILITY_LASER, side.getOpposite()).isPresent();
+                                         Level level, BlockPos pos) {
+        return GTCapabilityHelper.getLaser(level, pos, side.getOpposite()) != null;
     }
 
     @Override

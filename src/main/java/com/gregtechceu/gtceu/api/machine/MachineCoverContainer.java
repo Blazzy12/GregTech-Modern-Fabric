@@ -23,7 +23,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.shapes.VoxelShape;
-import net.minecraftforge.items.IItemHandlerModifiable;
+import com.gregtechceu.gtceu.compat.items.IItemHandlerModifiable;
 
 import brachy.modularui.drawable.UITexture;
 import lombok.Getter;
@@ -134,8 +134,9 @@ public class MachineCoverContainer extends MachineTrait
     }
 
     @Override
-    public @Nullable CoverBehavior getCoverAtSide(Direction side) {
+    public @Nullable CoverBehavior getCoverAtSide(@Nullable Direction side) {
         return switch (side) {
+            case null -> null;
             case UP -> up;
             case SOUTH -> south;
             case WEST -> west;

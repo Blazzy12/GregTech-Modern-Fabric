@@ -11,10 +11,9 @@ import com.gregtechceu.gtceu.utils.GTMath;
 
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.EquipmentSlotGroup;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.common.ForgeMod;
 
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import org.spongepowered.asm.mixin.Mixin;
@@ -24,13 +23,16 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import java.util.Objects;
-
 @Mixin(LivingEntity.class)
 public abstract class LivingEntityMixin {
 
     @Shadow
-    public abstract Iterable<ItemStack> getArmorSlots();
+    public abstract ItemStack getItemBySlot(EquipmentSlot slot);
+
+    @Unique
+    private Iterable<ItemStack> gtceu$armorItems() {
+        return EquipmentSlotGroup.ARMOR.slots().stream().map(this::getItemBySlot).toList();
+    }
 
     @Shadow
     public abstract void setItemSlot(EquipmentSlot slot, ItemStack stack);
@@ -42,13 +44,9 @@ public abstract class LivingEntityMixin {
                                              CallbackInfoReturnable<Float> cir) {
         float armorDamage = Math.max(1.0F, damageAmount / 4.0F);
         int i = 0;
-        for (ItemStack itemStack : this.getArmorSlots()) {
+        for (ItemStack itemStack : this.gtceu$armorItems()) {
             if (itemStack.getItem() instanceof ArmorComponentItem armorItem) {
-                EquipmentSlot slot = EquipmentSlot.byTypeAndIndex(EquipmentSlot.Type.ARMOR, i);
                 armorItem.damageItem(itemStack, (int) armorDamage, (LivingEntity) (Object) this, entity -> {});
-                if (itemStack.getCount() == 0) {
-                    this.setItemSlot(slot, ItemStack.EMPTY);
-                }
             }
             ++i;
         }
@@ -59,10 +57,10 @@ public abstract class LivingEntityMixin {
         return (LivingEntity) (Object) this;
     }
 
-    @ModifyReturnValue(method = "getJumpPower", at = @At("RETURN"))
+    @ModifyReturnValue(method = "getJumpPower(F)F", at = @At("RETURN"))
     private float gtceu$adjustJumpHeight(float original) {
         float height = 0;
-        for (ItemStack stack : this.getArmorSlots()) {
+        for (ItemStack stack : this.gtceu$armorItems()) {
             IModularItem modularItem = GTCapabilityHelper.getModularItem(stack);
             if (modularItem == null) continue;
             for (ModuleContext module : modularItem.getAllModuleInstances()) {
@@ -76,7 +74,6 @@ public abstract class LivingEntityMixin {
                 }
             }
         }
-        AttributeInstance gravity = gtceu$self().getAttribute(ForgeMod.ENTITY_GRAVITY.get());
-        return GTMath.addJumpHeight(original, Objects.requireNonNull(gravity).getValue(), height);
+        return GTMath.addJumpHeight(original, gtceu$self().getGravity(), height);
     }
 }

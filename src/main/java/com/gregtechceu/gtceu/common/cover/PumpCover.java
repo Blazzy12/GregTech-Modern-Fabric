@@ -1,5 +1,7 @@
 package com.gregtechceu.gtceu.common.cover;
 
+import com.gregtechceu.gtceu.core.fabric.ItemStackNbt;
+
 import com.gregtechceu.gtceu.api.GTValues;
 import com.gregtechceu.gtceu.api.capability.IControllable;
 import com.gregtechceu.gtceu.api.capability.ICoverable;
@@ -19,7 +21,7 @@ import com.gregtechceu.gtceu.common.mui.GTMuiCoverUtil;
 import com.gregtechceu.gtceu.common.mui.GTMuiWidgets;
 import com.gregtechceu.gtceu.utils.GTTransferUtils;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -27,8 +29,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
-import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.capability.IFluidHandler;
+import com.gregtechceu.gtceu.compat.fluids.FluidStack;
+import com.gregtechceu.gtceu.compat.fluids.capability.IFluidHandler;
 
 import brachy.modularui.api.drawable.Text;
 import brachy.modularui.factory.SidedPosGuiData;
@@ -116,7 +118,6 @@ public class PumpCover extends CoverBehavior implements IIOCover, IMuiCover, ICo
 
     protected @Nullable IFluidHandler getAdjacentFluidHandler() {
         return GTTransferUtils.getAdjacentFluidHandler(coverHolder.getLevel(), coverHolder.getBlockPos(), attachedSide)
-                .resolve()
                 .orElse(null);
     }
 
@@ -348,17 +349,18 @@ public class PumpCover extends CoverBehavior implements IIOCover, IMuiCover, ICo
         tag.putInt("transferRate", getTransferRate());
         tag.putInt("io", getIo().ordinal());
         tag.putInt("manualIO", getManualIOMode().ordinal());
-        tag.put("filter", filterHandler.getFilterItem().serializeNBT());
+        tag.put("filter", ItemStackNbt.save(filterHandler.getFilterItem(), coverHolder.getLevel().registryAccess()));
         tag.putInt("bucketMode", getBucketMode().ordinal());
     }
 
     @Override
     public void pasteConfig(ServerPlayer player, CompoundTag tag) {
-        setTransferRate(tag.getInt("transferRate"));
-        setIo(IO.values()[tag.getInt("io")]);
-        setManualIOMode(ManualIOMode.values()[tag.getInt("manualIO")]);
-        filterHandler.setFilterItem(ItemStack.of(tag.getCompound("filter")));
-        setBucketMode(BucketMode.values()[tag.getInt("bucketMode")]);
+        setTransferRate(tag.getIntOr("transferRate", 0));
+        setIo(IO.values()[tag.getIntOr("io", 0)]);
+        setManualIOMode(ManualIOMode.values()[tag.getIntOr("manualIO", 0)]);
+        filterHandler.setFilterItem(ItemStackNbt.parse(coverHolder.getLevel().registryAccess(), tag.getCompoundOrEmpty("filter"))
+                .orElse(ItemStack.EMPTY));
+        setBucketMode(BucketMode.values()[tag.getIntOr("bucketMode", 0)]);
         super.pasteConfig(player, tag);
     }
 }

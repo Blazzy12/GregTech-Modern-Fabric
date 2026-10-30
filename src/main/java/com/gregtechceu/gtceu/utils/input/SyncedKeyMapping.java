@@ -1,19 +1,18 @@
 package com.gregtechceu.gtceu.utils.input;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import com.gregtechceu.gtceu.GTCEu;
-import com.gregtechceu.gtceu.common.network.GTNetwork;
 import com.gregtechceu.gtceu.common.network.packets.CPacketKeyDown;
 
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
-import net.minecraftforge.client.settings.IKeyConflictContext;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
+import com.gregtechceu.gtceu.compat.client.settings.IKeyConflictContext;
+import com.gregtechceu.gtceu.compat.network.PacketDistributor;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import it.unimi.dsi.fastutil.ints.Int2BooleanMap;
@@ -35,14 +34,14 @@ public final class SyncedKeyMapping {
     private static int syncIndex = 0;
 
     @Getter
-    @OnlyIn(Dist.CLIENT)
+    @Environment(EnvType.CLIENT)
     private KeyMapping keyMapping;
-    @OnlyIn(Dist.CLIENT)
+    @Environment(EnvType.CLIENT)
     private Supplier<Supplier<KeyMapping>> keyMappingGetter;
-    private final boolean needsRegister;
-    @OnlyIn(Dist.CLIENT)
+    private boolean needsRegister;
+    @Environment(EnvType.CLIENT)
     private int keyCode;
-    @OnlyIn(Dist.CLIENT)
+    @Environment(EnvType.CLIENT)
     private boolean isKeyDown;
 
     private static final Int2BooleanMap updatingKeyDown = new Int2BooleanOpenHashMap();
@@ -127,10 +126,11 @@ public final class SyncedKeyMapping {
         return new SyncedKeyMapping(nameKey, ctx, keyCode, category);
     }
 
-    @OnlyIn(Dist.CLIENT)
+    @Environment(EnvType.CLIENT)
     private @NotNull Object createKeyMapping(@NotNull String nameKey, @NotNull IKeyConflictContext ctx, int keyCode,
                                              String category) {
-        return new KeyMapping(nameKey, ctx, InputConstants.Type.KEYSYM, keyCode, category);
+        // 26.x key mappings have no conflict context; GT's are all in-game keys anyway
+        return new KeyMapping(nameKey, InputConstants.Type.KEYBOARD, keyCode, getCategory(category));
     }
 
     /**
@@ -169,8 +169,7 @@ public final class SyncedKeyMapping {
         if (keyMapping != null) {
             return keyMapping.isDown();
         }
-        long id = Minecraft.getInstance().getWindow().getWindow();
-        return InputConstants.isKeyDown(id, keyCode);
+        return InputConstants.isKeyDown(keyCode);
     }
 
     /**
@@ -188,15 +187,38 @@ public final class SyncedKeyMapping {
         return this;
     }
 
+    @Environment(EnvType.CLIENT)
+    private static final java.util.Map<String, KeyMapping.Category> CATEGORIES = new java.util.HashMap<>();
+
+    /** Key categories are registered objects in 26.x; the label is {@code key.category.gtceu.<name>}. */
+    @Environment(EnvType.CLIENT)
+    private static KeyMapping.Category getCategory(String category) {
+        return CATEGORIES.computeIfAbsent(category, c -> KeyMapping.Category.register(
+                GTCEu.id(c.toLowerCase(java.util.Locale.ROOT).replaceAll("[^a-z0-9_.-]", "_"))));
+    }
+
+    /** Called from the client entrypoint: registers GT's key mappings and the key-state sync tick. */
     @ApiStatus.Internal
-    public static void onRegisterKeyBinds(@NotNull RegisterKeyMappingsEvent event) {
+    @Environment(EnvType.CLIENT)
+    public static void registerClient() {
+        registerKeyMappings();
+        // vanilla's key mappings live in the options, which only exist once the client has started
+        net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents.CLIENT_STARTED
+                .register(mc -> registerKeyMappings());
+        ClientTickEvents.START_CLIENT_TICK.register(mc -> onClientTick());
+    }
+
+    @ApiStatus.Internal
+    public static void registerKeyMappings() {
+        boolean optionsLoaded = net.minecraft.client.Minecraft.getInstance().options != null;
         for (SyncedKeyMapping value : KEYMAPPINGS.values()) {
-            if (value.keyMappingGetter != null) {
+            if (value.keyMappingGetter != null && optionsLoaded) {
                 value.keyMapping = value.keyMappingGetter.get().get();
                 value.keyMappingGetter = null;
             }
             if (value.keyMapping != null && value.needsRegister) {
-                event.register(value.keyMapping);
+                value.needsRegister = false;
+                KeyMappingHelper.registerKeyMapping(value.keyMapping);
             }
         }
     }
@@ -235,29 +257,25 @@ public final class SyncedKeyMapping {
     }
 
     @ApiStatus.Internal
-    @SubscribeEvent
-    @OnlyIn(Dist.CLIENT)
-    public static void onClientTick(@NotNull TickEvent.ClientTickEvent event) {
-        if (event.phase == TickEvent.Phase.START) {
-            updatingKeyDown.clear();
-            for (var entry : KEYMAPPINGS.int2ObjectEntrySet()) {
-                SyncedKeyMapping keyMapping = entry.getValue();
-                boolean previousKeyDown = keyMapping.isKeyDown;
+    @Environment(EnvType.CLIENT)
+    public static void onClientTick() {
+        updatingKeyDown.clear();
+        for (var entry : KEYMAPPINGS.int2ObjectEntrySet()) {
+            SyncedKeyMapping keyMapping = entry.getValue();
+            boolean previousKeyDown = keyMapping.isKeyDown;
 
-                if (keyMapping.keyMapping != null) {
-                    keyMapping.isKeyDown = keyMapping.keyMapping.isDown();
-                } else {
-                    long id = Minecraft.getInstance().getWindow().getWindow();
-                    keyMapping.isKeyDown = InputConstants.isKeyDown(id, keyMapping.keyCode);
-                }
+            if (keyMapping.keyMapping != null) {
+                keyMapping.isKeyDown = keyMapping.keyMapping.isDown();
+            } else {
+                keyMapping.isKeyDown = InputConstants.isKeyDown(keyMapping.keyCode);
+            }
 
-                if (previousKeyDown != keyMapping.isKeyDown) {
-                    updatingKeyDown.put(entry.getIntKey(), keyMapping.isKeyDown);
-                }
+            if (previousKeyDown != keyMapping.isKeyDown) {
+                updatingKeyDown.put(entry.getIntKey(), keyMapping.isKeyDown);
             }
-            if (!updatingKeyDown.isEmpty()) {
-                GTNetwork.sendToServer(new CPacketKeyDown(updatingKeyDown));
-            }
+        }
+        if (!updatingKeyDown.isEmpty()) {
+            PacketDistributor.sendToServer(new CPacketKeyDown(updatingKeyDown));
         }
     }
 

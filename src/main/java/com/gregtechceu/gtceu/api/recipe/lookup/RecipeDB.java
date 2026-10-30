@@ -8,14 +8,14 @@ import com.gregtechceu.gtceu.api.capability.recipe.RecipeCapability;
 import com.gregtechceu.gtceu.api.recipe.GTRecipe;
 import com.gregtechceu.gtceu.api.recipe.RecipeHelper;
 import com.gregtechceu.gtceu.api.recipe.content.Content;
-import com.gregtechceu.gtceu.api.recipe.ingredient.FluidIngredient;
 import com.gregtechceu.gtceu.api.recipe.lookup.ingredient.AbstractMapIngredient;
 import com.gregtechceu.gtceu.api.recipe.lookup.ingredient.MapIngredientTypeManager;
 import com.gregtechceu.gtceu.common.data.GTRecipeTypes;
 import com.gregtechceu.gtceu.common.item.armor.PowerlessJetpack;
 import com.gregtechceu.gtceu.config.ConfigHolder;
 
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.registries.BuiltInRegistries;
+import com.gregtechceu.gtceu.compat.fluids.crafting.SizedFluidIngredient;
 
 import com.mojang.datafixers.util.Either;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -173,13 +173,13 @@ public final class RecipeDB {
      */
     boolean add(@NotNull GTRecipe recipe, @NotNull List<@Unmodifiable List<AbstractMapIngredient>> ingredients) {
         // Add combustion fuels to the Powerless Jetpack
-        if (recipe.getType() == GTRecipeTypes.COMBUSTION_GENERATOR_FUELS) {
-            Content content = recipe.getInputContents(FluidRecipeCapability.CAP).get(0);
-            FluidIngredient fluid = FluidRecipeCapability.CAP.of(content.content());
+        if (recipe.getType() == GTRecipeTypes.COMBUSTION_GENERATOR_FUELS.value()) {
+            Content content = recipe.getInputContents(FluidRecipeCapability.CAP).getFirst();
+            SizedFluidIngredient fluid = FluidRecipeCapability.CAP.of(content.content());
             PowerlessJetpack.FUELS.putIfAbsent(fluid, recipe.duration);
         }
         if (addRecursive(recipe, ingredients, rootBranch, 0)) {
-            recipe.recipeCategory.addRecipe(recipe);
+            recipe.recipeType.addToCategoryMap(recipe.recipeCategory, recipe);
             return true;
         }
         return false;
@@ -216,7 +216,7 @@ public final class RecipeDB {
                         if (ConfigHolder.INSTANCE.dev.debug || GTCEu.isDev()) {
                             GTCEu.LOGGER.warn(
                                     "Recipe duplicate or conflict found in GTRecipeType {} and was not added. See next lines for details",
-                                    ForgeRegistries.RECIPE_TYPES.getKey(recipe.getType()));
+                                    BuiltInRegistries.RECIPE_TYPE.getKey(recipe.getType()));
                             if (v.left().isPresent()) {
                                 GTCEu.LOGGER.warn("Attempted to add GTRecipe: {}, which conflicts with {}",
                                         recipe.getId(), v.left().get().getId());

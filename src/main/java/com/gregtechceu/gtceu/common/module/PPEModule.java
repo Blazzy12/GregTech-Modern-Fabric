@@ -4,16 +4,16 @@ import com.gregtechceu.gtceu.api.item.module.ItemModule;
 import com.gregtechceu.gtceu.api.item.module.ModuleContext;
 
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
+import net.minecraft.tags.ItemTags;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.level.Level;
-import net.minecraftforge.common.Tags;
 
 import java.util.List;
 
 public class PPEModule extends ItemModule {
 
-    public PPEModule(ResourceLocation id) {
+    public PPEModule(Identifier id) {
         super(id);
     }
 
@@ -28,16 +28,16 @@ public class PPEModule extends ItemModule {
     }
 
     @Override
-    public void appendHoverText(ModuleContext moduleContext, Level level, List<Component> tooltips,
+    public void appendHoverText(ModuleContext moduleContext, Item.TooltipContext context, List<Component> tooltips,
                                 TooltipFlag isAdvanced) {
-        super.appendHoverText(moduleContext, level, tooltips, isAdvanced);
-        if (moduleContext.getAppliedTo().is(Tags.Items.ARMORS_BOOTS))
+        super.appendHoverText(moduleContext, context, tooltips, isAdvanced);
+        if (moduleContext.getAppliedTo().is(ItemTags.FOOT_ARMOR))
             tooltips.add(Component.translatable("item.gtceu.hazmat_boots"));
-        if (moduleContext.getAppliedTo().is(Tags.Items.ARMORS_LEGGINGS))
+        if (moduleContext.getAppliedTo().is(ItemTags.LEG_ARMOR))
             tooltips.add(Component.translatable("item.gtceu.hazmat_leggings"));
-        if (moduleContext.getAppliedTo().is(Tags.Items.ARMORS_CHESTPLATES))
+        if (moduleContext.getAppliedTo().is(ItemTags.CHEST_ARMOR))
             tooltips.add(Component.translatable("item.gtceu.hazmat_chestpiece"));
-        if (moduleContext.getAppliedTo().is(Tags.Items.ARMORS_HELMETS))
+        if (moduleContext.getAppliedTo().is(ItemTags.HEAD_ARMOR))
             tooltips.add(Component.translatable("item.gtceu.hazmat_headpiece"));
     }
 }

@@ -5,7 +5,7 @@ import com.gregtechceu.gtceu.common.data.GTBlocks;
 import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraftforge.common.data.LanguageProvider;
+import com.gregtechceu.gtceu.compat.common.data.LanguageProvider;
 
 import com.tterrag.registrate.providers.RegistrateLangProvider;
 import org.jetbrains.annotations.NotNull;
@@ -44,10 +44,6 @@ public class LangHandler {
         provider.add("ldlib.gui.editor.register.widget.container.gtm_phantom_fluid_slot", "GTM Phantom Fluid Slot");
 
         provider.add("curios.identifier.gtceu_magnet", "GTCEu Magnet");
-        // capabilities
-        provider.add("recipe.capability.eu.name", "GTCEu Energy");
-        provider.add("recipe.capability.fluid.name", "Fluid");
-        provider.add("recipe.capability.item.name", "Item");
         multiLang(provider, "gtceu.oc.tooltip", "Min: %s", "Left click to increase the OC",
                 "Right click to decrease the OC", "Middle click to reset the OC",
                 "Hold Shift to change by Perfect OC");
@@ -78,12 +74,6 @@ public class LangHandler {
         provider.add("gtceu.multiblock.page_switcher.io.import", "§2Inputs");
         provider.add("gtceu.multiblock.page_switcher.io.export", "§4Outputs");
         provider.add("gtceu.multiblock.page_switcher.io.both", "§5Combined Inputs + Outputs");
-
-        provider.add("gtceu.autobuild.ae_blocks", "The following blocks are in AE:");
-        provider.add("gtceu.autobuild.placed_blocks", "The following blocks were placed:");
-        provider.add("gtceu.autobuild.missing_blocks", "The following blocks are missing:");
-        provider.add("gtceu.autobuild.unplaced_blocks",
-                "Could not place some blocks. Obstructions are highlighted in-world.");
 
         provider.add("enchantment.disjunction", "Disjunction");
 
@@ -133,6 +123,7 @@ public class LangHandler {
         provider.add("gtceu.tool.class.shears", "Shears");
         provider.add("gtceu.tool.class.drill", "Drill");
 
+        provider.add("argument.medical_condition.id.invalid", "Unknown medical condition %s");
         provider.add("command.gtceu.medical_condition.clear.everything.failed", "Target has no conditions to remove");
         provider.add("command.gtceu.medical_condition.clear.everything.success.multiple",
                 "Removed all conditions from %s targets");
@@ -175,24 +166,6 @@ public class LangHandler {
 
         provider.add("tooltip.gtceu.medical_condition.description", "§l§cHAZARDOUS §7Hold Shift to show details");
         provider.add("tooltip.gtceu.medical_condition.description_shift", "§l§cHAZARDOUS:");
-        provider.add("medical_condition.gtceu.chemical_burns", "§5Chemical burns");
-        provider.add("medical_condition.gtceu.poison", "§2Poisonous");
-        provider.add("medical_condition.gtceu.poison.affected", "§2Poisoning");
-        provider.add("medical_condition.gtceu.weak_poison", "§aWeakly poisonous");
-        provider.add("medical_condition.gtceu.weak_poison.affected", "§aMinor poisoning");
-        provider.add("medical_condition.gtceu.irritant", "§6Irritant");
-        provider.add("medical_condition.gtceu.irritant.affected", "§6Irritation");
-        provider.add("medical_condition.gtceu.nausea", "§3Nauseating");
-        provider.add("medical_condition.gtceu.nausea.affected", "§3Nausea");
-        provider.add("medical_condition.gtceu.carcinogen", "§eCarcinogenic");
-        provider.add("medical_condition.gtceu.carcinogen.affected", "§eCancer");
-        provider.add("medical_condition.gtceu.asbestosis", "§dAsbestosis");
-        provider.add("medical_condition.gtceu.arsenicosis", "§bArsenicosis");
-        provider.add("medical_condition.gtceu.methanol_poisoning", "§6Methanol Poisoning");
-        provider.add("medical_condition.gtceu.carbon_monoxide_poisoning", "§7Carbon Monoxide Poisoning");
-        provider.add("medical_condition.gtceu.none", "§2Not Dangerous");
-        provider.add("medical_condition.gtceu.none.affected", "§2Nothing?");
-
         provider.add("symptom.gtceu.death", "Death");
         provider.add("symptom.gtceu.random_damage", "Occasional damage");
         provider.add("symptom.gtceu.health_debuff", "Lowered maximum health");
@@ -322,7 +295,7 @@ public class LangHandler {
                 "§9Duranium", "§cNeutronium");
         provider.add("item.gtceu.tool.tooltip.repair_info", "§8Hold SHIFT to show Repair Info");
         provider.add("item.gtceu.tool.tooltip.repair_material", "§8Repair with: §f§a%s");
-        provider.add("item.gtceu.tool.tooltip.default_enchantments", "§5Default Enchantments:");
+        provider.add("item.gtceu.tool.tooltip.innate_enchantments", "§5Innate Enchantments:");
         provider.add("item.gtceu.tool.aoe.rows", "Rows");
         provider.add("item.gtceu.tool.aoe.columns", "Columns");
         provider.add("item.gtceu.tool.aoe.layers", "Layers");
@@ -565,13 +538,7 @@ public class LangHandler {
         provider.add("cover.shutter.message.enabled", "Closed shutter");
         provider.add("cover.shutter.message.disabled", "Opened shutter");
 
-        replace(provider, "item.gtceu.bucket", "%s Bucket");
-
-        replace(provider, "block.gtceu.oil_heavy", "Heavy Oil");
-        replace(provider, "block.gtceu.oil_light", "Light Oil");
-        replace(provider, "block.gtceu.oil_medium", "Raw Oil");
-        replace(provider, "block.gtceu.oil", "Oil");
-        replace(provider, "block.gtceu.creosote", "Creosote");
+        provider.add("item.gtceu.bucket", "%s Bucket");
 
         replace(provider, GTBlocks.BATTERY_EMPTY_TIER_I.get().getDescriptionId(), "Empty Tier I Capacitor");
         replace(provider, GTBlocks.BATTERY_LAPOTRONIC_EV.get().getDescriptionId(), "EV Lapotronic Capacitor");
@@ -584,7 +551,7 @@ public class LangHandler {
         replace(provider, GTBlocks.BATTERY_ULTIMATE_UHV.get().getDescriptionId(), "UHV Ultimate Capacitor");
 
         provider.add("item.netherrack_nether_quartz", "Nether Quartz Ore");
-        provider.add("block.surface_rock", "%s Surface Rock");
+        provider.add("block.gtceu.surface_rock", "%s Surface Rock");
 
         provider.add("item.gtceu.tiny_gunpowder_dust", "Tiny Pile of Gunpowder");
         provider.add("item.gtceu.small_gunpowder_dust", "Small Pile of Gunpowder");
@@ -1048,6 +1015,19 @@ public class LangHandler {
         provider.add("gtceu.gui.item_auto_input.tooltip.disabled", "Item Auto-Input Disabled");
         multilineLang(provider, "gtceu.gui.charger_slot.tooltip",
                 "§fCharger Slot§r\n§7Draws power from %s batteries§r\n§7Charges %s tools and batteries");
+        provider.add("gtceu.machine.wireless_charger.tooltip",
+                "Wirelessly charges EU and FE items carried by you and your team, including equipment.");
+        provider.add("gtceu.machine.wireless_charger.range.standard",
+                "§7Standard: §7%s §7block range, 1A input, charges each item once per second");
+        provider.add("gtceu.machine.wireless_charger.range.turbo",
+                "§7Turbo: §7%s §7block range, 4A input, charges each item every 4 ticks");
+        provider.add("gtceu.machine.wireless_charger.toggle",
+                "§7Use a screwdriver to switch between standard and turbo mode");
+        provider.add("gtceu.machine.wireless_charger.mode.standard", "Standard charging mode: %s block range");
+        provider.add("gtceu.machine.wireless_charger.mode.turbo", "Turbo charging mode: %s block range");
+        provider.add("gtceu.machine.wireless_charger.enter_range",
+                "§aYou have entered wireless charging range");
+        provider.add("gtceu.machine.wireless_charger.left_range", "§cYou have left wireless charging range");
         multilineLang(provider, "gtceu.gui.configurator_slot.tooltip",
                 "§fConfigurator Slot§r\n§7Place a §6Programmed Circuit§7 in this slot to\n§7change its configured value.\n§7Hold §6Shift§7 when clicking buttons to change by §65.\n§aA Programmed Circuit in this slot is also valid for recipe inputs.§r");
         provider.add("gtceu.gui.fluid_lock.tooltip.enabled", "Fluid Locking Enabled");

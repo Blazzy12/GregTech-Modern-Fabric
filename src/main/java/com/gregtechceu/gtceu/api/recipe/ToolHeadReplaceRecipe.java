@@ -1,5 +1,7 @@
 package com.gregtechceu.gtceu.api.recipe;
 
+import net.minecraft.network.codec.StreamCodec;
+import com.mojang.serialization.MapCodec;
 import com.gregtechceu.gtceu.api.GTValues;
 import com.gregtechceu.gtceu.api.capability.GTCapabilityHelper;
 import com.gregtechceu.gtceu.api.capability.IElectricItem;
@@ -10,18 +12,12 @@ import com.gregtechceu.gtceu.api.item.IGTTool;
 import com.gregtechceu.gtceu.api.item.tool.GTToolType;
 import com.gregtechceu.gtceu.common.data.GTMaterialItems;
 
+import net.minecraft.core.Holder;
 import net.minecraft.core.NonNullList;
-import net.minecraft.core.RegistryAccess;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.inventory.CraftingContainer;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.crafting.CraftingBookCategory;
-import net.minecraft.world.item.crafting.CustomRecipe;
-import net.minecraft.world.item.crafting.RecipeSerializer;
-import net.minecraft.world.item.crafting.SimpleCraftingRecipeSerializer;
+import net.minecraft.world.item.crafting.*;
 import net.minecraft.world.level.Level;
 
-import com.tterrag.registrate.util.entry.ItemProviderEntry;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -31,25 +27,25 @@ import java.util.Map;
 
 public class ToolHeadReplaceRecipe extends CustomRecipe {
 
-    public static SimpleCraftingRecipeSerializer<ToolHeadReplaceRecipe> SERIALIZER = new SimpleCraftingRecipeSerializer<>(
-            ToolHeadReplaceRecipe::new);
-
     private static final Map<TagPrefix, GTToolType[]> TOOL_HEAD_TO_TOOL_MAP = new HashMap<>();
 
-    public static void setToolHeadForTool(TagPrefix toolHead, GTToolType tool) {
+    public static void setToolHeadForTool(Holder<TagPrefix> toolHead, GTToolType tool) {
         if (!(tool.electricTier > -1)) return;
-        TOOL_HEAD_TO_TOOL_MAP.computeIfAbsent(toolHead, p -> new GTToolType[GTValues.MAX])[tool.electricTier] = tool;
+        TOOL_HEAD_TO_TOOL_MAP.computeIfAbsent(toolHead.value(),
+                p -> new GTToolType[GTValues.MAX])[tool.electricTier] = tool;
     }
 
-    public ToolHeadReplaceRecipe(ResourceLocation id, CraftingBookCategory category) {
-        super(id, category);
-    }
+    public static final ToolHeadReplaceRecipe INSTANCE = new ToolHeadReplaceRecipe();
+    public static final RecipeSerializer<ToolHeadReplaceRecipe> SERIALIZER = new RecipeSerializer<>(MapCodec.unit(INSTANCE),
+            StreamCodec.unit(INSTANCE));
+
+    public ToolHeadReplaceRecipe() {}
 
     @Override
-    public boolean matches(CraftingContainer inv, @NotNull Level level) {
+    public boolean matches(CraftingInput inv, @NotNull Level level) {
         List<ItemStack> list = new ArrayList<>();
 
-        for (int i = 0; i < inv.getContainerSize(); i++) {
+        for (int i = 0; i < inv.size(); i++) {
             ItemStack stack = inv.getItem(i);
             if (!stack.isEmpty()) {
                 list.add(stack);
@@ -83,10 +79,10 @@ public class ToolHeadReplaceRecipe extends CustomRecipe {
     }
 
     @Override
-    public @NotNull ItemStack assemble(CraftingContainer inv, @NotNull RegistryAccess registryAccess) {
+    public @NotNull ItemStack assemble(CraftingInput inv) {
         List<ItemStack> list = new ArrayList<>();
 
-        for (int i = 0; i < inv.getContainerSize(); i++) {
+        for (int i = 0; i < inv.size(); i++) {
             ItemStack itemstack = inv.getItem(i);
 
             if (!itemstack.isEmpty()) {
@@ -113,11 +109,9 @@ public class ToolHeadReplaceRecipe extends CustomRecipe {
             IElectricItem powerUnit = GTCapabilityHelper.getElectricItem(realTool);
             if (toolHead == null || powerUnit == null) return ItemStack.EMPTY;
             GTToolType[] toolArray = TOOL_HEAD_TO_TOOL_MAP.get(toolHead.tagPrefix());
-            ItemProviderEntry<IGTTool> toolEntry = GTMaterialItems.TOOL_ITEMS.get(toolHead.material(),
-                    toolArray[tool.getElectricTier()]);
-            if (toolEntry == null) return ItemStack.EMPTY;
-            ItemStack newTool = toolEntry.get().get(powerUnit.getCharge(), powerUnit.getMaxCharge());
-            if (newTool == null) return ItemStack.EMPTY;
+            ItemStack newTool = GTMaterialItems.TOOL_ITEMS.get(toolHead.material(), toolArray[tool.getElectricTier()])
+                    .get().get(powerUnit.getCharge(), powerUnit.getMaxCharge());
+            if (newTool.isEmpty()) return ItemStack.EMPTY;
 
             return newTool;
         }
@@ -125,8 +119,8 @@ public class ToolHeadReplaceRecipe extends CustomRecipe {
     }
 
     @Override
-    public @NotNull NonNullList<ItemStack> getRemainingItems(@NotNull CraftingContainer container) {
-        var result = super.getRemainingItems(container);
+    public @NotNull NonNullList<ItemStack> getRemainingItems(@NotNull CraftingInput input) {
+        var result = super.getRemainingItems(input);
         for (ItemStack stack : result) {
             if (stack.getItem() instanceof IGTTool) {
                 stack.setCount(0);
@@ -135,13 +129,9 @@ public class ToolHeadReplaceRecipe extends CustomRecipe {
         return result;
     }
 
-    @Override
-    public boolean canCraftInDimensions(int width, int height) {
-        return width * height >= 2;
-    }
 
     @Override
-    public @NotNull RecipeSerializer<?> getSerializer() {
+    public @NotNull RecipeSerializer<ToolHeadReplaceRecipe> getSerializer() {
         return SERIALIZER;
     }
 }

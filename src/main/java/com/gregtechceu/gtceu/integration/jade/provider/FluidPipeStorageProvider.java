@@ -1,15 +1,17 @@
 package com.gregtechceu.gtceu.integration.jade.provider;
 
 import com.gregtechceu.gtceu.GTCEu;
+import com.gregtechceu.gtceu.integration.jade.GTElementHelper;
 import com.gregtechceu.gtceu.common.blockentity.FluidPipeBlockEntity;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
 
-import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.NotNull;
 import snownee.jade.api.Accessor;
 import snownee.jade.api.fluid.JadeFluidObject;
 import snownee.jade.api.view.*;
@@ -17,36 +19,51 @@ import snownee.jade.api.view.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public enum FluidPipeStorageProvider implements IServerExtensionProvider<FluidPipeBlockEntity, CompoundTag>,
-        IClientExtensionProvider<CompoundTag, FluidView> {
+public enum FluidPipeStorageProvider implements IServerExtensionProvider<FluidView.Data>,
+        IClientExtensionProvider<FluidView.Data, FluidView> {
 
     INSTANCE;
 
     @Override
-    public List<ClientViewGroup<FluidView>> getClientGroups(Accessor<?> accessor, List<ViewGroup<CompoundTag>> groups) {
+    public List<ClientViewGroup<FluidView>> getClientGroups(Accessor<?> accessor, List<ViewGroup<FluidView.Data>> groups) {
         return ClientViewGroup.map(groups, FluidView::readDefault, (group, clientGroup) -> {
             if (group.id != null) {
                 clientGroup.title = Component.literal(group.id);
             }
-            clientGroup.bgColor = 0x55666666;
+            // clientGroup.bgColor = 0x55666666;
         });
     }
 
     @Override
-    public @Nullable List<ViewGroup<CompoundTag>> getGroups(ServerPlayer serverPlayer, ServerLevel serverLevel,
-                                                            FluidPipeBlockEntity pipe, boolean showDetails) {
-        List<ViewGroup<CompoundTag>> tanks = new ArrayList<>();
+    public @NotNull List<ViewGroup<FluidView.Data>> getGroups(Accessor<?> accessor) {
+        List<ViewGroup<FluidView.Data>> tanks = new ArrayList<>();
+        if (!(accessor.getTarget() instanceof FluidPipeBlockEntity pipe)) {
+            return tanks;
+        }
+
         for (var tank : pipe.getFluidTanks()) {
             if (tank.getFluidAmount() > 0) {
-                tanks.add(new ViewGroup<>(List.of(FluidView.writeDefault(
-                        JadeFluidObject.of(tank.getFluid().getFluid(), tank.getFluidAmount()), tank.getCapacity()))));
+                tanks.add(new ViewGroup<>(List.of(GTElementHelper.fluidData(tank.getFluid(), tank.getCapacity()))));
             }
         }
         return tanks;
     }
 
     @Override
-    public ResourceLocation getUid() {
+    public boolean shouldRequestData(Accessor<?> accessor) {
+        if (accessor.getHitResult().getType() != HitResult.Type.BLOCK) {
+            return false;
+        }
+        if (!(accessor.getHitResult() instanceof BlockHitResult blockHitResult)) {
+            return false;
+        }
+
+        BlockEntity be = accessor.getLevel().getBlockEntity(blockHitResult.getBlockPos());
+        return be instanceof FluidPipeBlockEntity;
+    }
+
+    @Override
+    public Identifier getUid() {
         return GTCEu.id("fluid_storage");
     }
 }

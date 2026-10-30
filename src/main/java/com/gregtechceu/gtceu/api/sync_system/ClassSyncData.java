@@ -130,8 +130,7 @@ public final class ClassSyncData {
      * @param transformer The custom value transformer
      */
     public void setCustomTransformerForField(String fieldName, ValueTransformer<?> transformer) {
-        Objects.requireNonNull(managedFields.get(fieldName), "Unknown save/sync field: " + fieldName)
-                .setTransformer(transformer);
+        managedFields.get(fieldName).setTransformer(transformer);
     }
 
     /**

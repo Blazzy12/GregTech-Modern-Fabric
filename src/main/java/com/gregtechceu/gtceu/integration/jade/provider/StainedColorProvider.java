@@ -5,7 +5,7 @@ import com.gregtechceu.gtceu.api.blockentity.IPaintable;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import snownee.jade.api.BlockAccessor;
 import snownee.jade.api.IBlockComponentProvider;
@@ -18,7 +18,7 @@ public class StainedColorProvider implements IBlockComponentProvider, IServerDat
     @Override
     public void appendTooltip(ITooltip iTooltip, BlockAccessor blockAccessor, IPluginConfig iPluginConfig) {
         if (blockAccessor.getServerData().contains("StainedColor")) {
-            int paintingColor = blockAccessor.getServerData().getInt("StainedColor");
+            int paintingColor = blockAccessor.getServerData().getIntOr("StainedColor", 0);
             if (paintingColor != IPaintable.UNPAINTED_COLOR) {
                 iTooltip.add(Component.translatable("gtceu.top.stained", String.format("#%06X", paintingColor))
                         .withStyle(style -> style.withColor(paintingColor)));
@@ -35,7 +35,7 @@ public class StainedColorProvider implements IBlockComponentProvider, IServerDat
     }
 
     @Override
-    public ResourceLocation getUid() {
+    public Identifier getUid() {
         return GTCEu.id("stained_color");
     }
 }

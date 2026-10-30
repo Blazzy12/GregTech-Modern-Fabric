@@ -1,8 +1,10 @@
 package com.gregtechceu.gtceu.common.block;
 
 import com.gregtechceu.gtceu.GTCEu;
+import com.gregtechceu.gtceu.api.block.MaterialBlock;
 import com.gregtechceu.gtceu.api.block.MaterialPipeBlock;
 import com.gregtechceu.gtceu.api.blockentity.PipeBlockEntity;
+import com.gregtechceu.gtceu.api.capability.GTCapability;
 import com.gregtechceu.gtceu.api.data.chemical.ChemicalHelper;
 import com.gregtechceu.gtceu.api.data.chemical.material.Material;
 import com.gregtechceu.gtceu.api.data.chemical.material.properties.FluidPipeProperties;
@@ -19,32 +21,26 @@ import com.gregtechceu.gtceu.utils.EntityDamageUtil;
 import com.gregtechceu.gtceu.utils.FormattingUtil;
 import com.gregtechceu.gtceu.utils.GTUtil;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.fluids.FluidStack;
-
-import org.jetbrains.annotations.Nullable;
+import com.gregtechceu.gtceu.compat.capabilities.Capabilities;
+import com.gregtechceu.gtceu.compat.capabilities.RegisterCapabilitiesEvent;
+import com.gregtechceu.gtceu.compat.fluids.FluidStack;
+import com.gregtechceu.gtceu.compat.fluids.FluidUtil;
 
 import java.util.List;
 
-import javax.annotation.ParametersAreNonnullByDefault;
-
-@ParametersAreNonnullByDefault
-@MethodsReturnNonnullByDefault
-public class FluidPipeBlock extends MaterialPipeBlock<FluidPipeType, FluidPipeProperties, LevelFluidPipeNet> {
+public class FluidPipeBlock extends MaterialPipeBlock<FluidPipeType, FluidPipeProperties, LevelFluidPipeNet> implements com.gregtechceu.gtceu.core.fabric.IBlockTooltip {
 
     public FluidPipeBlock(Properties properties, FluidPipeType fluidPipeType, Material material) {
         super(properties, fluidPipeType, material);
@@ -53,6 +49,23 @@ public class FluidPipeBlock extends MaterialPipeBlock<FluidPipeType, FluidPipePr
     @Override
     protected FluidPipeProperties createProperties(FluidPipeType fluidPipeType, Material material) {
         return fluidPipeType.modifyProperties(material.getProperty(PropertyKey.FLUID_PIPE));
+    }
+
+    public void attachCapabilities(RegisterCapabilitiesEvent event) {
+        event.registerBlock(Capabilities.FluidHandler.BLOCK, (level, pos, state, blockEntity, side) -> {
+            if (blockEntity instanceof FluidPipeBlockEntity fluidPipeBlockEntity) {
+                if (side != null && fluidPipeBlockEntity.isConnected(side)) {
+                    return fluidPipeBlockEntity.getTankList(side);
+                }
+            }
+            return null;
+        }, this);
+        event.registerBlock(GTCapability.CAPABILITY_COVERABLE, (level, pos, state, blockEntity, side) -> {
+            if (blockEntity instanceof PipeBlockEntity<?, ?> pipe) {
+                return pipe.getCoverContainer();
+            }
+            return null;
+        }, this);
     }
 
     @Override
@@ -77,9 +90,9 @@ public class FluidPipeBlock extends MaterialPipeBlock<FluidPipeType, FluidPipePr
     }
 
     @Override
-    public boolean canPipeConnectToBlock(IPipeNode<FluidPipeType, FluidPipeProperties> selfTile, Direction side,
-                                         @Nullable BlockEntity tile) {
-        return tile != null && tile.getCapability(ForgeCapabilities.FLUID_HANDLER, side.getOpposite()).isPresent();
+    public boolean canPipeConnectToBlock(IPipeNode<FluidPipeType, FluidPipeProperties> selfTile,
+                                         Direction side, Level level, BlockPos pos) {
+        return FluidUtil.getFluidHandler(level, pos, side.getOpposite()).isPresent();
     }
 
     @Override
@@ -87,10 +100,7 @@ public class FluidPipeBlock extends MaterialPipeBlock<FluidPipeType, FluidPipePr
         return pipeType.createPipeModel(this, material, provider);
     }
 
-    @Override
-    public void appendHoverText(ItemStack stack, @Nullable BlockGetter level, List<Component> tooltip,
-                                TooltipFlag flag) {
-        super.appendHoverText(stack, level, tooltip, flag);
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
         FluidPipeProperties properties = createProperties(defaultBlockState(), stack);
 
         tooltip.add(Component.translatable("gtceu.universal.tooltip.fluid_transfer_rate", properties.getThroughput()));
@@ -117,7 +127,7 @@ public class FluidPipeBlock extends MaterialPipeBlock<FluidPipeType, FluidPipePr
     }
 
     @Override
-    public void entityInside(BlockState state, Level level, BlockPos pos, Entity entity) {
+    protected void entityInside(BlockState state, Level level, BlockPos pos, Entity entity, net.minecraft.world.entity.InsideBlockEffectApplier effectApplier, boolean isPrecise) {
         // dont apply damage if there is a frame box
         var pipeNode = getPipeTile(level, pos);
         if (pipeNode == null) {
@@ -127,10 +137,10 @@ public class FluidPipeBlock extends MaterialPipeBlock<FluidPipeType, FluidPipePr
         if (pipeNode.getFrameMaterial() != null) {
             BlockState frameState = ChemicalHelper.getBlockOrThrow(TagPrefix.frameGt, pipeNode.getFrameMaterial())
                     .defaultBlockState();
-            frameState.getBlock().entityInside(frameState, level, pos, entity);
+            frameState.entityInside(level, pos, entity, effectApplier, isPrecise);
             return;
         }
-        if (level.isClientSide) return;
+        if (level.isClientSide()) return;
         if (level.getBlockEntity(pos) == null) return;
         FluidPipeBlockEntity pipe = (FluidPipeBlockEntity) level.getBlockEntity(pos);
 
@@ -142,7 +152,7 @@ public class FluidPipeBlock extends MaterialPipeBlock<FluidPipeType, FluidPipePr
                     int minTemperature = Integer.MAX_VALUE;
                     for (var tank : pipe.getFluidTanks()) {
                         FluidStack stack = tank.getFluid();
-                        if (tank.getFluid() != null && tank.getFluid().getAmount() > 0) {
+                        if (!tank.getFluid().isEmpty()) {
                             maxTemperature = Math.max(maxTemperature,
                                     stack.getFluid().getFluidType().getTemperature(stack));
                             minTemperature = Math.min(minTemperature,
@@ -157,7 +167,7 @@ public class FluidPipeBlock extends MaterialPipeBlock<FluidPipeType, FluidPipePr
                     }
                 } else {
                     var tank = pipe.getFluidTanks()[0];
-                    if (tank.getFluid() != null && tank.getFluid().getAmount() > 0) {
+                    if (!tank.getFluid().isEmpty()) {
                         // Apply temperature damage for the pipe (single fluid pipes)
                         FluidStack stack = tank.getFluid();
                         EntityDamageUtil.applyTemperatureDamage(livingEntity,
@@ -166,6 +176,6 @@ public class FluidPipeBlock extends MaterialPipeBlock<FluidPipeType, FluidPipePr
                 }
             }
         }
-        super.entityInside(state, level, pos, entity);
+        super.entityInside(state, level, pos, entity, effectApplier, isPrecise);
     }
 }

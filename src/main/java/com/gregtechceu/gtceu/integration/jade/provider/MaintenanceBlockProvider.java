@@ -1,5 +1,6 @@
 package com.gregtechceu.gtceu.integration.jade.provider;
 
+import com.gregtechceu.gtceu.integration.jade.JadeTooltips;
 import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.api.machine.MetaMachine;
 import com.gregtechceu.gtceu.api.machine.multiblock.MultiblockControllerMachine;
@@ -20,7 +21,7 @@ import org.jetbrains.annotations.Nullable;
 import snownee.jade.api.BlockAccessor;
 import snownee.jade.api.ITooltip;
 import snownee.jade.api.config.IPluginConfig;
-import snownee.jade.api.ui.IElementHelper;
+import snownee.jade.api.ui.JadeUI;
 
 public class MaintenanceBlockProvider extends CapabilityBlockProvider<MaintenanceHatchPartMachine> {
 
@@ -54,15 +55,14 @@ public class MaintenanceBlockProvider extends CapabilityBlockProvider<Maintenanc
     @Override
     protected void addTooltip(CompoundTag compoundTag, ITooltip iTooltip, Player player, BlockAccessor blockAccessor,
                               BlockEntity blockEntity, IPluginConfig iPluginConfig) {
-        if (compoundTag.contains("hasProblems", Tag.TAG_BYTE)) {
-            if (compoundTag.getBoolean("hasProblems")) {
+        if (compoundTag.contains("hasProblems")) {
+            if (compoundTag.getBooleanOr("hasProblems", false)) {
                 if (blockAccessor.showDetails()) {
-                    int problems = compoundTag.getInt("maintenanceProblems");
+                    int problems = compoundTag.getIntOr("maintenanceProblems", 0);
                     for (byte i = 0; i < 6; i++) {
                         if (((problems >> i) & 1) == 0) {
                             var tuple = GTUtil.getMaintenanceText(i);
-                            IElementHelper helper = iTooltip.getElementHelper();
-                            iTooltip.add(helper.smallItem(tuple.getFirst()));
+                            JadeTooltips.add(iTooltip, JadeUI.smallItem(tuple.getFirst()));
                             iTooltip.append(tuple.getSecond());
                         }
                     }

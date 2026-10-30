@@ -1,13 +1,22 @@
 package com.gregtechceu.gtceu.client.model.machine.multipart;
 
+import net.minecraft.client.resources.model.ModelBaker;
+
+import net.minecraft.client.renderer.block.dispatch.ModelState;
+
+import net.minecraft.client.resources.model.sprite.Material;
+
+import com.gregtechceu.gtceu.compat.client.model.UnbakedModel;
+
 import com.gregtechceu.gtceu.api.machine.MachineDefinition;
 import com.gregtechceu.gtceu.client.model.machine.MachineModelLoader;
 import com.gregtechceu.gtceu.client.model.machine.MachineRenderState;
 import com.gregtechceu.gtceu.client.model.machine.variant.MultiVariantModel;
 
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.client.resources.model.*;
-import net.minecraft.resources.ResourceLocation;
+
+import com.gregtechceu.gtceu.compat.client.model.BakedModel;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.block.state.StateDefinition;
 
 import com.google.gson.*;
@@ -30,24 +39,24 @@ public record MultiPartUnbakedModel(StateDefinition<MachineDefinition, MachineRe
     }
 
     @Override
-    public Collection<ResourceLocation> getDependencies() {
+    public Collection<Identifier> getDependencies() {
         return this.selectors().stream()
                 .flatMap((selector) -> selector.getVariant().getDependencies().stream())
                 .collect(Collectors.toSet());
     }
 
     @Override
-    public void resolveParents(Function<ResourceLocation, UnbakedModel> resolver) {
+    public void resolveParents(Function<Identifier, UnbakedModel> resolver) {
         this.selectors().forEach((selector) -> selector.getVariant().resolveParents(resolver));
     }
 
     @Override
     public MultiPartBakedModel bake(ModelBaker baker, Function<Material, TextureAtlasSprite> spriteGetter,
-                                    ModelState state, ResourceLocation location) {
+                                    ModelState state) {
         MultiPartBakedModel.Builder builder = new MultiPartBakedModel.Builder();
 
         for (MultiPartSelector selector : this.selectors()) {
-            BakedModel bakedmodel = selector.getVariant().bake(baker, spriteGetter, state, location);
+            BakedModel bakedmodel = selector.getVariant().bake(baker, spriteGetter, state);
             if (bakedmodel != null) {
                 builder.add(selector.getPredicate(this.definition), bakedmodel);
             }

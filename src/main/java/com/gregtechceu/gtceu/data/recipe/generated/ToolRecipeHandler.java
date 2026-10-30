@@ -1,5 +1,9 @@
 package com.gregtechceu.gtceu.data.recipe.generated;
 
+import net.minecraft.resources.Identifier;
+
+import net.minecraft.world.item.equipment.ArmorType;
+
 import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.api.GTValues;
 import com.gregtechceu.gtceu.api.capability.GTCapabilityHelper;
@@ -12,14 +16,18 @@ import com.gregtechceu.gtceu.api.data.chemical.material.stack.MaterialEntry;
 import com.gregtechceu.gtceu.api.data.tag.TagPrefix;
 import com.gregtechceu.gtceu.api.item.tool.GTToolType;
 import com.gregtechceu.gtceu.api.item.tool.ToolHelper;
+import com.gregtechceu.gtceu.api.registry.GTRegistries;
 import com.gregtechceu.gtceu.common.data.GTItems;
 import com.gregtechceu.gtceu.common.data.GTMaterialItems;
 import com.gregtechceu.gtceu.common.data.GTMaterials;
 import com.gregtechceu.gtceu.common.data.GTRecipeTypes;
 import com.gregtechceu.gtceu.data.recipe.VanillaRecipeHelper;
 
-import net.minecraft.data.recipes.FinishedRecipe;
+import net.minecraft.core.Holder;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.data.recipes.RecipeOutput;
 import net.minecraft.world.item.*;
+import net.minecraft.world.item.component.DyedItemColor;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.level.block.Blocks;
 
@@ -29,7 +37,8 @@ import it.unimi.dsi.fastutil.ints.Int2ReferenceMap;
 import org.apache.commons.lang3.ArrayUtils;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.function.Consumer;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
 
 import static com.gregtechceu.gtceu.api.data.chemical.material.info.MaterialFlags.*;
 import static com.gregtechceu.gtceu.api.data.tag.TagPrefix.*;
@@ -41,15 +50,21 @@ public final class ToolRecipeHandler {
             new ItemEntry[] { GTItems.POWER_UNIT_LV, GTItems.POWER_UNIT_MV, GTItems.POWER_UNIT_HV,
                     GTItems.POWER_UNIT_EV, GTItems.POWER_UNIT_IV });
 
-    public static final Material[] softMaterials = new Material[] {
-            GTMaterials.Wood, GTMaterials.Rubber, GTMaterials.Polyethylene,
-            GTMaterials.Polytetrafluoroethylene, GTMaterials.Polybenzimidazole,
-            GTMaterials.SiliconeRubber, GTMaterials.StyreneButadieneRubber
-    };
+    public static final HashSet<Holder<Material>> softMaterials = new LinkedHashSet<>();
+
+    static {
+        softMaterials.add(GTMaterials.Wood.getDelegate());
+        softMaterials.add(GTMaterials.Rubber.getDelegate());
+        softMaterials.add(GTMaterials.Polyethylene.getDelegate());
+        softMaterials.add(GTMaterials.Polytetrafluoroethylene.getDelegate());
+        softMaterials.add(GTMaterials.Polybenzimidazole.getDelegate());
+        softMaterials.add(GTMaterials.SiliconeRubber.getDelegate());
+        softMaterials.add(GTMaterials.StyreneButadieneRubber.getDelegate());
+    }
 
     private ToolRecipeHandler() {}
 
-    public static void run(@NotNull Consumer<FinishedRecipe> provider, @NotNull Material material) {
+    public static void run(@NotNull RecipeOutput provider, @NotNull Material material) {
         ToolProperty property = material.getProperty(PropertyKey.TOOL);
         if (property == null) {
             return;
@@ -59,7 +74,7 @@ public final class ToolRecipeHandler {
         processElectricTool(provider, property, material);
     }
 
-    private static void processTool(@NotNull Consumer<FinishedRecipe> provider, @NotNull Material material) {
+    private static void processTool(@NotNull RecipeOutput provider, @NotNull Material material) {
         ItemStack stick = new ItemStack(Items.STICK);
         MaterialEntry ingot = new MaterialEntry(
                 material.hasProperty(PropertyKey.GEM) ? TagPrefix.gem : TagPrefix.ingot, material);
@@ -143,16 +158,16 @@ public final class ToolRecipeHandler {
                     "PhP", " P ", " P ",
                     'P', plate);
 
-            addArmorRecipe(provider, material, ArmorItem.Type.HELMET,
+            addArmorRecipe(provider, material, ArmorType.HELMET,
                     "PPP", "PhP",
                     'P', plate);
-            addArmorRecipe(provider, material, ArmorItem.Type.CHESTPLATE,
+            addArmorRecipe(provider, material, ArmorType.CHESTPLATE,
                     "PhP", "PPP", "PPP",
                     'P', plate);
-            addArmorRecipe(provider, material, ArmorItem.Type.LEGGINGS,
+            addArmorRecipe(provider, material, ArmorType.LEGGINGS,
                     "PPP", "PhP", "P P",
                     'P', plate);
-            addArmorRecipe(provider, material, ArmorItem.Type.BOOTS,
+            addArmorRecipe(provider, material, ArmorType.BOOTS,
                     "P P", "PhP",
                     'P', plate);
         } else {
@@ -183,7 +198,7 @@ public final class ToolRecipeHandler {
                             'T', new MaterialEntry(TagPrefix.screw, material),
                             'R', new MaterialEntry(TagPrefix.ring, material),
                             'S', stick);
-                } else if (!ArrayUtils.contains(softMaterials, material)) {
+                } else if (!softMaterials.contains(GTRegistries.MATERIALS.wrapAsHolder(material))) {
                     GTCEu.LOGGER
                             .info("Did not find bolt for {}, skipping wirecutter recipe", material.getName());
                 }
@@ -200,15 +215,16 @@ public final class ToolRecipeHandler {
             addDyeableToolRecipe(provider, material, GTToolType.CROWBAR, true,
                     "hDS", "DSD", "SDf",
                     'S', rod);
-        } else if (!ArrayUtils.contains(softMaterials, material)) {
-            GTCEu.LOGGER.warn("Did not find rod for " + material.getName() +
-                    ", skipping wirecutter, butchery knife, screwdriver, crowbar recipes");
+        } else if (!softMaterials.contains(GTRegistries.MATERIALS.wrapAsHolder(material))) {
+            GTCEu.LOGGER.warn(
+                    "Did not find rod for {}, skipping wirecutter, butchery knife, screwdriver, crowbar recipes",
+                    material.getName());
         }
 
         GTToolType.getTypes().forEach((s, gtToolType) -> addNetheriteToolRecipe(provider, gtToolType));
     }
 
-    private static void processElectricTool(@NotNull Consumer<FinishedRecipe> provider, @NotNull ToolProperty property,
+    private static void processElectricTool(@NotNull RecipeOutput provider, @NotNull ToolProperty property,
                                             @NotNull Material material) {
         if (!material.shouldGenerateRecipesFor(plate)) {
             return;
@@ -216,7 +232,7 @@ public final class ToolRecipeHandler {
 
         final int voltageMultiplier = material.getBlastTemperature() > 2800 ? GTValues.VA[GTValues.LV] :
                 GTValues.VA[GTValues.ULV];
-        TagPrefix toolPrefix;
+        Holder<TagPrefix> toolPrefix;
 
         if (material.hasFlag(GENERATE_PLATE)) {
             final MaterialEntry plate = new MaterialEntry(TagPrefix.plate, material);
@@ -225,7 +241,7 @@ public final class ToolRecipeHandler {
 
             // drill
             if (property.hasType(GTToolType.DRILL_LV)) {
-                toolPrefix = TagPrefix.toolHeadDrill;
+                toolPrefix = TagPrefix.toolHeadDrill.getDelegate();
                 VanillaRecipeHelper.addShapedRecipe(provider, String.format("drill_head_%s", material.getName()),
                         ChemicalHelper.get(toolPrefix, material),
                         "XSX", "XSX", "ShS",
@@ -238,7 +254,7 @@ public final class ToolRecipeHandler {
 
             // chainsaw
             if (property.hasType(GTToolType.CHAINSAW_LV)) {
-                toolPrefix = TagPrefix.toolHeadChainsaw;
+                toolPrefix = TagPrefix.toolHeadChainsaw.getDelegate();
                 VanillaRecipeHelper.addShapedRecipe(provider, String.format("chainsaw_head_%s", material.getName()),
                         ChemicalHelper.get(toolPrefix, material),
                         "SRS", "XhX", "SRS",
@@ -253,7 +269,7 @@ public final class ToolRecipeHandler {
 
             // wrench
             if (property.hasType(GTToolType.WRENCH_LV)) {
-                toolPrefix = TagPrefix.toolHeadWrench;
+                toolPrefix = TagPrefix.toolHeadWrench.getDelegate();
                 addElectricToolRecipe(provider, toolPrefix,
                         new GTToolType[] { GTToolType.WRENCH_LV, GTToolType.WRENCH_HV, GTToolType.WRENCH_IV },
                         material);
@@ -268,7 +284,7 @@ public final class ToolRecipeHandler {
 
             // electric wire cutters
             if (property.hasType(GTToolType.WIRE_CUTTER_LV)) {
-                toolPrefix = toolHeadWireCutter;
+                toolPrefix = toolHeadWireCutter.getDelegate();
                 addElectricToolRecipe(provider, toolPrefix,
                         new GTToolType[] { GTToolType.WIRE_CUTTER_LV, GTToolType.WIRE_CUTTER_HV,
                                 GTToolType.WIRE_CUTTER_IV },
@@ -283,9 +299,9 @@ public final class ToolRecipeHandler {
             }
 
             // buzzsaw
-            if (property.hasType(GTToolType.BUZZSAW)) {
-                toolPrefix = TagPrefix.toolHeadBuzzSaw;
-                addElectricToolRecipe(provider, toolPrefix, new GTToolType[] { GTToolType.BUZZSAW }, material);
+            if (property.hasType(GTToolType.BUZZSAW_LV)) {
+                toolPrefix = TagPrefix.toolHeadBuzzSaw.getDelegate();
+                addElectricToolRecipe(provider, toolPrefix, new GTToolType[] { GTToolType.BUZZSAW_LV }, material);
 
                 VanillaRecipeHelper.addShapedRecipe(provider, String.format("buzzsaw_blade_%s", material.getName()),
                         ChemicalHelper.get(toolPrefix, material),
@@ -300,19 +316,20 @@ public final class ToolRecipeHandler {
                             .EUt(8L * voltageMultiplier)
                             .save(provider);
                 } else {
-                    GTCEu.LOGGER.warn("Did not find gear for " + material.getName() +
-                            ", skipping gear -> buzzsaw blade recipe");
+                    GTCEu.LOGGER.warn("Did not find gear for {}, skipping gear -> buzzsaw blade recipe",
+                            material.getName());
                 }
             }
         } else {
-            GTCEu.LOGGER.warn("Did not find plate for " + material.getName() +
-                    ", skipping electric drill, chainsaw, wrench, wirecutter, buzzsaw recipe");
+            GTCEu.LOGGER.warn(
+                    "Did not find plate for {}, skipping electric drill, chainsaw, wrench, wirecutter, buzzsaw recipe",
+                    material.getName());
         }
 
         // screwdriver
         if (property.hasType(GTToolType.SCREWDRIVER_LV)) {
             if (material.hasFlag(GENERATE_LONG_ROD)) {
-                toolPrefix = TagPrefix.toolHeadScrewdriver;
+                toolPrefix = TagPrefix.toolHeadScrewdriver.getDelegate();
                 addElectricToolRecipe(provider, toolPrefix, new GTToolType[] { GTToolType.SCREWDRIVER_LV,
                         GTToolType.SCREWDRIVER_HV, GTToolType.SCREWDRIVER_IV }, material);
 
@@ -321,13 +338,13 @@ public final class ToolRecipeHandler {
                         "fR", " h",
                         'R', new MaterialEntry(TagPrefix.rodLong, material));
             } else {
-                GTCEu.LOGGER.warn("Did not find long rod for " + material.getName() +
-                        ", skipping electric screwdriver recipe");
+                GTCEu.LOGGER.warn("Did not find long rod for {}, skipping electric screwdriver recipe",
+                        material.getName());
             }
         }
     }
 
-    private static void addElectricToolRecipe(@NotNull Consumer<FinishedRecipe> provider, @NotNull TagPrefix toolHead,
+    private static void addElectricToolRecipe(@NotNull RecipeOutput provider, @NotNull Holder<TagPrefix> toolHead,
                                               @NotNull GTToolType @NotNull [] toolItems,
                                               @NotNull Material material) {
         for (GTToolType toolType : toolItems) {
@@ -340,7 +357,7 @@ public final class ToolRecipeHandler {
             VanillaRecipeHelper.addShapedEnergyTransferRecipe(provider,
                     true, true, true,
                     String.format("%s_%s", material.getName(), toolType.name),
-                    Ingredient.of(powerUnitStack),
+                    Ingredient.of((powerUnitStack).getItem()),
                     tool,
                     "wHd", " U ",
                     'H', new MaterialEntry(toolHead, material),
@@ -348,7 +365,20 @@ public final class ToolRecipeHandler {
         }
     }
 
-    public static void addToolRecipe(@NotNull Consumer<FinishedRecipe> provider, @NotNull Material material,
+    public static void addToolRecipe(@NotNull RecipeOutput provider, @NotNull Holder<Material> material,
+                                     @NotNull GTToolType tool, boolean mirrored, Object... recipe) {
+        ItemStack toolStack = ToolHelper.get(tool, material);
+        if (toolStack.isEmpty()) return;
+        if (mirrored) { // todo mirrored
+            VanillaRecipeHelper.addShapedRecipe(provider, String.format("%s_%s", tool.name, material.value().getName()),
+                    toolStack, recipe);
+        } else {
+            VanillaRecipeHelper.addShapedRecipe(provider, String.format("%s_%s", tool.name, material.value().getName()),
+                    toolStack, recipe);
+        }
+    }
+
+    public static void addToolRecipe(@NotNull RecipeOutput provider, @NotNull Material material,
                                      @NotNull GTToolType tool, boolean mirrored, Object... recipe) {
         ItemStack toolStack = ToolHelper.get(tool, material);
         if (toolStack.isEmpty()) return;
@@ -361,13 +391,14 @@ public final class ToolRecipeHandler {
         }
     }
 
-    public static void addNetheriteToolRecipe(@NotNull Consumer<FinishedRecipe> provider, @NotNull GTToolType tool) {
-        VanillaRecipeHelper.addToolUpgradingRecipe(provider, tool, GTMaterials.Netherite, GTMaterials.Diamond,
+    public static void addNetheriteToolRecipe(@NotNull RecipeOutput provider, @NotNull GTToolType tool) {
+        VanillaRecipeHelper.addToolUpgradingRecipe(provider, tool, GTMaterials.Netherite.value(),
+                GTMaterials.Diamond.value(),
                 Items.NETHERITE_UPGRADE_SMITHING_TEMPLATE, ChemicalHelper.get(ingot, GTMaterials.Netherite).getItem());
     }
 
-    public static void addArmorRecipe(Consumer<FinishedRecipe> provider, @NotNull Material material,
-                                      @NotNull ArmorItem.Type armor, Object... recipe) {
+    public static void addArmorRecipe(RecipeOutput provider, @NotNull Material material,
+                                      @NotNull ArmorType armor, Object... recipe) {
         ItemStack armorStack = ToolHelper.getArmor(armor, material);
         if (armorStack.isEmpty()) return;
         VanillaRecipeHelper.addShapedRecipe(provider, String.format("%s_%s", armor.getName(), material.getName()),
@@ -377,14 +408,15 @@ public final class ToolRecipeHandler {
     /**
      * {@code D} is inferred as the dye key
      */
-    public static void addDyeableToolRecipe(@NotNull Consumer<FinishedRecipe> provider, @NotNull Material material,
+    public static void addDyeableToolRecipe(@NotNull RecipeOutput provider, @NotNull Material material,
                                             @NotNull GTToolType tool, boolean mirrored, Object... recipe) {
         ItemStack toolStack = ToolHelper.get(tool, material);
         if (toolStack.isEmpty()) return;
         for (var color : DyeColor.values()) {
-            ToolHelper.getToolTag(toolStack).putInt(ToolHelper.TINT_COLOR_KEY, color.getTextColor());
+            toolStack.set(DataComponents.DYED_COLOR, new DyedItemColor(color.getTextColor()));
             Object[] recipeWithDye = ArrayUtils.addAll(recipe, 'D',
-                    color.getTag());
+                    net.minecraft.tags.TagKey.create(net.minecraft.core.registries.Registries.ITEM,
+                            Identifier.fromNamespaceAndPath("c", "dyes/" + color.getName())));
 
             if (mirrored) { // todo mirrored
                 VanillaRecipeHelper.addShapedRecipe(provider,

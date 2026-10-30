@@ -1,6 +1,6 @@
 {
   "parent": "minecraft:block/block",
-  "loader": "gtceu:machine",
+  "fabric:type": "gtceu:machine",
   "machine": "gtceu:high_performance_computation_array",
   "texture_overrides": {
     "bottom": "gtceu:block/casings/hpca/computer_casing/bottom",

@@ -1,5 +1,9 @@
 package com.gregtechceu.gtceu.common.machine.misc;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
+import com.gregtechceu.gtceu.utils.GTUtil;
+
 import com.gregtechceu.gtceu.api.blockentity.BlockEntityCreationInfo;
 import com.gregtechceu.gtceu.api.capability.GTCapabilityHelper;
 import com.gregtechceu.gtceu.api.item.module.IModularItem;
@@ -15,11 +19,7 @@ import com.gregtechceu.gtceu.common.mui.GTGuiTheme;
 
 import net.minecraft.core.Direction;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.common.util.LazyOptional;
+import com.gregtechceu.gtceu.compat.items.IItemHandlerModifiable;
 
 import brachy.modularui.factory.PosGuiData;
 import brachy.modularui.screen.ModularPanel;
@@ -86,9 +86,9 @@ public class EquipmentFoundryMachine extends MetaMachine implements IMuiMachine 
             return false;
         }
 
-        return getLevel().getRecipeManager()
-                .getAllRecipesFor(GTRecipeTypes.EQUIPMENT_FOUNDRY_RECIPES.get())
-                .stream().anyMatch(recipe -> recipe.matches(equipmentSlot.getStackInSlot(0), stack, slot));
+        if (getLevel() != null && getLevel().isClientSide()) return true; // the server validates
+        return GTUtil.getRecipesFor(getLevel(), GTRecipeTypes.EQUIPMENT_FOUNDRY_RECIPES.get())
+                .stream().anyMatch(recipe -> recipe.value().matches(equipmentSlot.getStackInSlot(0), stack, slot));
     }
 
     @Override
@@ -169,7 +169,7 @@ public class EquipmentFoundryMachine extends MetaMachine implements IMuiMachine 
     }
 
     public void onModifierSlotChanged(int slot) {
-        if (getLevel() == null || getLevel().isClientSide) {
+        if (getLevel() == null || getLevel().isClientSide()) {
             return;
         }
 
@@ -185,15 +185,12 @@ public class EquipmentFoundryMachine extends MetaMachine implements IMuiMachine 
         if (newModule.isEmpty()) return;
 
         var equipmentItem = equipmentSlot.getStackInSlot(0);
-        for (var recipe : getLevel().getRecipeManager()
-                .getAllRecipesFor(GTRecipeTypes.EQUIPMENT_FOUNDRY_RECIPES.get())) {
-            if (recipe.matches(equipmentItem, newModule, slot)) {
-                recipe.applyToItem(equipmentItem, newModule, slot);
+        for (var recipe : GTUtil.getRecipesFor(getLevel(), GTRecipeTypes.EQUIPMENT_FOUNDRY_RECIPES.get())) {
+            if (recipe.value().matches(equipmentItem, newModule, slot)) {
+                recipe.value().applyToItem(equipmentItem, newModule, slot);
                 break;
             }
         }
-
-        moduleSlots.getStackInSlot(slot);
     }
 
     @Override
@@ -202,18 +199,15 @@ public class EquipmentFoundryMachine extends MetaMachine implements IMuiMachine 
     }
 
     @Override
-    public <T> LazyOptional<T> getCapability(Capability<T> cap, @Nullable Direction side) {
-        if (cap == ForgeCapabilities.ITEM_HANDLER && side != null) {
-            if (side.getAxis().isVertical())
-                return ForgeCapabilities.ITEM_HANDLER.orEmpty(cap, LazyOptional.of(() -> equipmentSlot));
-            if (side.getAxis().isHorizontal())
-                return ForgeCapabilities.ITEM_HANDLER.orEmpty(cap, LazyOptional.of(() -> moduleSlots));
-        }
-        return super.getCapability(cap, side);
+    public @Nullable IItemHandlerModifiable getItemHandlerCap(@Nullable Direction side, boolean useCoverCapability) {
+        if (side == null) return super.getItemHandlerCap(null, useCoverCapability);
+        if (side.getAxis().isVertical()) return equipmentSlot;
+        if (side.getAxis().isHorizontal()) return moduleSlots;
+        return null;
     }
 
     @Override
-    @OnlyIn(Dist.CLIENT)
+    @Environment(EnvType.CLIENT)
     public ModularScreen createScreen(PosGuiData posGuiData, ModularPanel<?> modularPanel) {
         return new GTGuiScreen(modularPanel, GTGuiTheme.EQUIPMENT_FOUNDRY);
     }

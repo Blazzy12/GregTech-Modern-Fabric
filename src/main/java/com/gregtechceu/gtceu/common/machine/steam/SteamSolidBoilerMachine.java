@@ -12,11 +12,12 @@ import com.gregtechceu.gtceu.api.sync_system.annotations.SaveField;
 import com.gregtechceu.gtceu.common.data.GTMaterials;
 import com.gregtechceu.gtceu.common.mui.GTGuiTextures;
 import com.gregtechceu.gtceu.config.ConfigHolder;
+import com.gregtechceu.gtceu.utils.GTUtil;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.fluids.FluidUtil;
+import com.gregtechceu.gtceu.compat.fluids.FluidUtil;
 
 import brachy.modularui.drawable.UITexture;
 import brachy.modularui.drawable.progress.ProgressDrawable;
@@ -32,7 +33,6 @@ import brachy.modularui.widgets.slot.ModularSlot;
 import it.unimi.dsi.fastutil.objects.Object2BooleanMap;
 import it.unimi.dsi.fastutil.objects.Object2BooleanOpenHashMap;
 
-import java.util.Arrays;
 import java.util.Collections;
 
 import javax.annotation.ParametersAreNonnullByDefault;
@@ -53,17 +53,7 @@ public class SteamSolidBoilerMachine extends SteamBoilerMachine {
             if (FluidUtil.getFluidContained(itemStack).isPresent()) {
                 return false;
             }
-            return FUEL_CACHE.computeIfAbsent(itemStack.getItem(), item -> {
-                if (isRemote()) return true;
-                return recipeLogic.getRecipeManager().getAllRecipesFor(getRecipeType()).stream().anyMatch(recipe -> {
-                    var list = recipe.inputs.getOrDefault(ItemRecipeCapability.CAP, Collections.emptyList());
-                    if (!list.isEmpty()) {
-                        return Arrays.stream(ItemRecipeCapability.CAP.of(list.get(0).content()).getItems())
-                                .map(ItemStack::getItem).anyMatch(i -> i == item);
-                    }
-                    return false;
-                });
-            });
+            return FUEL_CACHE.computeIfAbsent(itemStack.getItem(), item -> GTUtil.getItemBurnTime((Item) item) > 0);
         });
         this.ashHandler = attachTrait(new NotifiableItemStackHandler(1, IO.OUT, IO.OUT));
     }
@@ -85,7 +75,7 @@ public class SteamSolidBoilerMachine extends SteamBoilerMachine {
             var inputs = recipeLogic.getLastUnrolledRecipe().inputs.getOrDefault(ItemRecipeCapability.CAP,
                     Collections.emptyList());
             if (!inputs.isEmpty()) {
-                var input = ItemRecipeCapability.CAP.of(inputs.get(0).content()).getItems();
+                var input = ItemRecipeCapability.CAP.of(inputs.getFirst().content()).getItems();
                 if (input.length > 0) {
                     var remaining = getBurningFuelRemainder(input[0]);
                     if (!remaining.isEmpty()) {
@@ -102,13 +92,13 @@ public class SteamSolidBoilerMachine extends SteamBoilerMachine {
         var materialStack = ChemicalHelper.getMaterialStack(fuelStack);
         if (materialStack.isEmpty()) {
             return ItemStack.EMPTY;
-        } else if (materialStack.material() == GTMaterials.Charcoal) {
+        } else if (materialStack.material() == GTMaterials.Charcoal.value()) {
             remainder = ChemicalHelper.get(TagPrefix.dust, GTMaterials.Ash);
             remainderChance = 0.3f;
-        } else if (materialStack.material() == GTMaterials.Coal) {
+        } else if (materialStack.material() == GTMaterials.Coal.value()) {
             remainder = ChemicalHelper.get(TagPrefix.dust, GTMaterials.DarkAsh);
             remainderChance = 0.35f;
-        } else if (materialStack.material() == GTMaterials.Coke) {
+        } else if (materialStack.material() == GTMaterials.Coke.value()) {
             remainder = ChemicalHelper.get(TagPrefix.dust, GTMaterials.Ash);
             remainderChance = 0.5f;
         } else {

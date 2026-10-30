@@ -1,6 +1,6 @@
 {
   "parent": "gtceu:block/pipe/normal_laser_pipe/center",
-  "loader": "gtceu:pipe",
+  "fabric:type": "gtceu:pipe",
   "parts": {
     "center": {
       "model": "gtceu:block/pipe/normal_laser_pipe/center"

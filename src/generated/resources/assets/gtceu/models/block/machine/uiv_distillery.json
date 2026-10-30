@@ -1,6 +1,6 @@
 {
   "parent": "minecraft:block/block",
-  "loader": "gtceu:machine",
+  "fabric:type": "gtceu:machine",
   "machine": "gtceu:uiv_distillery",
   "variants": {
     "recipe_logic_status=idle": {

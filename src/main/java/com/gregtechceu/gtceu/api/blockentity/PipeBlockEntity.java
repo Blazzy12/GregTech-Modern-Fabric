@@ -14,13 +14,15 @@ import com.gregtechceu.gtceu.api.sync_system.annotations.RerenderOnChanged;
 import com.gregtechceu.gtceu.api.sync_system.annotations.SaveField;
 import com.gregtechceu.gtceu.api.sync_system.annotations.SyncToClient;
 import com.gregtechceu.gtceu.api.sync_system.managed.ManagedSyncBlockEntity;
+import com.gregtechceu.gtceu.common.data.item.GTItemAbilities;
 import com.gregtechceu.gtceu.common.mui.GTGuiTextures;
 import com.gregtechceu.gtceu.utils.ExtendedUseOnContext;
 import com.gregtechceu.gtceu.utils.GTUtil;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
@@ -80,7 +82,6 @@ public abstract class PipeBlockEntity<PipeType extends Enum<PipeType> & IPipeTyp
     @RerenderOnChanged
     @SyncToClient
     @SaveField
-    @Getter
     private @Nullable Material frameMaterial = null;
     private final List<TickableSubscription> serverTicks;
     private final List<TickableSubscription> waitingToAdd;
@@ -92,12 +93,22 @@ public abstract class PipeBlockEntity<PipeType extends Enum<PipeType> & IPipeTyp
         this.waitingToAdd = new ArrayList<>();
     }
 
+    @Override
+    public void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        // Because the null material sentinel value was removed in favour of just using null directly,
+        // remove occurences where a null material was serialised as the null sentinel value in old saves.
+        if (tag.contains("frameMaterial") && tag.getString("frameMaterial").equals("gtceu:null")) {
+            tag.remove("frameMaterial");
+        }
+        super.loadAdditional(tag, registries);
+    }
+
     //////////////////////////////////////
     // ***** Initialization ******//
     //////////////////////////////////////
     @Override
     public long getOffsetTimer() {
-        return level == null ? offset : (level.getServer().getTickCount() + offset);
+        return level == null ? offset : (level.getGameTime() + offset);
     }
 
     @Override
@@ -146,6 +157,11 @@ public abstract class PipeBlockEntity<PipeType extends Enum<PipeType> & IPipeTyp
             connections = connections & (connections - 1);
         }
         return count;
+    }
+
+    @Override
+    public @Nullable Material getFrameMaterial() {
+        return frameMaterial;
     }
 
     @Override
@@ -231,7 +247,7 @@ public abstract class PipeBlockEntity<PipeType extends Enum<PipeType> & IPipeTyp
         if (getLevel() == null) {
             return;
         }
-        if (!getLevel().isClientSide) {
+        if (!getLevel().isClientSide()) {
             if (isConnected(side) == connected) {
                 return;
             }
@@ -251,7 +267,7 @@ public abstract class PipeBlockEntity<PipeType extends Enum<PipeType> & IPipeTyp
             setConnections(withSideConnection(connections, side, connected));
             updateNetworkConnection(side, connected);
             // notify neighbor of change so Auto Output updates its ticking status
-            getLevel().neighborChanged(getBlockPos().relative(side), getPipeBlock(), getBlockPos());
+            getLevel().neighborChanged(getBlockPos().relative(side), getPipeBlock(), null);
             setChanged();
 
             if (!fromNeighbor && tile instanceof IPipeNode<?, ?> pipeTile) {
@@ -294,7 +310,7 @@ public abstract class PipeBlockEntity<PipeType extends Enum<PipeType> & IPipeTyp
     @Override
     public boolean triggerEvent(int id, int para) {
         if (id == 1) { // chunk re render
-            if (level != null && level.isClientSide) {
+            if (level != null && level.isClientSide()) {
                 scheduleRenderUpdate();
             }
             return true;
@@ -308,7 +324,7 @@ public abstract class PipeBlockEntity<PipeType extends Enum<PipeType> & IPipeTyp
     @Override
     public boolean shouldRenderGrid(Player player, BlockPos pos, BlockState state, ItemStack held,
                                     Set<GTToolType> toolTypes) {
-        if (toolTypes.contains(getPipeTuneTool())) return true;
+        if (toolTypes.contains(getPipeTuneTool()) || hasCorrectAction(held)) return true;
         for (CoverBehavior cover : coverContainer.getCovers()) {
             if (cover.shouldRenderGrid(player, pos, state, held, toolTypes)) return true;
         }
@@ -322,7 +338,7 @@ public abstract class PipeBlockEntity<PipeType extends Enum<PipeType> & IPipeTyp
     @Override
     public @Nullable UITexture sideTips(Player player, BlockPos pos, BlockState state, Set<GTToolType> toolTypes,
                                         ItemStack held, Direction side) {
-        if (toolTypes.contains(getPipeTuneTool())) {
+        if (toolTypes.contains(getPipeTuneTool()) || hasCorrectAction(held)) {
             if (player.isShiftKeyDown() && this.canHaveBlockedFaces()) {
                 return getPipeTexture(isBlocked(side));
             } else {
@@ -352,7 +368,7 @@ public abstract class PipeBlockEntity<PipeType extends Enum<PipeType> & IPipeTyp
 
             if (toolType.contains(GTToolType.CROWBAR)) {
                 getCoverContainer().removeCover(context.getGridSide(), player);
-                return Pair.of(GTToolType.CROWBAR, InteractionResult.sidedSuccess(isRemote()));
+                return Pair.of(GTToolType.CROWBAR, InteractionResult.SUCCESS);
             }
         }
 
@@ -364,13 +380,13 @@ public abstract class PipeBlockEntity<PipeType extends Enum<PipeType> & IPipeTyp
                 boolean isOpen = this.isConnected(gridSide);
                 this.setConnection(gridSide, !isOpen, false);
             }
-            return Pair.of(getPipeTuneTool(), InteractionResult.sidedSuccess(isRemote()));
+            return Pair.of(getPipeTuneTool(), InteractionResult.SUCCESS);
         } else if (toolType.contains(GTToolType.CROWBAR)) {
             if (frameMaterial != null) {
                 Block.popResource(context.getLevel(), this.getBlockPos(),
                         ChemicalHelper.getItemOrThrow(TagPrefix.frameGt, frameMaterial).getDefaultInstance());
-                setFrameMaterial(null);
-                return Pair.of(GTToolType.CROWBAR, InteractionResult.sidedSuccess(isRemote()));
+                frameMaterial = null;
+                return Pair.of(GTToolType.CROWBAR, InteractionResult.SUCCESS);
             }
         }
 
@@ -381,6 +397,10 @@ public abstract class PipeBlockEntity<PipeType extends Enum<PipeType> & IPipeTyp
         return GTToolType.WRENCH;
     }
 
+    public boolean hasCorrectAction(ItemStack stack) {
+        return stack.canPerformAction(GTItemAbilities.WRENCH_CONNECT);
+    }
+
     @Override
     public int getDefaultPaintingColor() {
         return this.getPipeBlock() instanceof MaterialPipeBlock<?, ?, ?> materialPipeBlock ?
@@ -389,7 +409,7 @@ public abstract class PipeBlockEntity<PipeType extends Enum<PipeType> & IPipeTyp
 
     public void doExplosion(float explosionPower) {
         getLevel().removeBlock(this.getBlockPos(), false);
-        if (!getLevel().isClientSide) {
+        if (!getLevel().isClientSide()) {
             ((ServerLevel) getLevel()).sendParticles(ParticleTypes.LARGE_SMOKE, this.getBlockPos().getX() + 0.5,
                     this.getBlockPos().getY() + 0.5, this.getBlockPos().getZ() + 0.5,
                     10, 0.2, 0.2, 0.2, 0.0);
@@ -420,7 +440,7 @@ public abstract class PipeBlockEntity<PipeType extends Enum<PipeType> & IPipeTyp
     @Override
     public void pasteConfig(ServerPlayer player, CompoundTag tag) {
         if (tag.contains("pipe_connections")) {
-            var connections = tag.getInt("pipe_connections");
+            var connections = tag.getIntOr("pipe_connections", 0);
 
             for (var dir : GTUtil.DIRECTIONS) {
                 if (isConnected(connections, dir)) setConnection(dir, true, false);
@@ -428,7 +448,7 @@ public abstract class PipeBlockEntity<PipeType extends Enum<PipeType> & IPipeTyp
 
         }
         if (tag.contains("pipe_blocked_connections")) {
-            var blockedConnections = tag.getInt("pipe_blocked_connections");
+            var blockedConnections = tag.getIntOr("pipe_blocked_connections", 0);
 
             for (var dir : GTUtil.DIRECTIONS) {
                 if (isFaceBlocked(blockedConnections, dir)) setBlocked(dir, true);
@@ -436,7 +456,7 @@ public abstract class PipeBlockEntity<PipeType extends Enum<PipeType> & IPipeTyp
 
         }
 
-        getCoverContainer().pasteConfig(player, tag.getCompound("cover"));
+        getCoverContainer().pasteConfig(player, tag.getCompoundOrEmpty("cover"));
     }
 
     @Override

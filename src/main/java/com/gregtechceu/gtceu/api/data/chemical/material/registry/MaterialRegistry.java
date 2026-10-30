@@ -1,98 +1,61 @@
 package com.gregtechceu.gtceu.api.data.chemical.material.registry;
 
-import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.api.data.chemical.material.Material;
-import com.gregtechceu.gtceu.api.registry.GTRegistry;
+import com.gregtechceu.gtceu.core.mixins.MappedRegistryAccessor;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.core.Holder;
+import net.minecraft.core.MappedRegistry;
+import net.minecraft.core.RegistrationInfo;
+import net.minecraft.core.Registry;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.Identifier;
 
-import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+import com.mojang.serialization.Lifecycle;
 import lombok.Getter;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-import org.jetbrains.annotations.UnmodifiableView;
 
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Stream;
 
-public class MaterialRegistry extends GTRegistry.RL<Material> {
+public final class MaterialRegistry extends MappedRegistry<Material> {
 
     @Getter
-    private final Set<java.lang.String> usedNamespaces = new ObjectOpenHashSet<>();
+    private boolean registryClosed = false;
 
-    private Phase registrationPhase = Phase.PRE;
-
-    public MaterialRegistry() {
-        super(GTCEu.id("material"));
+    public MaterialRegistry(ResourceKey<Registry<Material>> key) {
+        super(key, Lifecycle.stable());
     }
 
-    public @Nullable Material get(java.lang.String name) {
-        ResourceLocation location = ResourceLocation.tryParse(GTCEu.appendIdString(name));
-        if (location != null) return get(location);
-        return null;
+    public Material register(Material material) {
+        return register(material.getResourceLocation(), material);
+    }
+
+    private Material register(Identifier id, Material material) {
+        this.register(ResourceKey.create(this.key(), id), material, RegistrationInfo.BUILT_IN);
+        return material;
     }
 
     @Override
-    public <T extends Material> T register(@NotNull ResourceLocation key, @NotNull T value) {
-        if (registrationPhase == Phase.CLOSED || registrationPhase == Phase.FROZEN) {
-            GTCEu.LOGGER.error(
-                    "Materials cannot be registered in the PostMaterialEvent (or after)! Must be added in the MaterialEvent. Skipping material {}...",
-                    key);
-            return null;
+    public Identifier getKey(Material material) {
+        return material.getResourceLocation();
+    }
+
+    @Override
+    public Holder.@NotNull Reference<Material> register(@NotNull ResourceKey<Material> key, @NotNull Material value,
+                                                        @NotNull RegistrationInfo registrationInfo) {
+        if (registryClosed) {
+            throw new IllegalStateException(
+                    "Materials cannot be registered in the PostMaterialEvent (or after)! Must be added in the RegisterEvent. Skipping material %s..."
+                            .formatted(key.identifier()));
         }
-        super.register(key, value);
-        usedNamespaces.add(key.getNamespace());
-        return value;
+        return super.register(key, value, registrationInfo);
     }
 
-    /**
-     * Accessible when in phases:
-     * <ul>
-     * <li>{@link Phase#CLOSED}</li>
-     * <li>{@link Phase#FROZEN}</li>
-     * </ul>
-     *
-     * @return all registered materials.
-     */
-    @NotNull
-    public @UnmodifiableView Set<Material> values() {
-        if (registrationPhase == Phase.PRE || registrationPhase == Phase.OPEN)
-            throw new IllegalStateException("Cannot retrieve all materials before registration");
-        return super.values();
+    public boolean isFrozen() {
+        return this.frozen;
     }
 
-    public void closeRegistry() {
-        registrationPhase = Phase.CLOSED;
-    }
-
-    @Override
-    public void freeze() {
-        super.freeze();
-        registrationPhase = Phase.FROZEN;
-    }
-
-    @Override
-    public void unfreeze() {
-        super.unfreeze();
-        registrationPhase = Phase.OPEN;
-    }
-
-    @NotNull
-    public Phase getPhase() {
-        return registrationPhase;
-    }
-
-    public boolean canModifyMaterials() {
-        return getPhase() != Phase.FROZEN && getPhase() != Phase.PRE;
-    }
-
-    public enum Phase {
-        /** Material Registration and Modification is not started */
-        PRE,
-        /** Material Registration and Modification is available */
-        OPEN,
-        /** Material Registration is unavailable and only Modification is available */
-        CLOSED,
-        /** Material Registration and Modification is unavailable */
-        FROZEN
+    public void close() {
+        registryClosed = true;
     }
 }

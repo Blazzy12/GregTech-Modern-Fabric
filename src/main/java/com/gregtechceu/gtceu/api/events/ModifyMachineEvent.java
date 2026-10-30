@@ -1,9 +1,9 @@
 package com.gregtechceu.gtceu.api.events;
 
-import com.gregtechceu.gtceu.api.registry.registrate.MachineBuilder;
+import com.gregtechceu.gtceu.api.registry.registrate.builder.MachineBuilder;
 
-import net.minecraftforge.eventbus.api.Event;
-import net.minecraftforge.fml.event.IModBusEvent;
+import com.gregtechceu.gtceu.compat.bus.Event;
+import com.gregtechceu.gtceu.compat.fml.event.IModBusEvent;
 
 import lombok.Getter;
 

@@ -18,7 +18,7 @@ import com.gregtechceu.gtceu.config.ConfigHolder;
 import com.gregtechceu.gtceu.utils.FormattingUtil;
 import com.gregtechceu.gtceu.utils.GTUtil;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.block.Block;
 
@@ -126,7 +126,6 @@ public class ActiveTransformerMachine extends WorkableElectricMultiblockMachine
         converterSubscription.updateSubscription();
     }
 
-    @NotNull
     private List<MultiblockPartMachine> getPrioritySortedParts() {
         return getParts().stream().sorted(Comparator.comparingInt(part -> {
             Block partBlock = part.getBlockState().getBlock();

@@ -8,9 +8,7 @@ import com.gregtechceu.gtceu.api.multiblock.predicates.SettingsHolder;
 import com.gregtechceu.gtceu.api.multiblock.util.BlockInfo;
 
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.level.block.Blocks;
 
-import dev.latvian.mods.rhino.util.RemapForJS;
 import lombok.Getter;
 import lombok.experimental.Accessors;
 import org.jetbrains.annotations.ApiStatus;
@@ -231,8 +229,7 @@ public abstract class MultiPredicate implements SettingsHolder<MultiPredicate> {
      * MUTATE AND DO NOT COPY
      */
 
-    @RemapForJS("addTooltip")
-    public MultiPredicate addTooltips(Component tooltip) {
+        public MultiPredicate addTooltips(Component tooltip) {
         var mutated = mutable ? this : deepCopy();
         mutated.forEach(p -> p.addTooltips(tooltip));
         mutated.forEachChild(mp -> mp.addTooltips(tooltip));
@@ -298,7 +295,7 @@ public abstract class MultiPredicate implements SettingsHolder<MultiPredicate> {
      */
 
     @CheckReturnValue
-    public MultiPredicate deepCopy() {
+    protected MultiPredicate deepCopy() {
         List<BasePredicate> copiedPredicates = predicates().stream()
                 .map(BasePredicate::copy)
                 // sort high to low (descending)
@@ -310,17 +307,6 @@ public abstract class MultiPredicate implements SettingsHolder<MultiPredicate> {
                 .sorted(Collections.reverseOrder(MultiPredicate::compareTo))
                 .toList();
         MultiPredicate copy = this.type.makePredicate(copiedChildren, copiedPredicates, this.hasAir);
-        copy.setSettings(this.settings);
-        copy.setController(this.controller);
-        copy.isAir(this.isAir);
-        copy.isAny(this.isAny);
-        return copy;
-    }
-
-    @ApiStatus.Internal
-    @CheckReturnValue
-    public MultiPredicate withContents(List<MultiPredicate> children, List<BasePredicate> predicates) {
-        MultiPredicate copy = this.type.makePredicate(children, predicates, this.hasAir);
         copy.setSettings(this.settings);
         copy.setController(this.controller);
         copy.isAir(this.isAir);
@@ -529,7 +515,6 @@ public abstract class MultiPredicate implements SettingsHolder<MultiPredicate> {
     public static MultiPredicate air() {
         BasePredicate predicate = new PredicateBuilder("Air")
                 .predicate(ctx -> ctx.state().isAir())
-                .blocks(Blocks.AIR)
                 .build().markImmutable();
         return Logic.OR.makePredicate(List.of(), List.of(predicate), true)
                 .isAir(true).markImmutable();
@@ -552,7 +537,7 @@ public abstract class MultiPredicate implements SettingsHolder<MultiPredicate> {
         return type.makePredicate(List.of(), predicates, false);
     }
 
-    public enum Logic {
+    protected enum Logic {
 
         OR,
         AND,

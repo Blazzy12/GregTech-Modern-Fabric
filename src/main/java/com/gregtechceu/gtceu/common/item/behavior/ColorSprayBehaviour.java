@@ -1,6 +1,7 @@
 package com.gregtechceu.gtceu.common.item.behavior;
 
-import com.gregtechceu.gtceu.GTCEu;
+import net.minecraft.tags.BlockItemTags;
+
 import com.gregtechceu.gtceu.api.blockentity.IPaintable;
 import com.gregtechceu.gtceu.api.item.component.IAddInformation;
 import com.gregtechceu.gtceu.api.item.component.IDurabilityBar;
@@ -8,23 +9,23 @@ import com.gregtechceu.gtceu.api.item.component.IInteractionItem;
 import com.gregtechceu.gtceu.api.pipenet.IPipeNode;
 import com.gregtechceu.gtceu.common.data.GTSoundEntries;
 import com.gregtechceu.gtceu.config.ConfigHolder;
-import com.gregtechceu.gtceu.data.recipe.CustomTags;
 import com.gregtechceu.gtceu.utils.BreadthFirstBlockSearch;
 import com.gregtechceu.gtceu.utils.GradientUtil;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.tags.BlockTags;
-import net.minecraft.util.FastColor;
+import net.minecraft.util.ARGB;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.DyeColor;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.context.UseOnContext;
@@ -37,16 +38,10 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.ShulkerBoxBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
-import net.minecraftforge.common.Tags;
-import net.minecraftforge.common.util.TriPredicate;
+import com.gregtechceu.gtceu.compat.common.Tags;
+import com.gregtechceu.gtceu.compat.common.util.TriPredicate;
 
-import appeng.api.implementations.blockentities.IColorableBlockEntity;
-import appeng.api.util.AEColor;
-import appeng.blockentity.networking.CableBusBlockEntity;
 import com.google.common.collect.ImmutableMap;
-import com.simibubi.create.AllBlocks;
-import com.simibubi.create.AllTags;
-import com.simibubi.create.foundation.utility.BlockHelper;
 import it.unimi.dsi.fastutil.ints.IntIntPair;
 import org.jetbrains.annotations.Nullable;
 
@@ -68,10 +63,9 @@ public class ColorSprayBehaviour implements IDurabilityBar, IInteractionItem, IA
     private static final ImmutableMap<DyeColor, Block> SHULKER_BOX_MAP;
     private static final ImmutableMap<DyeColor, Block> CANDLE_MAP;
 
-    @SuppressWarnings("deprecation")
     private static Block getBlock(DyeColor color, String postfix) {
-        ResourceLocation id = ResourceLocation.withDefaultNamespace(color.getSerializedName() + "_" + postfix);
-        return BuiltInRegistries.BLOCK.get(id);
+        Identifier id = Identifier.withDefaultNamespace(color.getSerializedName() + "_" + postfix);
+        return BuiltInRegistries.BLOCK.getValue(id);
     }
 
     static {
@@ -148,15 +142,15 @@ public class ColorSprayBehaviour implements IDurabilityBar, IInteractionItem, IA
         int r = 0, g = 0, b = 0;
         ratio = ratio * (1.0f / colors.length);
         for (int color : colors) {
-            r += FastColor.ARGB32.red(color) * ratio;
-            g += FastColor.ARGB32.green(color) * ratio;
-            b += FastColor.ARGB32.blue(color) * ratio;
+            r += ARGB.red(color) * ratio;
+            g += ARGB.green(color) * ratio;
+            b += ARGB.blue(color) * ratio;
         }
-        return FastColor.ARGB32.color(255, r, g, b);
+        return ARGB.color(255, r, g, b);
     }
 
     @Override
-    public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltipComponents,
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context, List<Component> tooltipComponents,
                                 TooltipFlag isAdvanced) {
         int remainingUses = getUsesLeft(stack);
         if (color != null) {
@@ -170,9 +164,9 @@ public class ColorSprayBehaviour implements IDurabilityBar, IInteractionItem, IA
 
     @Override
     public InteractionResult onItemUseFirst(ItemStack itemStack, UseOnContext context) {
-        var player = context.getPlayer();
-        var level = context.getLevel();
-        var pos = context.getClickedPos();
+        Player player = context.getPlayer();
+        Level level = context.getLevel();
+        BlockPos pos = context.getClickedPos();
 
         if (player == null) {
             return InteractionResult.PASS;
@@ -180,11 +174,11 @@ public class ColorSprayBehaviour implements IDurabilityBar, IInteractionItem, IA
 
         int maxBlocksToRecolor = player.isShiftKeyDown() ? ConfigHolder.INSTANCE.tools.sprayCanChainLength : 1;
 
-        var first = level.getBlockEntity(pos);
+        BlockEntity first = level.getBlockEntity(pos);
         if (first == null || !handleSpecialBlockEntities(first, maxBlocksToRecolor, context)) {
             handleBlocks(pos, maxBlocksToRecolor, context);
         }
-        GTSoundEntries.SPRAY_CAN_TOOL.play(level, null, player.position(), 1.0f, 1.0f);
+        GTSoundEntries.SPRAY_CAN_TOOL.value().play(level, null, player.position(), 1.0f, 1.0f);
         return InteractionResult.SUCCESS;
     }
 
@@ -204,28 +198,11 @@ public class ColorSprayBehaviour implements IDurabilityBar, IInteractionItem, IA
 
     @SuppressWarnings({ "rawtypes", "DataFlowIssue" })
     private boolean handleSpecialBlockEntities(BlockEntity first, int limit, UseOnContext context) {
-        var player = context.getPlayer();
+        Player player = context.getPlayer();
         if (player == null) {
             return false;
         }
-        if (GTCEu.Mods.isAE2Loaded() && AE2CallWrapper.isColorable(first)) {
-            Set<? extends IColorableBlockEntity> collected;
-            if (first instanceof CableBusBlockEntity) {
-                collected = AE2CallWrapper.collect(first, limit);
-            } else {
-                collected = Set.of((IColorableBlockEntity) first);
-            }
-            var ae2Color = color == null ? AEColor.TRANSPARENT : AEColor.values()[color.ordinal()];
-            for (var c : collected) {
-                if (c.getColor() == ae2Color) {
-                    continue;
-                }
-                c.recolourBlock(context.getClickedFace(), ae2Color, player);
-                if (!useItemDurability(player, context.getHand(), context.getItemInHand(), ItemStack.EMPTY)) {
-                    break;
-                }
-            }
-        } else if (first instanceof IPipeNode pipe) {
+ else if (first instanceof IPipeNode pipe) {
             var collected = BreadthFirstBlockSearch.conditionalSearch(IPipeNode.class, pipe,
                     first.getLevel(), (p) -> p.self().getBlockPos(),
                     gtPipePredicate, limit, limit * 6);
@@ -236,12 +213,13 @@ public class ColorSprayBehaviour implements IDurabilityBar, IInteractionItem, IA
                     paintablePredicate, limit, limit * 6);
             paintPaintables(collected, context);
         } else if (first instanceof ShulkerBoxBlockEntity shulkerBox) {
-            var tag = shulkerBox.saveWithoutMetadata();
-            var level = first.getLevel();
-            var pos = first.getBlockPos();
+            Level level = first.getLevel();
+            CompoundTag tag = shulkerBox.saveWithoutMetadata(level.registryAccess());
+            BlockPos pos = first.getBlockPos();
             recolorBlockNoState(SHULKER_BOX_MAP, color, level, pos, Blocks.SHULKER_BOX);
             if (level.getBlockEntity(pos) instanceof ShulkerBoxBlockEntity newShulker) {
-                newShulker.load(tag);
+                newShulker.loadWithComponents(net.minecraft.world.level.storage.TagValueInput.create(
+                        net.minecraft.util.ProblemReporter.DISCARDING, level.registryAccess(), tag));
             }
         } else {
             return false;
@@ -250,12 +228,12 @@ public class ColorSprayBehaviour implements IDurabilityBar, IInteractionItem, IA
     }
 
     private void handleBlocks(BlockPos start, int limit, UseOnContext context) {
-        final var level = context.getLevel();
-        var player = context.getPlayer();
+        Level level = context.getLevel();
+        Player player = context.getPlayer();
         if (player == null) {
             return;
         }
-        var stack = context.getItemInHand();
+        ItemStack stack = context.getItemInHand();
         var collected = BreadthFirstBlockSearch
                 .conditionalBlockPosSearch(start,
                         (parent, child) -> parent == null ||
@@ -265,7 +243,6 @@ public class ColorSprayBehaviour implements IDurabilityBar, IInteractionItem, IA
             if (!tryPaintBlock(level, pos)) {
                 break;
             }
-
             if (!useItemDurability(player, context.getHand(), stack, empty.get())) {
                 break;
             }
@@ -285,8 +262,8 @@ public class ColorSprayBehaviour implements IDurabilityBar, IInteractionItem, IA
     }
 
     private boolean tryPaintBlock(Level level, BlockPos pos) {
-        var blockState = level.getBlockState(pos);
-        var block = blockState.getBlock();
+        BlockState blockState = level.getBlockState(pos);
+        Block block = blockState.getBlock();
         if (color == null) {
             return tryStripBlockColor(level, pos, block);
         }
@@ -306,7 +283,7 @@ public class ColorSprayBehaviour implements IDurabilityBar, IInteractionItem, IA
     }
 
     private boolean tryPaintSpecialBlock(Level world, BlockPos pos, Block block) {
-        if (block.defaultBlockState().is(Tags.Blocks.GLASS)) {
+        if (block.defaultBlockState().is(Tags.Blocks.GLASS_BLOCKS)) {
             if (recolorBlockNoState(GLASS_MAP, this.color, world, pos, Blocks.GLASS)) {
                 return true;
             }
@@ -331,12 +308,12 @@ public class ColorSprayBehaviour implements IDurabilityBar, IInteractionItem, IA
                 return true;
             }
         }
-        if (block.defaultBlockState().is(CustomTags.CONCRETE_BLOCK)) {
+        if (block.defaultBlockState().is(Tags.Blocks.CONCRETES)) {
             if (recolorBlockNoState(CONCRETE_MAP, this.color, world, pos)) {
                 return true;
             }
         }
-        if (block.defaultBlockState().is(CustomTags.CONCRETE_POWDER_BLOCK)) {
+        if (block.defaultBlockState().is(BlockItemTags.CONCRETE_POWDERS.block())) {
             if (recolorBlockNoState(CONCRETE_POWDER_MAP, this.color, world, pos)) {
                 return true;
             }
@@ -345,9 +322,6 @@ public class ColorSprayBehaviour implements IDurabilityBar, IInteractionItem, IA
             if (recolorBlockNoState(CANDLE_MAP, this.color, world, pos)) {
                 return true;
             }
-        }
-        if (GTCEu.Mods.isCreateLoaded() && block.defaultBlockState().is(AllTags.AllBlockTags.WINDMILL_SAILS.tag)) {
-            return recolorCreateSail(world, pos, color);
         }
         return false;
     }
@@ -390,28 +364,25 @@ public class ColorSprayBehaviour implements IDurabilityBar, IInteractionItem, IA
             world.setBlockAndUpdate(pos, Blocks.TERRACOTTA.defaultBlockState());
             return true;
         }
-        if (block.defaultBlockState().is(BlockTags.WOOL) && block != Blocks.WHITE_WOOL) {
-            world.setBlockAndUpdate(pos, Blocks.WHITE_WOOL.defaultBlockState());
+        if (block.defaultBlockState().is(BlockTags.WOOL) && block != Blocks.WOOL.white()) {
+            world.setBlockAndUpdate(pos, Blocks.WOOL.white().defaultBlockState());
             return true;
         }
-        if (block.defaultBlockState().is(BlockTags.WOOL_CARPETS) && block != Blocks.WHITE_CARPET) {
-            world.setBlockAndUpdate(pos, Blocks.WHITE_CARPET.defaultBlockState());
+        if (block.defaultBlockState().is(BlockTags.WOOL_CARPETS) && block != Blocks.CARPET.white()) {
+            world.setBlockAndUpdate(pos, Blocks.CARPET.white().defaultBlockState());
             return true;
         }
-        if (block.defaultBlockState().is(CustomTags.CONCRETE_BLOCK) && block != Blocks.WHITE_CONCRETE) {
-            world.setBlockAndUpdate(pos, Blocks.WHITE_CONCRETE.defaultBlockState());
+        if (block.defaultBlockState().is(Tags.Blocks.CONCRETES) && block != Blocks.CONCRETE.white()) {
+            world.setBlockAndUpdate(pos, Blocks.CONCRETE.white().defaultBlockState());
             return true;
         }
-        if (block.defaultBlockState().is(CustomTags.CONCRETE_POWDER_BLOCK) && block != Blocks.WHITE_CONCRETE_POWDER) {
-            world.setBlockAndUpdate(pos, Blocks.WHITE_CONCRETE_POWDER.defaultBlockState());
+        if (block.defaultBlockState().is(BlockItemTags.CONCRETE_POWDERS.block()) && block != Blocks.CONCRETE_POWDER.white()) {
+            world.setBlockAndUpdate(pos, Blocks.CONCRETE_POWDER.white().defaultBlockState());
             return true;
         }
-        if (block.defaultBlockState().is(BlockTags.CANDLES) && block != Blocks.WHITE_CANDLE) {
+        if (block.defaultBlockState().is(BlockTags.CANDLES) && block != Blocks.DYED_CANDLE.white()) {
             recolorBlockNoState(CANDLE_MAP, DyeColor.WHITE, world, pos);
             return true;
-        }
-        if (GTCEu.Mods.isCreateLoaded() && block.defaultBlockState().is(AllTags.AllBlockTags.WINDMILL_SAILS.tag)) {
-            return recolorCreateSail(world, pos, DyeColor.WHITE);
         }
 
         // General case
@@ -456,15 +427,11 @@ public class ColorSprayBehaviour implements IDurabilityBar, IInteractionItem, IA
     }
 
     public final int getUsesLeft(ItemStack stack) {
-        CompoundTag tagCompound = stack.getTag();
-        if (tagCompound == null || !tagCompound.contains("UsesLeft", Tag.TAG_INT))
-            return totalUses;
-        return tagCompound.getInt("UsesLeft");
+        return totalUses - stack.getOrDefault(DataComponents.DAMAGE, 0);
     }
 
-    public static void setUsesLeft(ItemStack itemStack, int usesLeft) {
-        CompoundTag tagCompound = itemStack.getOrCreateTag();
-        tagCompound.putInt("UsesLeft", usesLeft);
+    public void setUsesLeft(ItemStack itemStack, int usesLeft) {
+        itemStack.set(DataComponents.DAMAGE, totalUses - usesLeft);
     }
 
     private static final TriPredicate<IPaintable, IPaintable, Direction> paintablePredicate = (parent, child, dir) -> {
@@ -484,38 +451,5 @@ public class ColorSprayBehaviour implements IDurabilityBar, IInteractionItem, IA
         return parent.isConnected(direction) && child.isConnected(direction.getOpposite());
     };
 
-    private static class AE2CallWrapper {
 
-        static Set<CableBusBlockEntity> collect(BlockEntity first, int limit) {
-            return BreadthFirstBlockSearch.conditionalBlockEntitySearch(CableBusBlockEntity.class,
-                    (CableBusBlockEntity) first,
-                    AE2CallWrapper::ae2CablePredicate,
-                    limit, limit * 6);
-        }
-
-        static boolean isColorable(BlockEntity be) {
-            return be instanceof IColorableBlockEntity;
-        }
-
-        static boolean ae2CablePredicate(CableBusBlockEntity parent, CableBusBlockEntity child, Direction direction) {
-            if (parent == null) return true;
-            var childDirection = direction.getOpposite();
-            return parent.getPart(direction) == null && parent.getCableConnectionType(direction).isValid() &&
-                    child.getPart(childDirection) == null && child.getCableConnectionType(childDirection).isValid() &&
-                    parent.getColor() == child.getColor();
-        }
-    }
-
-    private static boolean recolorCreateSail(Level world, BlockPos pos, @Nullable DyeColor color) {
-        // logic copied from Create (SailBlock#applyDye).
-        // skip null color, because we're not shears.
-        if (color == null) return false;
-        BlockState oldState = world.getBlockState(pos);
-        BlockState newState = BlockHelper.copyProperties(oldState, AllBlocks.DYED_SAILS.get(color).getDefaultState());
-        if (oldState != newState) {
-            world.setBlockAndUpdate(pos, newState);
-            return true;
-        }
-        return false;
-    }
 }

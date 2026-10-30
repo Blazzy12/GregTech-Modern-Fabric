@@ -7,10 +7,12 @@ import com.gregtechceu.gtceu.api.data.worldgen.generator.VeinGenerator;
 import com.gregtechceu.gtceu.api.data.worldgen.ores.OreBlockPlacer;
 import com.gregtechceu.gtceu.api.data.worldgen.ores.OreVeinUtil;
 import com.gregtechceu.gtceu.api.registry.GTRegistries;
+import com.gregtechceu.gtceu.common.data.worldgen.GTVeinGenerators;
 import com.gregtechceu.gtceu.utils.GTUtil;
 import com.gregtechceu.gtceu.utils.WeightedEntry;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 import net.minecraft.core.SectionPos;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
@@ -23,16 +25,18 @@ import net.minecraft.world.level.chunk.LevelChunkSection;
 import net.minecraft.world.level.levelgen.LegacyRandomSource;
 import net.minecraft.world.level.levelgen.WorldgenRandom;
 import net.minecraft.world.level.levelgen.XoroshiroRandomSource;
-import net.minecraft.world.level.levelgen.feature.configurations.OreConfiguration;
-import net.minecraft.world.level.levelgen.feature.configurations.OreConfiguration.TargetBlockState;
+import net.minecraft.world.level.levelgen.feature.BlockReplacement;
+import net.minecraft.world.level.levelgen.feature.BlockReplacement;
 import net.minecraft.world.level.levelgen.structure.templatesystem.AlwaysTrueTest;
 import net.minecraft.world.level.levelgen.synth.NormalNoise;
 
 import com.mojang.datafixers.util.Either;
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 
@@ -42,9 +46,10 @@ import java.util.Map;
 
 @Accessors(fluent = true, chain = true)
 @AllArgsConstructor
+@NoArgsConstructor
 public class DikeVeinGenerator extends VeinGenerator {
 
-    public static final Codec<DikeVeinGenerator> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+    public static final MapCodec<DikeVeinGenerator> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
             Codec.list(DikeBlockDefinition.CODEC).fieldOf("blocks").forGetter(it -> it.blocks),
             Codec.INT.fieldOf("min_y").forGetter(it -> it.minYLevel),
             Codec.INT.fieldOf("max_y").forGetter(it -> it.maxYLevel)).apply(instance, DikeVeinGenerator::new));
@@ -54,10 +59,6 @@ public class DikeVeinGenerator extends VeinGenerator {
     public int minYLevel;
     @Setter
     public int maxYLevel;
-
-    public DikeVeinGenerator(GTOreDefinition entry) {
-        super(entry);
-    }
 
     @Override
     public List<VeinEntry> getAllEntries() {
@@ -74,8 +75,8 @@ public class DikeVeinGenerator extends VeinGenerator {
         Map<BlockPos, OreBlockPlacer> generatedBlocks = new Object2ObjectOpenHashMap<>();
 
         WorldgenRandom worldgenRandom = new WorldgenRandom(new LegacyRandomSource(level.getSeed()));
-        NormalNoise normalNoise = NormalNoise.create(worldgenRandom, -2, 4.0D);
-        ChunkPos chunkPos = new ChunkPos(origin);
+        net.minecraft.world.level.levelgen.synth.Noise normalNoise = NormalNoise.createParity(-2, 4.0D).create(worldgenRandom);
+        ChunkPos chunkPos = ChunkPos.containing(origin);
 
         float density = entry.density();
         int size = entry.clusterSize().sample(random);
@@ -98,7 +99,7 @@ public class DikeVeinGenerator extends VeinGenerator {
                         continue;
                     }
                     BlockPos pos = new BlockPos(basePos.getX() + dX, dY, basePos.getZ() + dZ);
-                    if (normalNoise.getValue(dX, dY, dZ) >= 0.5 && random.nextFloat() <= density) {
+                    if (normalNoise.get(dX, dY, dZ) >= 0.5 && random.nextFloat() <= density) {
                         final var randomSeed = random.nextLong(); // Fully deterministic regardless of chunk order
 
                         generatedBlocks.put(pos,
@@ -111,7 +112,8 @@ public class DikeVeinGenerator extends VeinGenerator {
         return generatedBlocks;
     }
 
-    private void placeBlock(BulkSectionAccess level, LevelChunkSection section, long randomSeed, BlockPos pos,
+    private void placeBlock(
+                            BulkSectionAccess level, LevelChunkSection section, long randomSeed, BlockPos pos,
                             GTOreDefinition entry) {
         var rand = new XoroshiroRandomSource(randomSeed);
         DikeBlockDefinition blockDefinition = GTUtil.getRandomItem(rand, blocks);
@@ -123,13 +125,13 @@ public class DikeVeinGenerator extends VeinGenerator {
 
         if (pos.getY() >= blockDefinition.minY() && pos.getY() <= blockDefinition.maxY()) {
             blockDefinition.block.ifLeft(blockStates -> {
-                for (TargetBlockState targetState : blockStates) {
+                for (BlockReplacement targetState : blockStates) {
                     if (!OreVeinUtil.canPlaceOre(current, level::getBlockState, rand, entry, targetState,
                             pos.mutable()))
                         continue;
-                    if (targetState.state.isAir())
+                    if (targetState.state().isAir())
                         continue;
-                    section.setBlockState(x, y, z, targetState.state, false);
+                    section.setBlockState(x, y, z, targetState.state(), false);
                     break;
                 }
             }).ifRight(material -> {
@@ -157,8 +159,8 @@ public class DikeVeinGenerator extends VeinGenerator {
     }
 
     @Override
-    public Codec<? extends VeinGenerator> codec() {
-        return CODEC;
+    public VeinGeneratorType<?> type() {
+        return GTVeinGenerators.DIKE.value();
     }
 
     public DikeVeinGenerator withBlock(Material block, int weight, int minY, int maxY) {
@@ -166,7 +168,7 @@ public class DikeVeinGenerator extends VeinGenerator {
     }
 
     public DikeVeinGenerator withBlock(BlockState blockState, int weight, int minY, int maxY) {
-        TargetBlockState target = OreConfiguration.target(AlwaysTrueTest.INSTANCE, blockState);
+        BlockReplacement target = BlockReplacement.replace(AlwaysTrueTest.INSTANCE, blockState);
         return this.withBlock(new DikeBlockDefinition(List.of(target), weight, minY, maxY));
     }
 
@@ -176,22 +178,27 @@ public class DikeVeinGenerator extends VeinGenerator {
         return this;
     }
 
-    public record DikeBlockDefinition(Either<List<TargetBlockState>, Material> block, int weight, int minY, int maxY)
+    public record DikeBlockDefinition(Either<List<BlockReplacement>, Material> block, int weight, int minY, int maxY)
             implements WeightedEntry {
 
+        // spotless:off
         public static final Codec<DikeBlockDefinition> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-                Codec.either(TargetBlockState.CODEC.listOf(), GTRegistries.MATERIALS.codec()).fieldOf("block")
-                        .forGetter(x -> x.block),
-                Codec.INT.fieldOf("weight").forGetter(x -> x.weight),
-                Codec.INT.fieldOf("min_y").orElse(320).forGetter(x -> x.minY),
-                Codec.INT.fieldOf("max_y").orElse(-64).forGetter(x -> x.maxY))
+                        Codec.either(BlockReplacement.CODEC.listOf(), GTRegistries.MATERIALS.byNameCodec()).fieldOf("block").forGetter(x -> x.block),
+                        Codec.INT.fieldOf("weight").forGetter(x -> x.weight),
+                        Codec.INT.fieldOf("min_y").orElse(320).forGetter(x -> x.minY),
+                        Codec.INT.fieldOf("max_y").orElse(-64).forGetter(x -> x.maxY))
                 .apply(instance, DikeBlockDefinition::new));
 
+        // spotless:on
         public DikeBlockDefinition(Material block, int weight, int minY, int maxY) {
             this(Either.right(block), weight, minY, maxY);
         }
 
-        public DikeBlockDefinition(List<TargetBlockState> block, int weight, int minY, int maxY) {
+        public DikeBlockDefinition(Holder<Material> block, int weight, int minY, int maxY) {
+            this(Either.right(block.value()), weight, minY, maxY);
+        }
+
+        public DikeBlockDefinition(List<BlockReplacement> block, int weight, int minY, int maxY) {
             this(Either.left(block), weight, minY, maxY);
         }
     }

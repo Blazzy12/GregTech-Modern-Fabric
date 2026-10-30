@@ -18,13 +18,13 @@ import com.gregtechceu.gtceu.utils.GTTransferUtils;
 import com.gregtechceu.gtceu.utils.ISubscription;
 
 import net.minecraft.ChatFormatting;
-import net.minecraft.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import net.minecraft.world.level.block.Block;
-import net.minecraftforge.fluids.capability.IFluidHandler;
+import com.gregtechceu.gtceu.compat.fluids.capability.IFluidHandler;
 
 import brachy.modularui.api.drawable.IIcon;
 import brachy.modularui.api.drawable.Text;
@@ -71,8 +71,8 @@ public class SteamMinerMachine extends SteamWorkableMachine implements IControll
         this.inventorySize = 4;
         this.energyPerTick = energyPerTick;
         this.exportItems = attachTrait(exportItems);
-        this.exhaustVentTrait = new ExhaustVentMachineTrait();
-        attachPersistentTrait("exhaustVent", this.exhaustVentTrait);
+        this.exhaustVentTrait = attachTrait(new ExhaustVentMachineTrait());
+        exhaustVentTrait.setVentingDirection(Direction.UP);
         exhaustVentTrait.setVentingDamageAmount(isHighPressure() ? 12F : 6F);
         getRecipeLogic().resetRecipeLogic();
     }
@@ -103,7 +103,6 @@ public class SteamMinerMachine extends SteamWorkableMachine implements IControll
     @Override
     public void onLoad() {
         super.onLoad();
-        exhaustVentTrait.setVentingDirection(Direction.UP);
         scheduleForNextServerTick(this::updateAutoOutputSubscription);
         if (!isRemote()) {
             exportItemSubs = exportItems.addChangedListener(this::updateAutoOutputSubscription);
@@ -216,10 +215,7 @@ public class SteamMinerMachine extends SteamWorkableMachine implements IControll
                                 .background(GuiTextures.DISPLAY)
                                 .child(textList.heightRel(1.0f).padding(3)))
                         .child(GTMuiMachineUtil
-                                .createSquareSlotGroupFromInventory(exportItems.storage, "export_inv", slot -> {
-                                    slot.getSlot().accessibility(false, true);
-                                    return slot;
-                                }, syncManager)
+                                .createSquareSlotGroupFromInventory(exportItems, "export_inv", syncManager)
                                 .verticalCenter())
                         .padding(4, 0));
     }

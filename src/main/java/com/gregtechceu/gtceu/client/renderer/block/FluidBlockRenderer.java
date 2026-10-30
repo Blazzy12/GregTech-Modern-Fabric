@@ -1,15 +1,16 @@
 package com.gregtechceu.gtceu.client.renderer.block;
 
+import net.minecraft.util.LightCoordsUtil;
+
 import com.gregtechceu.gtceu.client.util.RenderUtil;
 import com.gregtechceu.gtceu.utils.GTUtil;
 
-import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.world.level.BlockAndTintGetter;
+import net.minecraft.client.renderer.block.BlockAndTintGetter;
 import net.minecraft.world.level.lighting.LightEngine;
 import net.minecraft.world.level.material.Fluid;
-import net.minecraftforge.client.extensions.common.IClientFluidTypeExtensions;
+import com.gregtechceu.gtceu.compat.client.extensions.common.IClientFluidTypeExtensions;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
@@ -189,16 +190,16 @@ public class FluidBlockRenderer {
         }
 
         private int getBlockLight() {
-            return LightTexture.block(this.light);
+            return LightCoordsUtil.block(this.light);
         }
 
         private int getSkyLight() {
-            return LightTexture.sky(this.light);
+            return LightCoordsUtil.sky(this.light);
         }
 
         private static Properties of(float offsetX, float offsetY, float offsetZ, float offsetFace,
                                      boolean overwriteLight, int blockLight, int skyLight) {
-            return of(offsetX, offsetY, offsetZ, offsetFace, overwriteLight, LightTexture.pack(blockLight, skyLight));
+            return of(offsetX, offsetY, offsetZ, offsetFace, overwriteLight, LightCoordsUtil.pack(blockLight, skyLight));
         }
     }
 
@@ -237,7 +238,7 @@ public class FluidBlockRenderer {
         }
 
         public Builder setForcedLight(int block, int sky) {
-            properties.setLight(LightTexture.pack(block, sky));
+            properties.setLight(LightCoordsUtil.pack(block, sky));
             properties.setOverwriteLight(true);
             return this;
         }

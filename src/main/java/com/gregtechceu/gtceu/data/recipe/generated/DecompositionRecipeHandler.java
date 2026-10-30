@@ -7,9 +7,9 @@ import com.gregtechceu.gtceu.api.data.chemical.material.stack.MaterialStack;
 import com.gregtechceu.gtceu.data.recipe.builder.GTRecipeBuilder;
 import com.gregtechceu.gtceu.utils.GTMath;
 
-import net.minecraft.data.recipes.FinishedRecipe;
+import net.minecraft.data.recipes.RecipeOutput;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.fluids.FluidStack;
+import com.gregtechceu.gtceu.compat.fluids.FluidStack;
 
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongList;
@@ -17,10 +17,10 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Consumer;
 
 import static com.gregtechceu.gtceu.api.GTValues.*;
 import static com.gregtechceu.gtceu.api.data.chemical.material.info.MaterialFlags.*;
+import static com.gregtechceu.gtceu.api.data.tag.TagPrefix.*;
 import static com.gregtechceu.gtceu.api.data.tag.TagPrefix.dust;
 import static com.gregtechceu.gtceu.common.data.GTRecipeTypes.CENTRIFUGE_RECIPES;
 import static com.gregtechceu.gtceu.common.data.GTRecipeTypes.ELECTROLYZER_RECIPES;
@@ -29,11 +29,11 @@ public final class DecompositionRecipeHandler {
 
     private DecompositionRecipeHandler() {}
 
-    public static void run(@NotNull Consumer<FinishedRecipe> provider, @NotNull Material material) {
+    public static void run(@NotNull RecipeOutput provider, @NotNull Material material) {
         processDecomposition(provider, material);
     }
 
-    private static void processDecomposition(@NotNull Consumer<FinishedRecipe> provider, @NotNull Material material) {
+    private static void processDecomposition(@NotNull RecipeOutput provider, @NotNull Material material) {
         if (material.getMaterialComponents().isEmpty() ||
                 (!material.hasFlag(DECOMPOSITION_BY_ELECTROLYZING) &&
                         !material.hasFlag(DECOMPOSITION_BY_CENTRIFUGING)) ||
@@ -51,11 +51,16 @@ public final class DecompositionRecipeHandler {
             if (component.material().hasProperty(PropertyKey.DUST)) {
                 outputs.add(ChemicalHelper.get(dust, component.material(), (int) component.amount()));
             } else if (component.material().hasProperty(PropertyKey.FLUID)) {
-                fluidOutputs.add(component.material().getFluid((int) (1000 * component.amount())));
+                FluidStack componentFluid = component.material().getFluid((int) (1000 * component.amount()));
+                if (!componentFluid.isEmpty()) {
+                    fluidOutputs.add(componentFluid);
+                }
             }
         }
 
         if (outputs.size() > 6 || fluidOutputs.size() > 6) return;
+
+        if (outputs.isEmpty() && fluidOutputs.isEmpty()) return;
 
         // only reduce items
         boolean hasDust = material.hasProperty(PropertyKey.DUST);
@@ -116,7 +121,9 @@ public final class DecompositionRecipeHandler {
         if (hasDust) {
             builder.inputItems(dust, material, GTMath.saturatedCast(totalInputAmount));
         } else {
-            builder.inputFluids(material.getFluid(1000));
+            FluidStack inputFluid = material.getFluid(1000);
+            if (inputFluid.isEmpty()) return;
+            builder.inputFluids(inputFluid);
         }
 
         // register recipe

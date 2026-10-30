@@ -5,12 +5,13 @@ import com.gregtechceu.gtceu.api.cover.CoverDefinition;
 import com.gregtechceu.gtceu.api.item.tool.GTToolType;
 import com.gregtechceu.gtceu.api.transfer.fluid.IFluidHandlerModifiable;
 import com.gregtechceu.gtceu.common.cover.PumpCover;
+import com.gregtechceu.gtceu.common.data.item.GTItemAbilities;
 import com.gregtechceu.gtceu.common.mui.GTGuiTextures;
 import com.gregtechceu.gtceu.common.mui.GTMuiWidgets;
 import com.gregtechceu.gtceu.utils.ExtendedUseOnContext;
 import com.gregtechceu.gtceu.utils.GTMath;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
@@ -18,8 +19,8 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.capability.IFluidHandler;
+import com.gregtechceu.gtceu.compat.fluids.FluidStack;
+import com.gregtechceu.gtceu.compat.fluids.capability.IFluidHandler;
 
 import brachy.modularui.drawable.UITexture;
 import brachy.modularui.factory.SidedPosGuiData;
@@ -77,7 +78,7 @@ public class FluidVoidingCover extends PumpCover {
             if (!filterHandler.test(stack)) continue;
 
             for (int op : GTMath.split(entry.getLongValue())) {
-                var toDrain = new FluidStack(stack, op);
+                var toDrain = stack.copyWithAmount(op);
                 fluidHandler.drain(toDrain, IFluidHandler.FluidAction.EXECUTE);
             }
         }
@@ -95,12 +96,15 @@ public class FluidVoidingCover extends PumpCover {
 
     @Override
     public InteractionResult onSoftMalletClick(ExtendedUseOnContext context) {
+        if (!context.getItemInHand().canPerformAction(GTItemAbilities.MALLET_PAUSE)) {
+            return InteractionResult.PASS;
+        }
         if (!isRemote()) {
             setWorkingEnabled(!isWorkingEnabled);
             context.getPlayer().sendSystemMessage(Component.translatable(isWorkingEnabled() ?
                     "cover.voiding.message.enabled" : "cover.voiding.message.disabled"));
         }
-        return InteractionResult.sidedSuccess(isRemote());
+        return InteractionResult.SUCCESS;
     }
 
     @Override

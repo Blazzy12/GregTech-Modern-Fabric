@@ -1,11 +1,12 @@
 package com.gregtechceu.gtceu.integration.jade.provider;
 
+import com.gregtechceu.gtceu.integration.jade.JadeTooltips;
 import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.api.capability.GTCapabilityHelper;
 import com.gregtechceu.gtceu.api.capability.IEnergyInfoProvider;
 import com.gregtechceu.gtceu.utils.FormattingUtil;
 
-import net.minecraft.Util;
+import net.minecraft.util.Util;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -15,10 +16,13 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 
 import org.jetbrains.annotations.Nullable;
+import com.gregtechceu.gtceu.integration.jade.GTElementHelper;
+
 import snownee.jade.api.BlockAccessor;
 import snownee.jade.api.ITooltip;
 import snownee.jade.api.config.IPluginConfig;
 import snownee.jade.api.ui.BoxStyle;
+import snownee.jade.api.ui.JadeUI;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -46,23 +50,16 @@ public class ElectricContainerBlockProvider extends CapabilityBlockProvider<IEne
                               BlockEntity blockEntity, IPluginConfig config) {
         if (!capData.contains("Energy") && !capData.contains("MaxEnergy")) return;
 
-        var energy = new BigInteger(capData.getByteArray("Energy"));
-        var maxEnergy = new BigInteger(capData.getByteArray("MaxEnergy"));
+        var energy = new BigInteger(capData.getByteArray("Energy").orElse(new byte[0]));
+        var maxEnergy = new BigInteger(capData.getByteArray("MaxEnergy").orElse(new byte[0]));
         if (maxEnergy.compareTo(BigInteger.ZERO) <= 0) return;
         var threshold = BigInteger.valueOf((long) 1e12);
         var energyStr = FormattingUtil.formatNumberOrSic(energy, threshold);
         var maxEnergyStr = FormattingUtil.formatNumberOrSic(maxEnergy, threshold);
         var progress = getProgress(energy, maxEnergy);
 
-        var helper = tooltip.getElementHelper();
-
-        tooltip.add(
-                helper.progress(
-                        progress,
-                        Component.translatable("gtceu.jade.energy_stored", energyStr, maxEnergyStr),
-                        helper.progressStyle().color(0xFFEEE600, 0xFFEEE600).textColor(-1),
-                        Util.make(BoxStyle.DEFAULT, style -> style.borderColor = 0xFF555555),
-                        true));
+        JadeTooltips.add(tooltip, GTElementHelper.progress(progress,
+                Component.translatable("gtceu.jade.energy_stored", energyStr, maxEnergyStr), 0xFFEEE600, false));
     }
 
     @Override

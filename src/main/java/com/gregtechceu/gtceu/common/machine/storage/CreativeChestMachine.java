@@ -2,17 +2,17 @@ package com.gregtechceu.gtceu.common.machine.storage;
 
 import com.gregtechceu.gtceu.api.GTValues;
 import com.gregtechceu.gtceu.api.blockentity.BlockEntityCreationInfo;
+import com.gregtechceu.gtceu.api.item.datacomponents.CreativeMachineInfo;
 import com.gregtechceu.gtceu.api.machine.mui.MachineUIPanel;
 import com.gregtechceu.gtceu.api.machine.mui.MachineUIPanelBuilder;
 import com.gregtechceu.gtceu.api.sync_system.annotations.SaveField;
+import com.gregtechceu.gtceu.common.data.item.GTDataComponents;
 import com.gregtechceu.gtceu.common.mui.GTMuiWidgets;
 import com.gregtechceu.gtceu.utils.ExtendedUseOnContext;
-import com.gregtechceu.gtceu.utils.GTUtil;
 
-import net.minecraft.nbt.CompoundTag;
+import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.items.ItemHandlerHelper;
 
 import brachy.modularui.api.drawable.Text;
 import brachy.modularui.drawable.Rectangle;
@@ -50,10 +50,9 @@ public class CreativeChestMachine extends QuantumChestMachine {
         return new InfiniteCache();
     }
 
-    private InteractionResult updateStored(ItemStack item) {
+    private void updateStored(ItemStack item) {
         stored = item.copyWithCount(1);
         onItemChanged();
-        return InteractionResult.SUCCESS;
     }
 
     private void setTicksPerCycle(int value) {
@@ -68,35 +67,17 @@ public class CreativeChestMachine extends QuantumChestMachine {
     }
 
     @Override
-    public void saveToItem(CompoundTag tag, boolean clone) {
-        tag.putInt("itemsPerCycle", itemsPerCycle);
-        tag.putInt("ticksPerCycle", ticksPerCycle);
-    }
-
-    @Override
-    public void loadFromItem(CompoundTag tag) {
-        itemsPerCycle = tag.getInt("itemsPerCycle");
-        ticksPerCycle = tag.getInt("ticksPerCycle");
-    }
-
-    @Override
     public InteractionResult onUseWithItem(ExtendedUseOnContext context) {
         var heldItem = context.getItemInHand();
         var player = context.getPlayer();
 
-        if (context.getClickedFace() == getFrontFacing() && !isRemote()) {
-            // Clear item if empty hand + shift-rclick
-            if (heldItem.isEmpty() && player.isCrouching() && !stored.isEmpty()) {
-                return updateStored(ItemStack.EMPTY);
-            }
-
-            // If held item can stack with stored item, delete held item
-            if (!heldItem.isEmpty() && ItemHandlerHelper.canItemStacksStack(stored, heldItem)) {
-                player.setItemInHand(context.getHand(), ItemStack.EMPTY);
-                return InteractionResult.SUCCESS;
-            } else if (!heldItem.isEmpty()) { // If held item is different than stored item, update stored item
-                return updateStored(heldItem);
-            }
+        if (context.getClickedFace() != getFrontFacing() || isRemote()) {
+            return InteractionResult.PASS;
+        }
+        // Clear item if empty hand + shift-rclick
+        if (player.getItemInHand(context.getHand()).isEmpty() && player.isShiftKeyDown() && !stored.isEmpty()) {
+            updateStored(ItemStack.EMPTY);
+            return InteractionResult.SUCCESS;
         }
         return super.onUseWithItem(context);
     }
@@ -111,7 +92,7 @@ public class CreativeChestMachine extends QuantumChestMachine {
     public void buildMainUI(ParentWidget<?> mainWidget, PosGuiData guiData, PanelSyncManager syncManager,
                             UISettings settings) {
         PhantomItemSlotSyncHandler storedSlot = new PhantomItemSlotSyncHandler(new ModularSlot(cache, 0).filter(
-                stack -> stored.isEmpty() || ItemStack.isSameItemSameTags(stack, stored)));
+                stack -> stored.isEmpty() || ItemStack.isSameItemSameComponents(stack, stored)));
 
         syncManager.syncValue("stored", storedSlot);
 
@@ -157,6 +138,22 @@ public class CreativeChestMachine extends QuantumChestMachine {
                                         .value(ticksPerCycle))));
     }
 
+    @Override
+    protected void applyImplicitComponents(net.minecraft.core.component.DataComponentGetter componentInput) {
+        super.applyImplicitComponents(componentInput);
+        CreativeMachineInfo info = componentInput.get(GTDataComponents.CREATIVE_MACHINE_INFO.get());
+        if (info != null) {
+            itemsPerCycle = info.outputPerCycle();
+            ticksPerCycle = info.ticksPerCycle();
+        }
+    }
+
+    @Override
+    public void collectImplicitComponents(DataComponentMap.Builder components) {
+        super.collectImplicitComponents(components);
+        components.set(GTDataComponents.CREATIVE_MACHINE_INFO.get(), new CreativeMachineInfo(itemsPerCycle, ticksPerCycle));
+    }
+
     private class InfiniteCache extends ItemCache {
 
         public InfiniteCache() {
@@ -175,7 +172,7 @@ public class CreativeChestMachine extends QuantumChestMachine {
 
         @Override
         public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
-            if (!stored.isEmpty() && GTUtil.isSameItemSameTags(stored, stack)) return ItemStack.EMPTY;
+            if (!stored.isEmpty() && ItemStack.isSameItemSameComponents(stored, stack)) return ItemStack.EMPTY;
             return stack;
         }
 

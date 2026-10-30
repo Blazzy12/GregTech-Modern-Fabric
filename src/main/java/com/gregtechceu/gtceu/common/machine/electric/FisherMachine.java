@@ -1,5 +1,7 @@
 package com.gregtechceu.gtceu.common.machine.electric;
 
+import net.minecraft.world.entity.EntityTypes;
+
 import com.gregtechceu.gtceu.api.GTValues;
 import com.gregtechceu.gtceu.api.blockentity.BlockEntityCreationInfo;
 import com.gregtechceu.gtceu.api.capability.IWorkable;
@@ -19,11 +21,11 @@ import com.gregtechceu.gtceu.common.mui.GTMuiWidgets;
 import com.gregtechceu.gtceu.data.lang.LangHandler;
 import com.gregtechceu.gtceu.utils.ISubscription;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.NonNullList;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.projectile.FishingHook;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -192,12 +194,13 @@ public class FisherMachine extends TieredEnergyMachine
 
         drainEnergy(false);
         if (progress >= maxProgress) {
-            LootTable lootTable = getLevel().getServer().getLootData().getLootTable(BuiltInLootTables.FISHING);
+            var lootTableRegistry = getLevel().registryAccess().lookupOrThrow(Registries.LOOT_TABLE);
+            LootTable lootTable = lootTableRegistry.getValue(BuiltInLootTables.FISHING);
             if (!this.junkEnabled) {
-                lootTable = getLevel().getServer().getLootData().getLootTable(BuiltInLootTables.FISHING_FISH);
+                lootTable = lootTableRegistry.getValue(BuiltInLootTables.FISHING_FISH);
             }
 
-            FishingHook simulatedHook = new FishingHook(EntityType.FISHING_BOBBER, getLevel()) {
+            FishingHook simulatedHook = new FishingHook(EntityTypes.FISHING_BOBBER, getLevel()) {
 
                 public boolean isOpenWaterFishing() {
                     return true;

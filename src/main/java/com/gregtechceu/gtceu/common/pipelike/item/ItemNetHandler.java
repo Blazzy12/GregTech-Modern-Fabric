@@ -6,24 +6,23 @@ import com.gregtechceu.gtceu.api.capability.recipe.IO;
 import com.gregtechceu.gtceu.api.cover.CoverBehavior;
 import com.gregtechceu.gtceu.api.cover.filter.Filter;
 import com.gregtechceu.gtceu.api.cover.filter.SimpleItemFilter;
-import com.gregtechceu.gtceu.api.transfer.item.ITransferAmountLimiter;
-import com.gregtechceu.gtceu.api.transfer.item.IVirtualItemHandler;
+import com.gregtechceu.gtceu.api.transfer.item.IBundleInsertable;
 import com.gregtechceu.gtceu.common.blockentity.ItemPipeBlockEntity;
 import com.gregtechceu.gtceu.common.cover.ConveyorCover;
+import com.gregtechceu.gtceu.common.cover.ItemFilterCover;
 import com.gregtechceu.gtceu.common.cover.RobotArmCover;
+import com.gregtechceu.gtceu.common.cover.data.FilterMode;
 import com.gregtechceu.gtceu.utils.FacingPos;
-import com.gregtechceu.gtceu.utils.GTTransferUtils;
-import com.gregtechceu.gtceu.utils.GTUtil;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraftforge.items.IItemHandler;
-import net.minecraftforge.items.IItemHandlerModifiable;
-import net.minecraftforge.items.ItemHandlerHelper;
-import net.minecraftforge.items.ItemStackHandler;
+import com.gregtechceu.gtceu.compat.items.IItemHandler;
+import com.gregtechceu.gtceu.compat.items.IItemHandlerModifiable;
+import com.gregtechceu.gtceu.compat.items.ItemHandlerHelper;
+import com.gregtechceu.gtceu.compat.items.ItemStackHandler;
 
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
@@ -31,11 +30,11 @@ import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import lombok.Getter;
 import lombok.Setter;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
-import java.util.function.ToIntFunction;
 
-public class ItemNetHandler implements IItemHandlerModifiable, IVirtualItemHandler {
+public class ItemNetHandler implements IItemHandlerModifiable, IBundleInsertable {
 
     @Getter
     @Setter
@@ -65,150 +64,49 @@ public class ItemNetHandler implements IItemHandlerModifiable, IVirtualItemHandl
         return handleInsert(stack, simulate, InsertionMode.ATOMIC);
     }
 
-    @Override
-    public void stockInventoryItems(IItemHandler sourceInventory, ITransferAmountLimiter transferAmountLimiter,
-                                    ToIntFunction<ItemStack> itemKeepAmountProvider) {
-        if (network == null || pipe == null || pipe.isRemoved() || pipe.isBlocked(facing) ||
-                network.isTransferringItem()) {
-            return;
-        }
-
-        try {
-            // Protect against recursive transfers via external item handlers
-            network.setTransferringItem(true);
-
-            CoverBehavior sourcePipeCover = pipe.getCoverContainer().getCoverAtSide(facing);
-            CoverBehavior sourceBlockCover = getCoverOnNeighbour(pipe.getBlockPos(), facing);
-
-            // abort if there are two conveyors
-            if (sourcePipeCover instanceof ConveyorCover && sourceBlockCover instanceof ConveyorCover) return;
-
-            List<ItemRoutePath> routePaths = network.getNetData(pipe.getBlockPos(), facing, ItemRoutePathSet.FULL);
-
-            // Distribution mode does not matter for stocking - we just loop all route paths and attempt to stock all of
-            // them
-            for (ItemRoutePath routePath : routePaths) {
-
-                // Restrict the maximum transfer amount for the route
-                ITransferAmountLimiter routeTransferAmountLimiter = new ITransferAmountLimiter() {
-
-                    @Override
-                    public int getRemainingTransferAmount(ItemStack stack) {
-                        return Math.min(checkTransferable(routePath, stack, false),
-                                transferAmountLimiter.getRemainingTransferAmount(stack));
-                    }
-
-                    @Override
-                    public void notifyItemTransferred(ItemStack stack) {
-                        transfer(routePath, stack, ItemStack.EMPTY, false);
-                        transferAmountLimiter.notifyItemTransferred(stack);
-                    }
-
-                    @Override
-                    public boolean canTransferMoreItems() {
-                        return checkAnyTransferable(routePath, false) &&
-                                transferAmountLimiter.canTransferMoreItems();
-                    }
-                };
-
-                if (!routeTransferAmountLimiter.canTransferMoreItems())
-                    continue;
-
-                IItemHandler neighbourHandler = routePath.getHandler(network.getLevel());
-                if (neighbourHandler == null)
-                    continue;
-
-                CoverBehavior destinationPipeCover = routePath.getTargetPipe().getCoverContainer()
-                        .getCoverAtSide(routePath.getTargetFacing());
-
-                // Wrap the original item amount provider with route-specific filter
-                GTTransferUtils.stockInventoryItems(sourceInventory, neighbourHandler,
-                        routeTransferAmountLimiter, itemStack -> getItemKeepAmountViaRoute(
-                                itemStack, destinationPipeCover, routePath, itemKeepAmountProvider));
-            }
-        } finally {
-            network.setTransferringItem(false);
-        }
-    }
-
-    private int getItemKeepAmountViaRoute(ItemStack itemStack,
-                                          CoverBehavior destinationPipeCover,
-                                          ItemRoutePath routePath,
-                                          ToIntFunction<ItemStack> sourceItemKeepAmountProvider) {
-        // Evaluate route filters
-        if (!routePath.matchesFilters(itemStack))
-            return 0;
-
-        // Evaluate filter on destination item pipe (route filters do not include source/destination)
-        if (destinationPipeCover != null) {
-            var defaultHandler = new ItemStackHandler(1);
-            defaultHandler.setStackInSlot(0, itemStack.copyWithCount(1));
-            IItemHandlerModifiable itemHandler = destinationPipeCover.getItemHandlerCap(defaultHandler);
-
-            // If cover returns null item handler, it disallows item transfer explicitly
-            if (itemHandler == null)
-                return 0;
-
-            // Cover might prevent insertion of this particular item type, or restrict the amount
-            // We ignore amount restrictions when stocking, so the only case that matters is item type being explicitly
-            // disallowed
-            if (itemHandler != defaultHandler && itemHandler.extractItem(0, 1, true).getCount() <= 0)
-                return 0;
-        }
-
-        // Evaluate the original item amount provider
-        return sourceItemKeepAmountProvider.applyAsInt(itemStack);
-    }
-
     private ItemStack handleInsert(ItemStack stack, boolean simulate, InsertionMode mode) {
         if (stack.isEmpty()) return stack;
 
-        if (network == null || pipe == null || pipe.isRemoved() || pipe.isBlocked(facing) ||
-                network.isTransferringItem()) {
+        if (network == null || pipe == null || pipe.isRemoved() || pipe.isBlocked(facing)) {
             return stack;
         }
 
-        try {
-            // Protect against recursive transfers via external item handlers
-            network.setTransferringItem(true);
+        simulatedTransfers.clear();
+        simulatedTransfers.putAll(pipe.getTransferredItems());
+        simulatedTransfersGlobalRoundRobin.clear();
+        simulatedTransfersGlobalRoundRobin.putAll(pipe.getTransferredGlobalRoundRobin());
 
-            simulatedTransfers.clear();
-            simulatedTransfers.putAll(pipe.getTransferredItems());
-            simulatedTransfersGlobalRoundRobin.clear();
-            simulatedTransfersGlobalRoundRobin.putAll(pipe.getTransferredGlobalRoundRobin());
+        CoverBehavior pipeCover = pipe.getCoverContainer().getCoverAtSide(facing);
+        CoverBehavior tileCover = getCoverOnNeighbour(pipe.getBlockPos(), facing);
+        ConveyorCover conveyor = null;
 
-            CoverBehavior pipeCover = pipe.getCoverContainer().getCoverAtSide(facing);
-            CoverBehavior tileCover = getCoverOnNeighbour(pipe.getBlockPos(), facing);
-            ConveyorCover conveyor = null;
+        // abort if there are two conveyors
+        if (pipeCover instanceof ConveyorCover && tileCover instanceof ConveyorCover) return stack;
 
-            // abort if there are two conveyors
-            if (pipeCover instanceof ConveyorCover && tileCover instanceof ConveyorCover) return stack;
+        if (!checkImportCover(tileCover, false, stack)) return stack;
 
-            if (pipeCover instanceof ConveyorCover pipeConveyor) conveyor = pipeConveyor;
-            if (tileCover instanceof ConveyorCover tileConveyor) conveyor = tileConveyor;
+        if (pipeCover instanceof ConveyorCover pipeConveyor) conveyor = pipeConveyor;
+        if (tileCover instanceof ConveyorCover tileConveyor) conveyor = tileConveyor;
 
-            List<ItemRoutePath> routePaths = network.getNetData(pipe.getBlockPos(), facing, ItemRoutePathSet.FULL);
-            if (routePaths.isEmpty()) return stack;
-            List<ItemRoutePath> routePathsCopy = new ArrayList<>(routePaths);
+        List<ItemRoutePath> routePaths = network.getNetData(pipe.getBlockPos(), facing, ItemRoutePathSet.FULL);
+        if (routePaths.isEmpty()) return stack;
+        List<ItemRoutePath> routePathsCopy = new ArrayList<>(routePaths);
 
-            if (conveyor == null) return distributeHighestPriority(routePathsCopy, stack, simulate, mode);
+        if (conveyor == null) return distributeHighestPriority(routePathsCopy, stack, simulate, mode);
 
-            return switch (conveyor.getDistributionMode()) {
-                case INSERT_FIRST -> distributeHighestPriority(routePathsCopy, stack, simulate, mode);
-                case ROUND_ROBIN_GLOBAL -> distributeEqually(routePathsCopy, stack, simulate, mode);
-                case ROUND_ROBIN_PRIO -> distributeEquallyNoRestrictive(stack, simulate, mode);
-            };
-        } finally {
-            network.setTransferringItem(false);
-        }
+        return switch (conveyor.getDistributionMode()) {
+            case INSERT_FIRST -> distributeHighestPriority(routePathsCopy, stack, simulate, mode);
+            case ROUND_ROBIN_GLOBAL -> distributeEqually(routePathsCopy, stack, simulate, mode);
+            case ROUND_ROBIN_PRIO -> distributeEquallyNoRestrictive(stack, simulate, mode);
+        };
     }
 
     /**
      * Distributes items to handlers, attempting to fill handlers with a higher priority first
      */
-    private ItemStack distributeHighestPriority(List<ItemRoutePath> copy, ItemStack stack, boolean simulate,
+    private ItemStack distributeHighestPriority(List<ItemRoutePath> routePaths, ItemStack stack, boolean simulate,
                                                 InsertionMode mode) {
-        return insertOrdered(copy, stack, simulate, mode, false);
+        return insertOrdered(routePaths, stack, simulate, mode, false);
     }
 
     /// {@code trackFairness} records round-robin bookkeeping for the destination that ends up receiving items,
@@ -242,7 +140,7 @@ public class ItemNetHandler implements IItemHandlerModifiable, IVirtualItemHandl
      * Does not take in a list of routes, pulls a copy of the routes if it needs it
      *
      * @param stack    the {@link ItemStack} to insert
-     * @param simulate simulate
+     * @param simulate if true, the insertion is only simulated
      * @param mode     see {@link InsertionMode}
      * @return any remaining items not inserted
      */
@@ -269,10 +167,10 @@ public class ItemNetHandler implements IItemHandlerModifiable, IVirtualItemHandl
     /**
      * Equally distributes items to all handlers.
      *
-     * @param routePaths to insert to
-     * @param stack      to insert
-     * @param simulate   simulate
-     * @param mode       see {@link InsertionMode}
+     * @param routePaths the inventories to insert to
+     * @param stack      the {@link ItemStack} to insert
+     * @param simulate   if true, the insertion is only simulated
+     * @param simulate   if true, the insertion is only simulated
      * @return remainder
      */
     private ItemStack distributeEqually(List<ItemRoutePath> routePaths, ItemStack stack, boolean simulate,
@@ -386,11 +284,14 @@ public class ItemNetHandler implements IItemHandlerModifiable, IVirtualItemHandl
         for (EnhancedRoundRobinData data : transferred) {
             ItemStack toInsert = stack.copy();
             toInsert.setCount(data.toTransfer);
+
             ItemStack ins = insertIntoTarget(data.routePath, toInsert, simulate, false);
             int insCount = data.toTransfer - ins.getCount();
 
-            inserted += ins.getCount();
-            if (insCount > 0) transferTo(data.routePath, simulate, ins.copyWithCount(insCount));
+            inserted += insCount;
+            if (insCount > 0) {
+                transferTo(data.routePath, simulate, stack.copyWithCount(insCount));
+            }
         }
 
         ItemStack remainder = stack.copy();
@@ -508,13 +409,28 @@ public class ItemNetHandler implements IItemHandlerModifiable, IVirtualItemHandl
         for (int i = 0; i < handler.getSlots(); i++) {
             ItemStack slot = handler.getStackInSlot(i);
             if (slot.isEmpty()) continue;
-            if (ignoreNBT && !ItemStack.isSameItem(stack, slot)) continue;
-            if (!ignoreNBT && !GTUtil.isSameItemSameTags(stack, slot)) continue;
+
+            if (ignoreNBT) {
+                if (!ItemStack.isSameItem(stack, slot)) continue;
+            } else {
+                if (!ItemStack.isSameItemSameComponents(stack, slot)) continue;
+            }
+
             if (arm.getFilterHandler().getFilter().test(slot)) {
                 count += slot.getCount();
             }
         }
         return count;
+    }
+
+    public static boolean checkImportCover(@Nullable CoverBehavior cover, boolean onPipe, ItemStack stack) {
+        if (cover instanceof ItemFilterCover filter) {
+            return (filter.getFilterMode() != FilterMode.FILTER_BOTH &&
+                    (filter.getFilterMode() != FilterMode.FILTER_INSERT || !onPipe) &&
+                    (filter.getFilterMode() != FilterMode.FILTER_EXTRACT || onPipe)) ||
+                    filter.getItemFilter().test(stack);
+        }
+        return true;
     }
 
     public CoverBehavior getCoverOnNeighbour(BlockPos pos, Direction handlerFacing) {
@@ -533,31 +449,24 @@ public class ItemNetHandler implements IItemHandlerModifiable, IVirtualItemHandl
         return this.simulatedTransfers.values().intStream().sum();
     }
 
-    private boolean checkAnyTransferable(ItemRoutePath routePath, boolean simulate) {
-        int max = Math.round(routePath.getProperties().getTransferRate() * Item.MAX_STACK_SIZE);
+    private int checkTransferable(ItemRoutePath routePath, ItemStack stack, boolean simulate) {
+        int max = Math.round(routePath.getProperties().getTransferRate() * Item.DEFAULT_MAX_STACK_SIZE);
+        int amount = stack.getCount() * (Item.DEFAULT_MAX_STACK_SIZE / stack.getMaxStackSize());
+        // ensure items with maxStackSize > 64 aren't free
+        if (!stack.isEmpty()) amount = Math.max(1, amount);
+
         if (simulate) {
-            return max > getTotalSimulatedTransfers();
+            return Math.max(0, Math.min(max - getTotalSimulatedTransfers(), amount));
         } else {
-            return max > pipe.getTransferredItemCount();
+            return Math.max(0, Math.min(max - pipe.getTransferredItemCount(), amount));
         }
     }
 
-    /** @return the amount of items that can be transferred for the given stack on the given route */
-    private int checkTransferable(ItemRoutePath routePath, ItemStack stack, boolean simulate) {
-        int max = Math.round(routePath.getProperties().getTransferRate() * Item.MAX_STACK_SIZE);
-        int remaining = max - (simulate ? getTotalSimulatedTransfers() : pipe.getTransferredItemCount());
-        if (remaining <= 0) return 0;
-
-        int itemWeight = Math.max(1, Item.MAX_STACK_SIZE / stack.getMaxStackSize());
-        // Round up to allow pipes with small transfer limit to pass at least one item
-        return Math.min(stack.getCount(), (remaining + itemWeight - 1) / itemWeight);
-    }
-
     private void transfer(ItemRoutePath routePath, ItemStack stack, ItemStack remainder, boolean simulate) {
-        int stackAmount = stack.getCount() * (Item.MAX_STACK_SIZE / stack.getMaxStackSize());
+        int stackAmount = stack.getCount() * (Item.DEFAULT_MAX_STACK_SIZE / stack.getMaxStackSize());
         // ensure items with maxStackSize > 64 aren't free
         if (!stack.isEmpty()) stackAmount = Math.max(1, stackAmount);
-        int remainderAmount = remainder.getCount() * (Item.MAX_STACK_SIZE / remainder.getMaxStackSize());
+        int remainderAmount = remainder.getCount() * (Item.DEFAULT_MAX_STACK_SIZE / remainder.getMaxStackSize());
         if (!remainder.isEmpty()) remainderAmount = Math.max(1, remainderAmount);
 
         int amount = stackAmount - remainderAmount;
@@ -569,7 +478,7 @@ public class ItemNetHandler implements IItemHandlerModifiable, IVirtualItemHandl
     }
 
     private void transferTo(ItemRoutePath handler, boolean simulate, ItemStack stack) {
-        int amount = stack.getCount() * (Item.MAX_STACK_SIZE / stack.getMaxStackSize());
+        int amount = stack.getCount() * (Item.DEFAULT_MAX_STACK_SIZE / stack.getMaxStackSize());
         // ensure items with maxStackSize > 64 aren't free
         if (!stack.isEmpty()) amount = Math.max(1, amount);
 

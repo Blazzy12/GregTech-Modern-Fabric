@@ -18,11 +18,11 @@ package com.gregtechceu.gtceu.client.model.quad;
 import com.gregtechceu.gtceu.client.util.quad.GeometryHelper;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.block.model.BakedQuad;
+import com.gregtechceu.gtceu.compat.client.model.BakedQuad;
 import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.core.Direction;
-import net.minecraftforge.client.model.QuadTransformers;
+import com.gregtechceu.gtceu.compat.client.model.QuadTransformers;
 
 import lombok.Getter;
 import lombok.experimental.Accessors;
@@ -391,8 +391,8 @@ public class QuadView {
 
     @SuppressWarnings("deprecation")
     public BakedQuad toBlockBakedQuad() {
-        var finder = SpriteFinder.get(Minecraft.getInstance().getModelManager()
-                .getAtlas(TextureAtlas.LOCATION_BLOCKS));
+        var finder = SpriteFinder.get(Minecraft.getInstance().getAtlasManager()
+                .getAtlasOrThrow(net.minecraft.data.AtlasIds.BLOCKS));
         return toBakedQuad(finder.find(this));
     }
 }

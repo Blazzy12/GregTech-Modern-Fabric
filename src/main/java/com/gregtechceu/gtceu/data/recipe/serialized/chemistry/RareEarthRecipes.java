@@ -1,8 +1,6 @@
 package com.gregtechceu.gtceu.data.recipe.serialized.chemistry;
 
-import net.minecraft.data.recipes.FinishedRecipe;
-
-import java.util.function.Consumer;
+import net.minecraft.data.recipes.RecipeOutput;
 
 import static com.gregtechceu.gtceu.api.GTValues.*;
 import static com.gregtechceu.gtceu.api.data.tag.TagPrefix.dust;
@@ -12,7 +10,7 @@ import static com.gregtechceu.gtceu.common.data.GTRecipeTypes.*;
 public class RareEarthRecipes {
 
     // TODO: Rare Earths for some reason gives *cadmium*, fix it at a later date or keep it here.
-    public static void init(Consumer<FinishedRecipe> provider) {
+    public static void init(RecipeOutput provider) {
         // Ln2O3 + 6HCl + 3H2O -> [2LnCl3 + 6H2O]aq
         MIXER_RECIPES.recipeBuilder("rare_earth_sludge_mixture_from_pure_rare_earth")
                 .inputItems(dust, RareEarth, 4)

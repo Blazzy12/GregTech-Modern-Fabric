@@ -8,15 +8,20 @@ import com.gregtechceu.gtceu.api.data.medicalcondition.MedicalCondition;
 import com.gregtechceu.gtceu.api.data.tag.TagPrefix;
 import com.gregtechceu.gtceu.api.item.TagPrefixItem;
 import com.gregtechceu.gtceu.api.item.armor.ArmorComponentItem;
+import com.gregtechceu.gtceu.api.registry.GTRegistries;
 import com.gregtechceu.gtceu.common.item.GTBucketItem;
 import com.gregtechceu.gtceu.config.ConfigHolder;
 import com.gregtechceu.gtceu.data.recipe.CustomTags;
 
+import net.minecraft.core.Holder;
+import net.minecraft.core.HolderSet;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.TagKey;
 import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ArmorItem;
+import net.minecraft.world.item.equipment.ArmorType;
 import net.minecraft.world.item.BucketItem;
 import net.minecraft.world.item.ItemStack;
 
@@ -24,21 +29,17 @@ import com.mojang.datafixers.util.Either;
 import lombok.Getter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import top.theillusivec4.curios.api.CuriosApi;
-import top.theillusivec4.curios.api.SlotResult;
-import top.theillusivec4.curios.api.type.capability.ICuriosItemHandler;
-import top.theillusivec4.curios.api.type.inventory.IDynamicStackHandler;
 
 import java.util.*;
 
 public class HazardProperty implements IMaterialProperty {
 
-    public final MedicalCondition condition;
+    public final Holder<MedicalCondition> condition;
     public final HazardTrigger hazardTrigger;
     public final boolean applyToDerivatives;
     public final float progressionMultiplier;
 
-    public HazardProperty(HazardTrigger hazardTrigger, MedicalCondition condition, float progressionMultiplier,
+    public HazardProperty(HazardTrigger hazardTrigger, Holder<MedicalCondition> condition, float progressionMultiplier,
                           boolean applyToDerivatives) {
         this.hazardTrigger = hazardTrigger;
         this.condition = condition;
@@ -49,16 +50,16 @@ public class HazardProperty implements IMaterialProperty {
     @Override
     public void verifyProperty(MaterialProperties properties) {}
 
-    public record HazardTrigger(String name, ProtectionType protectionType, Set<TagPrefix> affectedTagPrefixes)
+    public record HazardTrigger(String name, ProtectionType protectionType, HolderSet<TagPrefix> affectedTagPrefixes)
             implements StringRepresentable {
 
         public static final Map<String, HazardTrigger> ALL_TRIGGERS = new HashMap<>();
 
         public static final HazardTrigger INHALATION = new HazardTrigger("inhalation", ProtectionType.MASK,
-                TagPrefix.dust, TagPrefix.dustSmall, TagPrefix.dustTiny, TagPrefix.dustPure, TagPrefix.dustImpure);
+                CustomTags.INHALATION_TRIGGER_PREFIXES);
         public static final HazardTrigger ANY = new HazardTrigger("any", ProtectionType.FULL);
         public static final HazardTrigger SKIN_CONTACT = new HazardTrigger("skin_contact", ProtectionType.HANDS,
-                TagPrefix.dust, TagPrefix.dustSmall, TagPrefix.dustTiny);
+                CustomTags.SKIN_CONTACT_TRIGGER_PREFIXES);
         public static final HazardTrigger NONE = new HazardTrigger("none", ProtectionType.NONE);
         // special trigger that's activated when the player eats an item with a condition and this trigger
         public static final HazardTrigger CONSUMPTION = new HazardTrigger("consumption", ProtectionType.NONE);
@@ -67,13 +68,17 @@ public class HazardProperty implements IMaterialProperty {
             ALL_TRIGGERS.put(name, this);
         }
 
-        public HazardTrigger(String name, ProtectionType protectionType, TagPrefix... tagPrefixes) {
-            this(name, protectionType, new HashSet<>());
-            affectedTagPrefixes.addAll(Arrays.asList(tagPrefixes));
+        @SafeVarargs
+        public HazardTrigger(String name, ProtectionType protectionType, Holder<TagPrefix>... tagPrefixes) {
+            this(name, protectionType, HolderSet.direct(tagPrefixes));
         }
 
-        public boolean isAffected(TagPrefix prefix) {
-            if (affectedTagPrefixes.isEmpty()) return true; // empty list means all prefixes are affected
+        public HazardTrigger(String name, ProtectionType protectionType, TagKey<TagPrefix> tag) {
+            this(name, protectionType, com.gregtechceu.gtceu.utils.TagUtil.holderSet(GTRegistries.TAG_PREFIXES, tag));
+        }
+
+        public boolean isAffected(Holder<TagPrefix> prefix) {
+            if (affectedTagPrefixes.size() == 0) return true; // empty list means all prefixes are affected
             return affectedTagPrefixes.contains(prefix);
         }
 
@@ -89,13 +94,13 @@ public class HazardProperty implements IMaterialProperty {
 
     public enum ProtectionType {
 
-        MASK(Set.of("head"), ArmorItem.Type.HELMET),
-        HANDS(Set.of("hands"), ArmorItem.Type.CHESTPLATE),
-        FULL(Set.of(), ArmorItem.Type.BOOTS, ArmorItem.Type.HELMET, ArmorItem.Type.CHESTPLATE, ArmorItem.Type.LEGGINGS),
+        MASK(Set.of("head"), ArmorType.HELMET),
+        HANDS(Set.of("hands"), ArmorType.CHESTPLATE),
+        FULL(Set.of(), ArmorType.BOOTS, ArmorType.HELMET, ArmorType.CHESTPLATE, ArmorType.LEGGINGS),
         NONE(Set.of());
 
         @Getter
-        private final Set<ArmorItem.Type> equipmentTypes;
+        private final Set<ArmorType> equipmentTypes;
         @Getter
         private final Set<String> curioSlots;
 
@@ -106,7 +111,7 @@ public class HazardProperty implements IMaterialProperty {
          * @param curioSlots     curio slot names to test for
          * @param equipmentTypes armor slots to test for
          */
-        ProtectionType(Set<String> curioSlots, ArmorItem.Type... equipmentTypes) {
+        ProtectionType(Set<String> curioSlots, ArmorType... equipmentTypes) {
             this.curioSlots = curioSlots;
             this.equipmentTypes = Set.of(equipmentTypes);
         }
@@ -115,69 +120,30 @@ public class HazardProperty implements IMaterialProperty {
             if (this == NONE) {
                 return true;
             }
-            Set<ArmorItem.Type> correctArmorItems = new HashSet<>();
-            for (ArmorItem.Type equipmentType : equipmentTypes) {
+            Set<ArmorType> correctArmorItems = new HashSet<>();
+            for (ArmorType equipmentType : equipmentTypes) {
                 ItemStack armor = livingEntity.getItemBySlot(equipmentType.getSlot());
-
                 if (!armor.isEmpty() && ((armor.getItem() instanceof ArmorComponentItem armorItem &&
                         armorItem.isPPE(armor)) ||
                         armor.getTags().anyMatch(tag -> tag.equals(CustomTags.PPE_ARMOR)))) {
                     correctArmorItems.add(equipmentType);
                 }
             }
-            if (!GTCEu.Mods.isCuriosLoaded() || this.curioSlots.isEmpty()) {
-                return correctArmorItems.containsAll(equipmentTypes);
-            }
-            Set<String> correctCurios = new HashSet<>();
-            ICuriosItemHandler curiosInventory = CuriosApi.getCuriosInventory(livingEntity)
-                    .resolve()
-                    .orElse(null);
-            if (curiosInventory == null) {
-                return correctArmorItems.containsAll(equipmentTypes);
-            }
-            List<SlotResult> results = curiosInventory.findCurios(this.curioSlots.toArray(String[]::new));
-            for (SlotResult result : results) {
-                ItemStack armor = result.stack();
-                if (!armor.isEmpty() && ((armor.getItem() instanceof ArmorComponentItem armorItem &&
-                        armorItem.isPPE(armor)) ||
-                        armor.getTags().anyMatch(tag -> tag.equals(CustomTags.PPE_ARMOR)))) {
-                    correctCurios.add(result.slotContext().identifier());
-                }
-            }
-            return correctArmorItems.containsAll(equipmentTypes) || correctCurios.containsAll(curioSlots);
+            return correctArmorItems.containsAll(equipmentTypes);
         }
 
         public void damageEquipment(Player player, int amount) {
             // entity has proper safety equipment, so damage it per material every 5 seconds.
             if (player.level().getGameTime() % 100 == 0) {
-                for (ArmorItem.Type type : this.getEquipmentTypes()) {
+                for (ArmorType type : this.getEquipmentTypes()) {
                     ItemStack armor = player.getItemBySlot(type.getSlot());
                     if (!armor.isEmpty() && ((armor.getItem() instanceof ArmorComponentItem armorItem &&
                             armorItem.isPPE(armor)) ||
                             armor.getTags().anyMatch(tag -> tag.equals(CustomTags.PPE_ARMOR)))) {
-                        armor.hurtAndBreak(amount, player, p -> p.broadcastBreakEvent(type.getSlot()));
+                        armor.hurtAndBreak(amount, player, type.getSlot());
                     }
                 }
-                if (GTCEu.Mods.isCuriosLoaded()) {
-                    ICuriosItemHandler curiosInventory = CuriosApi.getCuriosInventory(player)
-                            .resolve()
-                            .orElse(null);
-                    if (curiosInventory != null) {
-                        for (String curioItem : this.getCurioSlots()) {
-                            curiosInventory.getStacksHandler(curioItem).ifPresent(handler -> {
-                                IDynamicStackHandler stackHandler = handler.getStacks();
-                                for (int i = 0; i < handler.getSlots(); ++i) {
-                                    ItemStack armor = stackHandler.getStackInSlot(i);
-                                    if (!armor.isEmpty() && ((armor.getItem() instanceof ArmorComponentItem armorItem &&
-                                            armorItem.isPPE(armor)) ||
-                                            armor.getTags().anyMatch(tag -> tag.equals(CustomTags.PPE_ARMOR)))) {
-                                        armor.hurtAndBreak(amount, player, p -> {});
-                                    }
-                                }
-                            });
-                        }
-                    }
-                }
+                // Curios has no 26.3 Fabric build, so curio slots are not checked
             }
         }
     }
@@ -191,7 +157,7 @@ public class HazardProperty implements IMaterialProperty {
             prefix = prefixItem.tagPrefix;
         } else if (item.getItem() instanceof BucketItem bucket) {
             if (ConfigHolder.INSTANCE.gameplay.universalHazards || bucket instanceof GTBucketItem) {
-                material = ChemicalHelper.getMaterial(bucket.getFluid());
+                material = ChemicalHelper.getMaterial(bucket.content);
             }
         } else if (ConfigHolder.INSTANCE.gameplay.universalHazards) {
             var entry = ChemicalHelper.getMaterialEntry(item.getItem());
@@ -201,7 +167,7 @@ public class HazardProperty implements IMaterialProperty {
         }
 
         HazardProperty property = (material == null) ? null : material.getProperty(PropertyKey.HAZARD);
-        if (property == null || prefix != null && !property.hazardTrigger.isAffected(prefix)) {
+        if (property == null || prefix != null && !property.hazardTrigger.isAffected(prefix.getRegistryHolder())) {
             return null;
         }
 

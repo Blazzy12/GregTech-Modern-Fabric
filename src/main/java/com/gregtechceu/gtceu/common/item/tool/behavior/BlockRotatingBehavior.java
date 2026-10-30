@@ -1,17 +1,24 @@
 package com.gregtechceu.gtceu.common.item.tool.behavior;
 
+import com.mojang.serialization.MapCodec;
+
 import com.gregtechceu.gtceu.api.item.tool.ToolHelper;
 import com.gregtechceu.gtceu.api.item.tool.behavior.IToolBehavior;
+import com.gregtechceu.gtceu.api.item.tool.behavior.ToolBehaviorType;
 import com.gregtechceu.gtceu.api.machine.MetaMachine;
-import com.gregtechceu.gtceu.common.data.item.GTToolActions;
+import com.gregtechceu.gtceu.common.data.GTToolBehaviors;
+import com.gregtechceu.gtceu.common.data.item.GTItemAbilities;
 import com.gregtechceu.gtceu.common.item.tool.rotation.CustomBlockRotations;
 import com.gregtechceu.gtceu.common.item.tool.rotation.ICustomRotationBehavior;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.context.UseOnContext;
@@ -26,22 +33,25 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
-import net.minecraftforge.common.ToolAction;
+import com.gregtechceu.gtceu.compat.common.ItemAbility;
 
+import com.mojang.serialization.Codec;
+import io.netty.buffer.ByteBuf;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
-public class BlockRotatingBehavior implements IToolBehavior {
+public class BlockRotatingBehavior implements IToolBehavior<BlockRotatingBehavior> {
 
     public static final BlockRotatingBehavior INSTANCE = new BlockRotatingBehavior();
+    public static final Codec<BlockRotatingBehavior> CODEC = MapCodec.unitCodec(INSTANCE);
+    public static final StreamCodec<ByteBuf, BlockRotatingBehavior> STREAM_CODEC = StreamCodec.unit(INSTANCE);
 
-    protected BlockRotatingBehavior() {/**/}
+    protected BlockRotatingBehavior() {}
 
     @Override
-    public boolean canPerformAction(ItemStack stack, ToolAction action) {
-        return action == GTToolActions.WRENCH_ROTATE;
+    public boolean canPerformAction(ItemStack stack, ItemAbility action) {
+        return action == GTItemAbilities.WRENCH_ROTATE;
     }
 
     @Override
@@ -69,14 +79,14 @@ public class BlockRotatingBehavior implements IToolBehavior {
             if (behavior != null) {
                 if (behavior.customRotate(state, level, pos, retraceBlock(level, player, pos))) {
                     ToolHelper.onActionDone(player, stack, level, context.getClickLocation());
-                    return InteractionResult.sidedSuccess(level.isClientSide);
+                    return InteractionResult.SUCCESS;
                 }
             } else {
                 Rotation rot = player == null || player.getDirection().getClockWise() == context.getClickedFace() ?
                         Rotation.CLOCKWISE_90 : Rotation.COUNTERCLOCKWISE_90;
-                if (state.rotate(level, pos, rot) != state) {
+                if (state.rotate(rot) != state) {
                     ToolHelper.onActionDone(player, stack, level, context.getClickLocation());
-                    return InteractionResult.sidedSuccess(level.isClientSide);
+                    return InteractionResult.SUCCESS;
                 }
             }
         }
@@ -84,9 +94,14 @@ public class BlockRotatingBehavior implements IToolBehavior {
     }
 
     @Override
-    public void addInformation(@NotNull ItemStack stack, @Nullable Level world, @NotNull List<Component> tooltip,
+    public void addInformation(@NotNull ItemStack stack, Item.TooltipContext context, @NotNull List<Component> tooltip,
                                @NotNull TooltipFlag flag) {
         tooltip.add(Component.translatable("item.gtceu.tool.behavior.block_rotation"));
+    }
+
+    @Override
+    public ToolBehaviorType<BlockRotatingBehavior> getType() {
+        return GTToolBehaviors.BLOCK_ROTATING.value();
     }
 
     public static BlockHitResult retraceBlock(BlockGetter level, Player player, BlockPos pos) {
@@ -96,7 +111,7 @@ public class BlockRotatingBehavior implements IToolBehavior {
 
         Vec3 startVec = new Vec3(playerX, playerY, playerZ);
 
-        double reachDistance = ToolHelper.getPlayerBlockReach(player);
+        double reachDistance = player.getAttribute(Attributes.BLOCK_INTERACTION_RANGE).getValue();
 
         float playerXRot = player.getXRot();
         float playerYRot = player.getYRot();

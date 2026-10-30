@@ -8,21 +8,22 @@ import com.gregtechceu.gtceu.api.data.chemical.material.properties.PropertyKey;
 import com.gregtechceu.gtceu.api.data.chemical.material.stack.MaterialStack;
 import com.gregtechceu.gtceu.api.data.tag.TagPrefix;
 import com.gregtechceu.gtceu.api.fluids.store.FluidStorageKeys;
-import com.gregtechceu.gtceu.api.recipe.ingredient.FluidIngredient;
+import com.gregtechceu.gtceu.api.recipe.ingredient.SizedIngredientExtensions;
 import com.gregtechceu.gtceu.common.data.GCYMRecipeTypes;
 import com.gregtechceu.gtceu.common.data.GTItems;
 import com.gregtechceu.gtceu.common.data.GTMaterials;
 import com.gregtechceu.gtceu.common.data.GTRecipeTypes;
 import com.gregtechceu.gtceu.data.recipe.builder.GTRecipeBuilder;
 
-import net.minecraft.data.recipes.FinishedRecipe;
+import net.minecraft.data.recipes.RecipeOutput;
 import net.minecraft.world.level.material.Fluid;
-import net.minecraftforge.fluids.FluidStack;
+import com.gregtechceu.gtceu.compat.fluids.FluidStack;
+import com.gregtechceu.gtceu.compat.fluids.crafting.SizedFluidIngredient;
 
+import lombok.experimental.ExtensionMethod;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.function.Consumer;
-
+@ExtensionMethod(SizedIngredientExtensions.class)
 public class AlloyBlastRecipeProducer {
 
     public static final AlloyBlastRecipeProducer DEFAULT_PRODUCER = new AlloyBlastRecipeProducer();
@@ -34,7 +35,7 @@ public class AlloyBlastRecipeProducer {
      * @param property the blast property of the material
      */
     public void produce(@NotNull Material material, @NotNull BlastProperty property,
-                        Consumer<FinishedRecipe> provider) {
+                        RecipeOutput provider) {
         // do not generate for disabled materials
         if (material.hasFlag(MaterialFlags.DISABLE_ALLOY_BLAST)) return;
 
@@ -93,7 +94,7 @@ public class AlloyBlastRecipeProducer {
             final int msAmount = (int) materialStack.amount();
 
             if (component.hasProperty(PropertyKey.DUST)) {
-                builder.inputItems(TagPrefix.dust, component, msAmount);
+                builder.inputItems(TagPrefix.dust.value(), component, msAmount);
             } else if (component.hasProperty(PropertyKey.FLUID)) {
                 if (fluids >= 2) {
                     // more than 2 fluids won't fit in the machine
@@ -124,7 +125,7 @@ public class AlloyBlastRecipeProducer {
      */
     protected void buildRecipes(@NotNull BlastProperty property, @NotNull Fluid liquid,
                                 int outputAmount, int componentAmount,
-                                @NotNull GTRecipeBuilder builder, Consumer<FinishedRecipe> provider) {
+                                @NotNull GTRecipeBuilder builder, RecipeOutput provider) {
         // add the fluid output with the correct amount
         builder.outputFluids(new FluidStack(liquid, GTValues.L * outputAmount));
 
@@ -134,7 +135,8 @@ public class AlloyBlastRecipeProducer {
         // build the gas recipe if it exists
         if (property.getGasTier() != null) {
             GTRecipeBuilder builderGas = builder.copy(builder.id.getPath() + "_gas");
-            FluidIngredient gas = property.getGasTier().getFluid(outputAmount);
+            SizedFluidIngredient gas = property.getGasTier().getFluid(outputAmount);
+            gas = gas.copyWithAmount(gas.amount() * outputAmount);
             builderGas.circuitMeta(getGasCircuitNum(componentAmount))
                     .inputFluids(gas)
                     .duration((int) (duration * 0.67))
@@ -169,13 +171,13 @@ public class AlloyBlastRecipeProducer {
     @Deprecated
     @SuppressWarnings("MethodMayBeStatic")
     protected void addFreezerRecipes(@NotNull Material material, @NotNull Fluid liquid, int temperature,
-                                     Consumer<FinishedRecipe> provider) {
+                                     RecipeOutput provider) {
         // build the freezer recipe
         GTRecipeBuilder freezerBuilder = GTRecipeTypes.VACUUM_RECIPES.recipeBuilder(material.getName())
                 .inputFluids(new FluidStack(liquid, GTValues.L))
                 .duration((int) material.getMass() * 3)
                 .notConsumable(GTItems.SHAPE_MOLD_INGOT.asStack())
-                .outputItems(TagPrefix.ingot, material);
+                .outputItems(TagPrefix.ingot.value(), material);
 
         // helium for when >= 5000K temperature
         if (temperature >= 5000) {

@@ -1,16 +1,16 @@
 package com.gregtechceu.gtceu.client.renderer.monitor;
 
-import com.gregtechceu.gtceu.client.renderer.GTRenderTypes;
+import net.minecraft.util.LightCoordsUtil;
+
 import com.gregtechceu.gtceu.client.util.ClientImageCache;
 import com.gregtechceu.gtceu.common.machine.multiblock.electric.CentralMonitorMachine;
 import com.gregtechceu.gtceu.common.machine.multiblock.electric.monitor.MonitorGroup;
-import com.gregtechceu.gtceu.utils.GTUtil;
 
-import net.minecraft.client.renderer.LightTexture;
-import net.minecraft.client.renderer.MultiBufferSource;
+import com.gregtechceu.gtceu.compat.client.render.MultiBufferSource;
 import net.minecraft.core.BlockPos;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import org.joml.Matrix4f;
@@ -28,23 +28,23 @@ public class MonitorImageRenderer implements IMonitorRenderer {
                        MultiBufferSource buffer, int packedLight, int packedOverlay) {
         if (group.isEmpty()) return;
         BlockPos rel = group.getRow(0, machine::toRelative).get(0);
-        BlockPos size = GTUtil.getLast(group.getRow(-1, machine::toRelative))
+        BlockPos size = group.getRow(-1, machine::toRelative).getLast()
                 .offset(-rel.getX() + 1, -rel.getY() + 1, -rel.getZ() + 1);
 
         poseStack.translate(rel.getX(), rel.getY(), rel.getZ());
 
-        ResourceLocation textureId = ClientImageCache.getOrLoadTexture(url);
+        Identifier textureId = ClientImageCache.getOrLoadTexture(url);
         if (textureId == null) return;
 
-        VertexConsumer consumer = buffer.getBuffer(GTRenderTypes.guiTexture(textureId));
+        VertexConsumer consumer = buffer.getBuffer(RenderTypes.text(textureId));
         Matrix4f pose = poseStack.last().pose();
 
         float minX = 0, maxX = size.getX();
         float minY = 0, maxY = size.getY();
 
-        consumer.vertex(pose, minX, maxY, 0).color(0xFFFFFFFF).uv(0, 1).uv2(LightTexture.FULL_BRIGHT).endVertex();
-        consumer.vertex(pose, maxX, maxY, 0).color(0xFFFFFFFF).uv(1, 1).uv2(LightTexture.FULL_BRIGHT).endVertex();
-        consumer.vertex(pose, maxX, minY, 0).color(0xFFFFFFFF).uv(1, 0).uv2(LightTexture.FULL_BRIGHT).endVertex();
-        consumer.vertex(pose, minX, minY, 0).color(0xFFFFFFFF).uv(0, 0).uv2(LightTexture.FULL_BRIGHT).endVertex();
+        consumer.addVertex(pose, minX, maxY, 0).setColor(0xFFFFFFFF).setUv(0, 1).setLight(LightCoordsUtil.FULL_BRIGHT);
+        consumer.addVertex(pose, maxX, maxY, 0).setColor(0xFFFFFFFF).setUv(1, 1).setLight(LightCoordsUtil.FULL_BRIGHT);
+        consumer.addVertex(pose, maxX, minY, 0).setColor(0xFFFFFFFF).setUv(1, 0).setLight(LightCoordsUtil.FULL_BRIGHT);
+        consumer.addVertex(pose, minX, minY, 0).setColor(0xFFFFFFFF).setUv(0, 0).setLight(LightCoordsUtil.FULL_BRIGHT);
     }
 }

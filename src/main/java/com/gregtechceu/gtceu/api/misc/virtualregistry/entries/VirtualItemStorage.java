@@ -4,7 +4,8 @@ import com.gregtechceu.gtceu.api.misc.virtualregistry.EntryTypes;
 import com.gregtechceu.gtceu.api.misc.virtualregistry.VirtualEntry;
 import com.gregtechceu.gtceu.api.transfer.item.CustomItemStackHandler;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 
 import lombok.Getter;
@@ -42,16 +43,16 @@ public class VirtualItemStorage extends VirtualEntry {
     }
 
     @Override
-    public CompoundTag serializeNBT() {
-        CompoundTag tag = super.serializeNBT();
-        tag.put(ITEM_KEY, handler.serializeNBT());
+    public CompoundTag serializeNBT(HolderLookup.Provider provider) {
+        CompoundTag tag = VirtualItemStorage.super.serializeNBT(provider);
+        tag.put(ITEM_KEY, handler.serializeNBT(provider));
         return tag;
     }
 
     @Override
-    public void deserializeNBT(CompoundTag nbt) {
-        super.deserializeNBT(nbt);
-        handler.deserializeNBT(nbt.getCompound(ITEM_KEY));
+    public void deserializeNBT(HolderLookup.Provider provider, CompoundTag nbt) {
+        super.deserializeNBT(provider, nbt);
+        handler.deserializeNBT(provider, nbt.getCompoundOrEmpty(ITEM_KEY));
     }
 
     @Override

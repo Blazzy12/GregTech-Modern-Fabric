@@ -3,6 +3,7 @@ package com.gregtechceu.gtceu.common.data;
 import com.gregtechceu.gtceu.api.GTValues;
 import com.gregtechceu.gtceu.api.capability.GTCapabilityHelper;
 import com.gregtechceu.gtceu.api.capability.recipe.EURecipeCapability;
+import com.gregtechceu.gtceu.api.capability.recipe.ItemRecipeCapability;
 import com.gregtechceu.gtceu.api.data.medicalcondition.MedicalCondition;
 import com.gregtechceu.gtceu.api.item.component.ISpoilableItem;
 import com.gregtechceu.gtceu.api.item.component.SpoilContext;
@@ -24,12 +25,13 @@ import com.gregtechceu.gtceu.api.recipe.modifier.RecipeModifier;
 import com.gregtechceu.gtceu.common.capability.EnvironmentalHazardSavedData;
 import com.gregtechceu.gtceu.config.ConfigHolder;
 
-import net.minecraft.Util;
+import net.minecraft.util.Util;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.crafting.Ingredient;
+import com.gregtechceu.gtceu.compat.common.crafting.SizedIngredient;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -70,8 +72,8 @@ public class GTRecipeModifiers {
                 ConsumedInputsData inputs = machine.getTraitOptional(RecipeLogic.class)
                         .map(RecipeLogic::getConsumedInputs).orElse(null);
                 if (inputs == null) return;
-                for (Object inObject : inputs.getConsumedInputs(GTRecipeCapabilities.ITEM)) {
-                    if (!(inObject instanceof Ingredient ingredient)) continue;
+                for (Object inObject : inputs.getConsumedInputs(ItemRecipeCapability.CAP)) {
+                    if (!(inObject instanceof SizedIngredient ingredient)) continue;
                     if (ingredient.getItems().length == 0) continue;
                     ItemStack in = ingredient.getItems()[0];
                     ISpoilableItem spoilable = GTCapabilityHelper.getSpoilable(in);
@@ -87,14 +89,14 @@ public class GTRecipeModifiers {
                 }
             }).build();
 
-    public static final BiFunction<MedicalCondition, Integer, RecipeModifier> ENVIRONMENT_REQUIREMENT = Util
-            .memoize((condition, maxAllowedStrength) -> (machine, recipe) -> {
+    public static final BiFunction<Holder<MedicalCondition>, Integer, RecipeModifier> ENVIRONMENT_REQUIREMENT = Util
+            .memoize((conditionHolder, maxAllowedStrength) -> (machine, recipe) -> {
                 if (!ConfigHolder.INSTANCE.gameplay.environmentalHazards) return ModifierFunction.IDENTITY;
                 if (!(machine.getLevel() instanceof ServerLevel serverLevel)) return ModifierFunction.NULL;
 
                 EnvironmentalHazardSavedData data = EnvironmentalHazardSavedData.getOrCreate(serverLevel);
                 BlockPos machinePos = machine.getBlockPos();
-                var zone = data.getZoneByContainedPosAndCondition(machinePos, condition);
+                var zone = data.getZoneByContainedPosAndCondition(machinePos, conditionHolder.value());
                 if (zone == null) return ModifierFunction.IDENTITY;
 
                 float strength = zone.strength();
@@ -211,7 +213,7 @@ public class GTRecipeModifiers {
 
         int blastFurnaceTemperature = coilMachine.getCoilType().getCoilTemperature() +
                 (100 * Math.max(0, coilMachine.getTier() - GTValues.MV));
-        int recipeTemp = recipe.data.getInt("ebf_temp");
+        int recipeTemp = recipe.data.getIntOr("ebf_temp", 0);
         if (!recipe.data.contains("ebf_temp") || recipeTemp > blastFurnaceTemperature) {
             return ModifierFunction.cancel(Component.translatable("gtceu.recipe_modifier.coil_temperature_too_low"));
         }
@@ -264,10 +266,10 @@ public class GTRecipeModifiers {
      * <p>
      * Modifies the recipe in the following order:
      * <ol>
-     * <li>Calculates the maximum parallels as {@code 32 × coilLevel}</li>
+     * <li>Calculates the maximum parallel as {@code 32 × coilLevel}</li>
      * <li>Finds the actual parallel amount that the smelter can do</li>
      * <li>Sets the recipe duration to {@code 128 × 2 × parallels / maxParallels}</li>
-     * <li>Sets the recipe EUt to {@code (4 × maxParallels / (8 × coilDiscount))}</li>
+     * <li>Sets the recipe EUt to {@code parallels / (8 × coilDiscount)}</li>
      * <li>Applies {@link OverclockingLogic#NON_PERFECT_OVERCLOCK} to this modified recipe</li>
      * <li>Multiplies the recipe contents by the parallel amount</li>
      * </ol>
@@ -288,7 +290,7 @@ public class GTRecipeModifiers {
         if (parallels == 0) return ModifierFunction.NULL;
 
         int duration = (int) (128 * 2.0 * parallels / maxParallel);
-        long eut = (long) (4 * maxParallel / (8.0 * coilMachine.getCoilType().getEnergyDiscount()));
+        long eut = 4 * (long) (parallels / (8.0 * coilMachine.getCoilType().getEnergyDiscount()));
         ModifierFunction baseModifier = r -> {
             var copy = r.copy();
             EURecipeCapability.putEUContent(copy.tickInputs, new EnergyStack(Math.max(1, eut)));

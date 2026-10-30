@@ -7,20 +7,19 @@ import com.gregtechceu.gtceu.api.recipe.ingredient.FluidContainerIngredient;
 import com.gregtechceu.gtceu.common.data.GTMaterials;
 import com.gregtechceu.gtceu.common.data.GTRecipeCategories;
 import com.gregtechceu.gtceu.config.ConfigHolder;
-import com.gregtechceu.gtceu.data.recipe.CustomTags;
 import com.gregtechceu.gtceu.data.recipe.VanillaRecipeHelper;
 
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.data.recipes.FinishedRecipe;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.data.recipes.RecipeOutput;
+import net.minecraft.resources.Identifier;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraftforge.common.Tags;
-
-import java.util.function.Consumer;
+import com.gregtechceu.gtceu.compat.common.Tags;
+import com.gregtechceu.gtceu.compat.common.crafting.IntersectionIngredient;
 
 import static com.gregtechceu.gtceu.api.GTValues.*;
 import static com.gregtechceu.gtceu.api.data.tag.TagPrefix.*;
@@ -30,7 +29,7 @@ import static com.gregtechceu.gtceu.common.data.GTRecipeTypes.*;
 
 public class VanillaStandardRecipes {
 
-    public static void init(Consumer<FinishedRecipe> provider) {
+    public static void init(RecipeOutput provider) {
         compressingRecipes(provider);
         glassRecipes(provider);
         smashingRecipes(provider);
@@ -47,7 +46,7 @@ public class VanillaStandardRecipes {
     /**
      * + Adds compression recipes for vanilla items
      */
-    private static void compressingRecipes(Consumer<FinishedRecipe> provider) {
+    private static void compressingRecipes(RecipeOutput provider) {
         COMPRESSOR_RECIPES.recipeBuilder("stone_from_dust").duration(300).EUt(2)
                 .inputItems(plate, Stone, 9)
                 .outputItems(new ItemStack(Blocks.STONE))
@@ -158,7 +157,7 @@ public class VanillaStandardRecipes {
      * + Adds steam age manual glass recipes
      * - Removes some glass related recipes based on configs
      */
-    private static void glassRecipes(Consumer<FinishedRecipe> provider) {
+    private static void glassRecipes(RecipeOutput provider) {
         VanillaRecipeHelper.addShapedRecipe(provider, "glass_dust_hammer", ChemicalHelper.get(dust, Glass), "hG", 'G',
                 new ItemStack(Blocks.GLASS));
 
@@ -264,7 +263,7 @@ public class VanillaStandardRecipes {
     /**
      * Adds smashing related recipes for vanilla blocks and items
      */
-    private static void smashingRecipes(Consumer<FinishedRecipe> provider) {
+    private static void smashingRecipes(RecipeOutput provider) {
         FORGE_HAMMER_RECIPES.recipeBuilder("cobblestone_to_gravel")
                 .inputItems(ItemTags.STONE_CRAFTING_MATERIALS)
                 .outputItems(new ItemStack(Blocks.GRAVEL))
@@ -376,7 +375,7 @@ public class VanillaStandardRecipes {
     /**
      * + Adds new recipes for wood related items and blocks
      */
-    private static void woodRecipes(Consumer<FinishedRecipe> provider) {
+    private static void woodRecipes(RecipeOutput provider) {
         MACERATOR_RECIPES.recipeBuilder("macerate_logs")
                 .inputItems(ItemTags.LOGS)
                 .outputItems(dust, Wood, 6)
@@ -515,7 +514,7 @@ public class VanillaStandardRecipes {
     /**
      * + Adds cutting recipes for vanilla blocks
      */
-    private static void cuttingRecipes(Consumer<FinishedRecipe> provider) {
+    private static void cuttingRecipes(RecipeOutput provider) {
         CUTTER_RECIPES.recipeBuilder("snow_layer")
                 .inputItems(new ItemStack(Blocks.SNOW_BLOCK))
                 .outputItems(new ItemStack(Blocks.SNOW, 12))
@@ -525,36 +524,36 @@ public class VanillaStandardRecipes {
     /**
      * + Adds dying and cleaning recipes for vanilla blocks
      */
-    private static void dyingCleaningRecipes(Consumer<FinishedRecipe> provider) {
+    private static void dyingCleaningRecipes(RecipeOutput provider) {
         for (DyeColor color : DyeColor.values()) {
             String dyeName = color.getName();
             MIXER_RECIPES.recipeBuilder(dyeName + "_concrete_powder").duration(200).EUt(VA[ULV])
-                    .inputItems(Tags.Items.SAND, 4)
-                    .inputItems(Tags.Items.GRAVEL, 4)
+                    .inputItems(Tags.Items.SANDS, 4)
+                    .inputItems(Tags.Items.GRAVELS, 4)
                     .inputFluids(DYE_MATERIALS.get(color).getFluid(L))
                     .outputItems(new ItemStack(
                             BuiltInRegistries.ITEM
-                                    .get(ResourceLocation.withDefaultNamespace(dyeName + "_concrete_powder")),
+                                    .getValue(Identifier.withDefaultNamespace(dyeName + "_concrete_powder")),
                             8))
                     .save(provider);
 
             CHEMICAL_BATH_RECIPES.recipeBuilder(dyeName + "_concrete").duration(20).EUt(VA[ULV])
                     .inputItems(new ItemStack(
                             BuiltInRegistries.ITEM
-                                    .get(ResourceLocation.withDefaultNamespace(dyeName + "_concrete_powder"))))
+                                    .getValue(Identifier.withDefaultNamespace(dyeName + "_concrete_powder"))))
                     .inputFluids(Water.getFluid(1000))
                     .outputItems(new ItemStack(
-                            BuiltInRegistries.ITEM.get(ResourceLocation.withDefaultNamespace(dyeName + "_concrete"))))
+                            BuiltInRegistries.ITEM.getValue(Identifier.withDefaultNamespace(dyeName + "_concrete"))))
                     .category(GTRecipeCategories.CHEM_DYES)
                     .save(provider);
 
             if (color != DyeColor.WHITE) {
                 CHEMICAL_BATH_RECIPES.recipeBuilder("dye_concrete_to_" + dyeName).duration(20).EUt(VA[ULV])
-                        .inputItems(CustomTags.CONCRETE_ITEM)
+                        .inputItems(Tags.Items.CONCRETES)
                         .inputFluids(DYE_MATERIALS.get(color).getFluid(L / 8))
                         .outputItems(
                                 new ItemStack(BuiltInRegistries.ITEM
-                                        .get(ResourceLocation.withDefaultNamespace(dyeName + "_concrete"))))
+                                        .getValue(Identifier.withDefaultNamespace(dyeName + "_concrete"))))
                         .category(GTRecipeCategories.CHEM_DYES)
                         .save(provider);
             }
@@ -564,7 +563,7 @@ public class VanillaStandardRecipes {
                     .inputFluids(DYE_MATERIALS.get(color).getFluid(L / 8))
                     .outputItems(
                             new ItemStack(BuiltInRegistries.ITEM
-                                    .get(ResourceLocation.withDefaultNamespace(dyeName + "_terracotta"))))
+                                    .getValue(Identifier.withDefaultNamespace(dyeName + "_terracotta"))))
                     .category(GTRecipeCategories.CHEM_DYES)
                     .save(provider);
 
@@ -573,7 +572,7 @@ public class VanillaStandardRecipes {
                     .inputFluids(DYE_MATERIALS.get(color).getFluid(L / 8))
                     .outputItems(
                             new ItemStack(BuiltInRegistries.ITEM
-                                    .get(ResourceLocation.withDefaultNamespace(dyeName + "_stained_glass"))))
+                                    .getValue(Identifier.withDefaultNamespace(dyeName + "_stained_glass"))))
                     .category(GTRecipeCategories.CHEM_DYES)
                     .save(provider);
 
@@ -582,101 +581,110 @@ public class VanillaStandardRecipes {
                     .inputFluids(DYE_MATERIALS.get(color).getFluid(L / 8))
                     .outputItems(new ItemStack(
                             BuiltInRegistries.ITEM
-                                    .get(ResourceLocation.withDefaultNamespace(dyeName + "_stained_glass_pane"))))
+                                    .getValue(Identifier.withDefaultNamespace(dyeName + "_stained_glass_pane"))))
                     .category(GTRecipeCategories.CHEM_DYES)
                     .save(provider);
 
             CUTTER_RECIPES.recipeBuilder("cut_" + dyeName + "_glass_to_pane").duration(20).EUt(VA[ULV])
                     .inputItems(BuiltInRegistries.ITEM
-                            .get(ResourceLocation.withDefaultNamespace(dyeName + "_stained_glass")), 3)
+                            .getValue(Identifier.withDefaultNamespace(dyeName + "_stained_glass")), 3)
                     .outputItems(BuiltInRegistries.ITEM
-                            .get(ResourceLocation.withDefaultNamespace(dyeName + "_stained_glass_pane")), 8)
+                            .getValue(Identifier.withDefaultNamespace(dyeName + "_stained_glass_pane")), 8)
                     .save(provider);
 
             CHEMICAL_BATH_RECIPES.recipeBuilder("dye_candle_to_" + dyeName).duration(20).EUt(VA[ULV])
                     .inputItems(new ItemStack(Items.CANDLE))
                     .inputFluids(DYE_MATERIALS.get(color).getFluid(L / 8))
                     .outputItems(new ItemStack(
-                            BuiltInRegistries.ITEM.get(ResourceLocation.withDefaultNamespace(dyeName + "_candle"))))
+                            BuiltInRegistries.ITEM.getValue(Identifier.withDefaultNamespace(dyeName + "_candle"))))
                     .category(GTRecipeCategories.CHEM_DYES)
                     .save(provider);
 
             if (color != DyeColor.WHITE) {
                 CHEMICAL_BATH_RECIPES.recipeBuilder("dye_wool_to_" + dyeName).duration(20).EUt(VA[ULV])
-                        .inputItems(new ItemStack(Blocks.WHITE_WOOL))
+                        .inputItems(new ItemStack(Blocks.WOOL.white()))
                         .inputFluids(DYE_MATERIALS.get(color).getFluid(L))
                         .outputItems(new ItemStack(
-                                BuiltInRegistries.ITEM.get(ResourceLocation.withDefaultNamespace(dyeName + "_wool"))))
+                                BuiltInRegistries.ITEM.getValue(Identifier.withDefaultNamespace(dyeName + "_wool"))))
                         .category(GTRecipeCategories.CHEM_DYES)
                         .save(provider);
 
                 CHEMICAL_BATH_RECIPES.recipeBuilder("dye_bed_to_" + dyeName).duration(20).EUt(VA[ULV])
-                        .inputItems(new ItemStack(Blocks.WHITE_BED))
+                        .inputItems(new ItemStack(Blocks.BED.white()))
                         .inputFluids(DYE_MATERIALS.get(color).getFluid(L))
                         .outputItems(new ItemStack(
-                                BuiltInRegistries.ITEM.get(ResourceLocation.withDefaultNamespace(dyeName + "_bed"))))
+                                BuiltInRegistries.ITEM.getValue(Identifier.withDefaultNamespace(dyeName + "_bed"))))
                         .category(GTRecipeCategories.CHEM_DYES)
                         .save(provider);
             }
 
             CUTTER_RECIPES.recipeBuilder("cut_" + dyeName + "_wool_to_carpet").duration(20).EUt(VA[ULV])
                     .inputItems(new ItemStack(
-                            BuiltInRegistries.ITEM.get(ResourceLocation.withDefaultNamespace(dyeName + "_wool")), 1))
+                            BuiltInRegistries.ITEM.getValue(Identifier.withDefaultNamespace(dyeName + "_wool")), 1))
                     .outputItems(
                             new ItemStack(BuiltInRegistries.ITEM
-                                    .get(ResourceLocation.withDefaultNamespace(dyeName + "_carpet")), 2))
+                                    .getValue(Identifier.withDefaultNamespace(dyeName + "_carpet")), 2))
                     .save(provider);
 
             ASSEMBLER_RECIPES.recipeBuilder(dyeName + "_banner").duration(20).EUt(VA[ULV])
                     .circuitMeta(6)
                     .inputItems(new ItemStack(Items.STICK))
                     .inputItems(new ItemStack(
-                            BuiltInRegistries.ITEM.get(ResourceLocation.withDefaultNamespace(dyeName + "_wool")), 6))
+                            BuiltInRegistries.ITEM.getValue(Identifier.withDefaultNamespace(dyeName + "_wool")), 6))
                     .outputItems(new ItemStack(
-                            BuiltInRegistries.ITEM.get(ResourceLocation.withDefaultNamespace(dyeName + "_banner"))))
+                            BuiltInRegistries.ITEM.getValue(Identifier.withDefaultNamespace(dyeName + "_banner"))))
                     .save(provider);
         }
 
-        // todo new tags to avoid white -> white recipe?
         CHEMICAL_BATH_RECIPES.recipeBuilder("decolor_wool")
-                .inputItems(ItemTags.WOOL)
+                .inputItems(IntersectionIngredient.of(
+                        Ingredient.of(com.gregtechceu.gtceu.utils.TagUtil.holderSet(net.minecraft.core.registries.BuiltInRegistries.ITEM, ItemTags.WOOL)),
+                        Ingredient.of(com.gregtechceu.gtceu.utils.TagUtil.holderSet(net.minecraft.core.registries.BuiltInRegistries.ITEM, Tags.Items.DYED))))
                 .inputFluids(Chlorine.getFluid(50))
-                .outputItems(new ItemStack(Blocks.WHITE_WOOL))
+                .outputItems(new ItemStack(Blocks.WOOL.white()))
                 .category(GTRecipeCategories.CHEM_DYES)
                 .duration(400).EUt(2).save(provider);
 
         CHEMICAL_BATH_RECIPES.recipeBuilder("decolor_carpet")
-                .inputItems(ItemTags.WOOL_CARPETS)
+                .inputItems(IntersectionIngredient.of(
+                        Ingredient.of(com.gregtechceu.gtceu.utils.TagUtil.holderSet(net.minecraft.core.registries.BuiltInRegistries.ITEM, ItemTags.WOOL_CARPETS)),
+                        Ingredient.of(com.gregtechceu.gtceu.utils.TagUtil.holderSet(net.minecraft.core.registries.BuiltInRegistries.ITEM, Tags.Items.DYED))))
                 .inputFluids(Chlorine.getFluid(25))
-                .outputItems(new ItemStack(Blocks.WHITE_CARPET))
+                .outputItems(new ItemStack(Blocks.CARPET.white()))
                 .category(GTRecipeCategories.CHEM_DYES)
                 .duration(400).EUt(2).save(provider);
 
         CHEMICAL_BATH_RECIPES.recipeBuilder("decolor_terracotta")
-                .inputItems(ItemTags.TERRACOTTA)
+                .inputItems(IntersectionIngredient.of(
+                        Ingredient.of(com.gregtechceu.gtceu.utils.TagUtil.holderSet(net.minecraft.core.registries.BuiltInRegistries.ITEM, ItemTags.TERRACOTTA)),
+                        Ingredient.of(com.gregtechceu.gtceu.utils.TagUtil.holderSet(net.minecraft.core.registries.BuiltInRegistries.ITEM, Tags.Items.DYED))))
                 .inputFluids(Chlorine.getFluid(50))
                 .outputItems(Items.TERRACOTTA)
                 .category(GTRecipeCategories.CHEM_DYES)
                 .duration(400).EUt(2).save(provider);
 
         CHEMICAL_BATH_RECIPES.recipeBuilder("decolor_stained_glass")
-                .inputItems(Tags.Items.STAINED_GLASS)
+                .inputItems(IntersectionIngredient.of(
+                        Ingredient.of(com.gregtechceu.gtceu.utils.TagUtil.holderSet(net.minecraft.core.registries.BuiltInRegistries.ITEM, Tags.Items.GLASS_BLOCKS)),
+                        Ingredient.of(com.gregtechceu.gtceu.utils.TagUtil.holderSet(net.minecraft.core.registries.BuiltInRegistries.ITEM, Tags.Items.DYED))))
                 .inputFluids(Chlorine.getFluid(50))
                 .outputItems(Items.GLASS)
                 .category(GTRecipeCategories.CHEM_DYES)
                 .duration(400).EUt(2).save(provider);
 
         CHEMICAL_BATH_RECIPES.recipeBuilder("decolor_stained_glass_pane")
-                .inputItems(Tags.Items.STAINED_GLASS_PANES)
+                .inputItems(IntersectionIngredient.of(
+                        Ingredient.of(com.gregtechceu.gtceu.utils.TagUtil.holderSet(net.minecraft.core.registries.BuiltInRegistries.ITEM, Tags.Items.GLASS_PANES)),
+                        Ingredient.of(com.gregtechceu.gtceu.utils.TagUtil.holderSet(net.minecraft.core.registries.BuiltInRegistries.ITEM, Tags.Items.DYED))))
                 .inputFluids(Chlorine.getFluid(20))
                 .outputItems(Items.GLASS_PANE)
                 .category(GTRecipeCategories.CHEM_DYES)
                 .duration(400).EUt(2).save(provider);
 
         CHEMICAL_BATH_RECIPES.recipeBuilder("decolor_concrete")
-                .inputItems(CustomTags.CONCRETE_ITEM)
+                .inputItems(Tags.Items.CONCRETE_POWDERS)
                 .inputFluids(Chlorine.getFluid(20))
-                .outputItems(Items.WHITE_CONCRETE)
+                .outputItems(Items.CONCRETE.white())
                 .category(GTRecipeCategories.CHEM_DYES)
                 .duration(400).EUt(2).save(provider);
 
@@ -696,7 +704,7 @@ public class VanillaStandardRecipes {
         CHEMICAL_BATH_RECIPES.recipeBuilder("decolor_bed")
                 .inputItems(ItemTags.BEDS)
                 .inputFluids(Chlorine.getFluid(20))
-                .outputItems(Items.WHITE_BED)
+                .outputItems(Items.BED.white())
                 .category(GTRecipeCategories.CHEM_DYES)
                 .duration(400).EUt(2).save(provider);
     }
@@ -704,7 +712,7 @@ public class VanillaStandardRecipes {
     /**
      * + Adds more redstone related recipes
      */
-    private static void redstoneRecipes(Consumer<FinishedRecipe> provider) {
+    private static void redstoneRecipes(RecipeOutput provider) {
         ASSEMBLER_RECIPES.recipeBuilder("sticky_piston_resin")
                 .inputItems(STICKY_RESIN)
                 .inputItems(new ItemStack(Blocks.PISTON))
@@ -786,7 +794,7 @@ public class VanillaStandardRecipes {
      * + Adds metal related recipes
      * + Adds horse armor and chainmail recipes
      */
-    private static void metalRecipes(Consumer<FinishedRecipe> provider) {
+    private static void metalRecipes(RecipeOutput provider) {
         BENDER_RECIPES.recipeBuilder("bucket")
                 .circuitMeta(12)
                 .inputItems(plate, Iron, 3)
@@ -834,22 +842,22 @@ public class VanillaStandardRecipes {
         VanillaRecipeHelper.addShapedRecipe(provider, true, "chainmail_helmet", new ItemStack(Items.CHAINMAIL_HELMET),
                 "PPP",
                 "PhP",
-                'P', Items.CHAIN);
+                'P', Items.IRON_CHAIN);
 
         VanillaRecipeHelper.addShapedRecipe(provider, true, "chainmail_chestplate",
                 new ItemStack(Items.CHAINMAIL_CHESTPLATE),
                 "PhP", "PPP", "PPP",
-                'P', Items.CHAIN);
+                'P', Items.IRON_CHAIN);
 
         VanillaRecipeHelper.addShapedRecipe(provider, true, "chainmail_leggings",
                 new ItemStack(Items.CHAINMAIL_LEGGINGS),
                 "PPP", "PhP", "P P",
-                'P', Items.CHAIN);
+                'P', Items.IRON_CHAIN);
 
         VanillaRecipeHelper.addShapedRecipe(provider, true, "chainmail_boots", new ItemStack(Items.CHAINMAIL_BOOTS),
                 "P P",
                 "PhP",
-                'P', Items.CHAIN);
+                'P', Items.IRON_CHAIN);
 
         ASSEMBLER_RECIPES.recipeBuilder("cauldron")
                 .inputItems(plate, Iron, 7)
@@ -890,7 +898,7 @@ public class VanillaStandardRecipes {
      * Adds alternative gunpowder recipes
      * Adds polished stone variant autoclave recipes
      */
-    private static void miscRecipes(Consumer<FinishedRecipe> provider) {
+    private static void miscRecipes(RecipeOutput provider) {
         if (ConfigHolder.INSTANCE.recipes.hardToolArmorRecipes) {
             ASSEMBLER_RECIPES.recipeBuilder("fishing_rod")
                     .inputItems(new ItemStack(Items.STRING))
@@ -993,7 +1001,7 @@ public class VanillaStandardRecipes {
         ASSEMBLER_RECIPES.recipeBuilder("wool_from_string")
                 .inputItems(new ItemStack(Items.STRING, 4))
                 .circuitMeta(4)
-                .outputItems(new ItemStack(Blocks.WHITE_WOOL))
+                .outputItems(new ItemStack(Blocks.WOOL.white()))
                 .duration(100).EUt(4).save(provider);
 
         MIXER_RECIPES.recipeBuilder("mossy_cobblestone_from_vine")
@@ -1251,7 +1259,7 @@ public class VanillaStandardRecipes {
     /**
      * Adds various mixer recipes for vanilla items and blocks
      */
-    private static void mixingRecipes(Consumer<FinishedRecipe> provider) {
+    private static void mixingRecipes(RecipeOutput provider) {
         MIXER_RECIPES.recipeBuilder("fire_charge")
                 .inputItems(dust, Coal)
                 .inputItems(dust, Gunpowder)
@@ -1273,130 +1281,130 @@ public class VanillaStandardRecipes {
                 .duration(100).EUt(4).save(provider);
     }
 
-    private static void dyeRecipes(Consumer<FinishedRecipe> provider) {
+    private static void dyeRecipes(RecipeOutput provider) {
         EXTRACTOR_RECIPES.recipeBuilder("poppy_dye")
                 .inputItems(new ItemStack(Blocks.POPPY))
-                .outputItems(new ItemStack(Items.RED_DYE, 2))
+                .outputItems(new ItemStack(Items.DYE.red(), 2))
                 .save(provider);
 
         EXTRACTOR_RECIPES.recipeBuilder("blue_orchid_dye")
                 .inputItems(new ItemStack(Blocks.BLUE_ORCHID))
-                .outputItems(new ItemStack(Items.LIGHT_BLUE_DYE, 2))
+                .outputItems(new ItemStack(Items.DYE.lightBlue(), 2))
                 .save(provider);
 
         EXTRACTOR_RECIPES.recipeBuilder("allium_dye")
                 .inputItems(new ItemStack(Blocks.ALLIUM))
-                .outputItems(new ItemStack(Items.MAGENTA_DYE, 2))
+                .outputItems(new ItemStack(Items.DYE.magenta(), 2))
                 .save(provider);
 
         EXTRACTOR_RECIPES.recipeBuilder("azure_bluet_dye")
                 .inputItems(new ItemStack(Blocks.AZURE_BLUET))
-                .outputItems(new ItemStack(Items.LIGHT_GRAY_DYE))
+                .outputItems(new ItemStack(Items.DYE.lightGray()))
                 .save(provider);
 
         EXTRACTOR_RECIPES.recipeBuilder("red_tulip_dye")
                 .inputItems(new ItemStack(Blocks.RED_TULIP))
-                .outputItems(new ItemStack(Items.RED_DYE, 2))
+                .outputItems(new ItemStack(Items.DYE.red(), 2))
                 .save(provider);
 
         EXTRACTOR_RECIPES.recipeBuilder("orange_tulip_dye")
                 .inputItems(new ItemStack(Blocks.ORANGE_TULIP))
-                .outputItems(new ItemStack(Items.ORANGE_DYE, 2))
+                .outputItems(new ItemStack(Items.DYE.orange(), 2))
                 .save(provider);
 
         EXTRACTOR_RECIPES.recipeBuilder("white_tulip_dye")
                 .inputItems(new ItemStack(Blocks.WHITE_TULIP))
-                .outputItems(new ItemStack(Items.LIGHT_GRAY_DYE, 2))
+                .outputItems(new ItemStack(Items.DYE.lightGray(), 2))
                 .save(provider);
 
         EXTRACTOR_RECIPES.recipeBuilder("pink_tulip_dye")
                 .inputItems(new ItemStack(Blocks.PINK_TULIP))
-                .outputItems(new ItemStack(Items.PINK_DYE))
+                .outputItems(new ItemStack(Items.DYE.pink()))
                 .save(provider);
 
         EXTRACTOR_RECIPES.recipeBuilder("oxeye_daisy_dye")
                 .inputItems(new ItemStack(Blocks.OXEYE_DAISY))
-                .outputItems(new ItemStack(Items.LIGHT_GRAY_DYE, 2))
+                .outputItems(new ItemStack(Items.DYE.lightGray(), 2))
                 .save(provider);
 
         EXTRACTOR_RECIPES.recipeBuilder("dandelion_dye")
                 .inputItems(new ItemStack(Blocks.DANDELION))
-                .outputItems(new ItemStack(Items.YELLOW_DYE, 2))
+                .outputItems(new ItemStack(Items.DYE.yellow(), 2))
                 .save(provider);
 
         EXTRACTOR_RECIPES.recipeBuilder("cornflower_dye")
                 .inputItems(new ItemStack(Blocks.CORNFLOWER))
-                .outputItems(new ItemStack(Items.BLUE_DYE, 2))
+                .outputItems(new ItemStack(Items.DYE.blue(), 2))
                 .save(provider);
 
         EXTRACTOR_RECIPES.recipeBuilder("lily_of_the_valley_dye")
                 .inputItems(new ItemStack(Blocks.LILY_OF_THE_VALLEY))
-                .outputItems(new ItemStack(Items.WHITE_DYE, 2))
+                .outputItems(new ItemStack(Items.DYE.white(), 2))
                 .save(provider);
 
         EXTRACTOR_RECIPES.recipeBuilder("wither_rose_dye")
                 .inputItems(new ItemStack(Blocks.WITHER_ROSE))
-                .outputItems(new ItemStack(Items.BLACK_DYE, 2))
+                .outputItems(new ItemStack(Items.DYE.black(), 2))
                 .save(provider);
 
         EXTRACTOR_RECIPES.recipeBuilder("sunflower_dye")
                 .inputItems(new ItemStack(Blocks.SUNFLOWER))
-                .outputItems(new ItemStack(Items.YELLOW_DYE, 3))
+                .outputItems(new ItemStack(Items.DYE.yellow(), 3))
                 .save(provider);
 
         EXTRACTOR_RECIPES.recipeBuilder("lilac_dye")
                 .inputItems(new ItemStack(Blocks.LILAC))
-                .outputItems(new ItemStack(Items.MAGENTA_DYE, 3))
+                .outputItems(new ItemStack(Items.DYE.magenta(), 3))
                 .save(provider);
 
         EXTRACTOR_RECIPES.recipeBuilder("rose_bush_dye")
                 .inputItems(new ItemStack(Blocks.ROSE_BUSH))
-                .outputItems(new ItemStack(Items.RED_DYE, 3))
+                .outputItems(new ItemStack(Items.DYE.red(), 3))
                 .save(provider);
 
         EXTRACTOR_RECIPES.recipeBuilder("peony_dye")
                 .inputItems(new ItemStack(Blocks.PEONY))
-                .outputItems(new ItemStack(Items.PINK_DYE, 3))
+                .outputItems(new ItemStack(Items.DYE.pink(), 3))
                 .save(provider);
 
         EXTRACTOR_RECIPES.recipeBuilder("beetroot_dye")
                 .inputItems(new ItemStack(Items.BEETROOT))
-                .outputItems(new ItemStack(Items.RED_DYE, 2))
+                .outputItems(new ItemStack(Items.DYE.red(), 2))
                 .save(provider);
 
         EXTRACTOR_RECIPES.recipeBuilder("torchflower_dye")
                 .inputItems(new ItemStack(Items.TORCHFLOWER))
-                .outputItems(new ItemStack(Items.ORANGE_DYE, 2))
+                .outputItems(new ItemStack(Items.DYE.orange(), 2))
                 .save(provider);
 
         EXTRACTOR_RECIPES.recipeBuilder("pitcher_dye")
                 .inputItems(new ItemStack(Items.PITCHER_PLANT))
-                .outputItems(new ItemStack(Items.CYAN_DYE, 3))
+                .outputItems(new ItemStack(Items.DYE.cyan(), 3))
                 .save(provider);
 
         EXTRACTOR_RECIPES.recipeBuilder("pink_petals_dye")
                 .inputItems(new ItemStack(Items.PINK_PETALS))
-                .outputItems(new ItemStack(Items.PINK_DYE, 2))
+                .outputItems(new ItemStack(Items.DYE.pink(), 2))
                 .save(provider);
 
         EXTRACTOR_RECIPES.recipeBuilder("sea_pickle_dye")
                 .inputItems(new ItemStack(Items.SEA_PICKLE))
-                .outputItems(new ItemStack(Items.LIME_DYE, 2))
+                .outputItems(new ItemStack(Items.DYE.lime(), 2))
                 .save(provider);
 
         EXTRACTOR_RECIPES.recipeBuilder("white_dye")
                 .inputItems(new ItemStack(Items.BONE_MEAL))
-                .outputItems(new ItemStack(Items.WHITE_DYE, 1))
+                .outputItems(new ItemStack(Items.DYE.white(), 1))
                 .save(provider);
 
         EXTRACTOR_RECIPES.recipeBuilder("blue_dye")
                 .inputItems(new ItemStack(Items.LAPIS_LAZULI))
-                .outputItems(new ItemStack(Items.BLUE_DYE))
+                .outputItems(new ItemStack(Items.DYE.blue()))
                 .save(provider);
 
         EXTRACTOR_RECIPES.recipeBuilder("black_dye")
                 .inputItems(new ItemStack(Items.INK_SAC))
-                .outputItems(new ItemStack(Items.BLACK_DYE))
+                .outputItems(new ItemStack(Items.DYE.black()))
                 .save(provider);
 
         CHEMICAL_BATH_RECIPES.recipeBuilder("dark_prismarine")

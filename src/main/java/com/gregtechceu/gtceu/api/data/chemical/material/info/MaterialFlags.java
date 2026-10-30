@@ -9,7 +9,6 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-@SuppressWarnings("unused")
 public class MaterialFlags {
 
     private final Set<MaterialFlag> flags = new HashSet<>();
@@ -33,7 +32,7 @@ public class MaterialFlags {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        flags.forEach(f -> sb.append(f).append("\n"));
+        flags.forEach(f -> sb.append(f.toString()).append("\n"));
         return sb.toString();
     }
 
@@ -42,13 +41,14 @@ public class MaterialFlags {
     /////////////////
 
     /**
-     * Add to material to disable it's unification fully
+     * Add to material to disable automatic recipe generation fully
      */
-    @Deprecated
-    public static final MaterialFlag NO_UNIFICATION = new MaterialFlag.Builder("no_unification").build();
-
     public static final MaterialFlag DISABLE_MATERIAL_RECIPES = new MaterialFlag.Builder("disable_material_recipes")
             .build();
+
+    @Deprecated
+    public static final MaterialFlag NO_UNIFICATION = DISABLE_MATERIAL_RECIPES;
+
     /**
      * Enables electrolyzer decomposition recipe generation
      */

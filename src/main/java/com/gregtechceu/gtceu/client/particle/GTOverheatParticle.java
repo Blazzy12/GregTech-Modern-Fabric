@@ -1,5 +1,9 @@
 package com.gregtechceu.gtceu.client.particle;
 
+import com.mojang.blaze3d.vertex.VertexConsumer;
+
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+
 import com.gregtechceu.gtceu.client.bloom.EffectRenderContext;
 import com.gregtechceu.gtceu.client.bloom.IRenderSetup;
 import com.gregtechceu.gtceu.client.bloom.particle.GTBloomParticle;
@@ -7,17 +11,12 @@ import com.gregtechceu.gtceu.client.util.RenderBufferHelper;
 import com.gregtechceu.gtceu.client.util.RenderUtil;
 import com.gregtechceu.gtceu.common.blockentity.CableBlockEntity;
 
-import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 
-import com.mojang.blaze3d.platform.GlStateManager;
-import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.*;
 
 /**
@@ -159,7 +158,7 @@ public class GTOverheatParticle extends GTBloomParticle {
 
         this.pipeShape = blockEntity.getBlockState().getVisualShape(blockEntity.getLevel(), blockEntity.getBlockPos(),
                 CollisionContext.empty());
-        this.pipeBounds = pipeShape.bounds().inflate(0.001).move(posX, posY, posZ);
+        this.pipeBounds = pipeShape.bounds().inflate(0.003).move(posX, posY, posZ);
     }
 
     public void setTemperature(int temperature) {
@@ -191,9 +190,9 @@ public class GTOverheatParticle extends GTBloomParticle {
         // update pipeShape every tick so it doesn't desync if the pipe is disconnected
         pipeShape = blockEntity.getBlockState().getVisualShape(blockEntity.getLevel(), blockEntity.getBlockPos(),
                 CollisionContext.empty());
-        pipeBounds = pipeShape.bounds().inflate(0.001).move(posX, posY, posZ);
+        pipeBounds = pipeShape.bounds().inflate(0.003).move(posX, posY, posZ);
 
-        if (temperature > 400 && blockEntity.getLevel().random.nextFloat() < 0.04f) {
+        if (temperature > 400 && blockEntity.getLevel().getRandom().nextFloat() < 0.04f) {
             spawnSmoke();
         }
     }
@@ -204,7 +203,7 @@ public class GTOverheatParticle extends GTBloomParticle {
         float yPos = pos.getY() + 0.9F;
         float zPos = pos.getZ() + 0.5F;
 
-        float ySpd = 0.3F + 0.1F * blockEntity.getLevel().random.nextFloat();
+        float ySpd = 0.3F + 0.1F * blockEntity.getLevel().getRandom().nextFloat();
         blockEntity.getLevel().addParticle(ParticleTypes.LARGE_SMOKE, xPos, yPos, zPos, 0, ySpd, 0);
     }
 
@@ -241,12 +240,12 @@ public class GTOverheatParticle extends GTBloomParticle {
     }
 
     @Override
-    public void renderParticle(PoseStack poseStack, BufferBuilder buffer, EffectRenderContext context) {
+    public void renderParticle(PoseStack poseStack, VertexConsumer buffer, EffectRenderContext context) {
         renderBloomEffect(poseStack, buffer, context);
     }
 
     @Override
-    public void renderBloomEffect(PoseStack poseStack, BufferBuilder buffer, EffectRenderContext context) {
+    public void renderBloomEffect(PoseStack poseStack, VertexConsumer buffer, EffectRenderContext context) {
         float red = ((color >> 16) & 0xFF) / 255f;
         float green = ((color >> 8) & 0xFF) / 255f;
         float blue = (color & 0xFF) / 255f;
@@ -255,53 +254,14 @@ public class GTOverheatParticle extends GTBloomParticle {
         poseStack.translate(posX, posY, posZ);
         pipeShape.forAllBoxes((x1, y1, z1, x2, y2, z2) -> {
             RenderBufferHelper.renderColorCube(buffer, poseStack,
-                    (float) x1 - 0.001f, (float) y1 - 0.001f, (float) z1 - 0.001f,
-                    (float) x2 + 0.001f, (float) y2 + 0.001f, (float) z2 + 0.001f,
+                    (float) x1 - 0.003F, (float) y1 - 0.003F, (float) z1 - 0.003F,
+                    (float) x2 + 0.003F, (float) y2 + 0.003F, (float) z2 + 0.003F,
                     red, green, blue, alpha, true);
         });
         poseStack.popPose();
     }
 
-    private static final IRenderSetup NO_BLOOM_SETUP = new IRenderSetup() {
+    private static final IRenderSetup NO_BLOOM_SETUP = RenderTypes::debugQuads;
 
-        @Override
-        @OnlyIn(Dist.CLIENT)
-        public void preDraw(BufferBuilder buffer) {
-            RenderSystem.enableBlend();
-            RenderSystem.blendFuncSeparate(
-                    GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA,
-                    GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
-            RenderSystem.setShader(GameRenderer::getPositionColorShader);
-            RenderSystem.setShaderColor(1, 1, 1, 1);
-
-            buffer.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
-        }
-
-        @Override
-        @OnlyIn(Dist.CLIENT)
-        public void postDraw(BufferBuilder buffer) {
-            BufferUploader.drawWithShader(buffer.end());
-            RenderSystem.disableBlend();
-            RenderSystem.defaultBlendFunc();
-        }
-    };
-
-    private static final IRenderSetup BLOOM_SETUP = new IRenderSetup() {
-
-        @Override
-        @OnlyIn(Dist.CLIENT)
-        public void preDraw(BufferBuilder buffer) {
-            RenderSystem.disableBlend();
-            RenderSystem.setShader(GameRenderer::getPositionColorShader);
-            RenderSystem.setShaderColor(1, 1, 1, 1);
-
-            buffer.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
-        }
-
-        @Override
-        @OnlyIn(Dist.CLIENT)
-        public void postDraw(BufferBuilder buffer) {
-            BufferUploader.drawWithShader(buffer.end());
-        }
-    };
+    private static final IRenderSetup BLOOM_SETUP = RenderTypes::debugQuads;
 }

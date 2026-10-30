@@ -1,68 +1,20 @@
 package com.gregtechceu.gtceu.data.recipe.misc;
 
-import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.api.fluids.store.FluidStorageKeys;
-import com.gregtechceu.gtceu.utils.GTUtil;
 
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.data.recipes.FinishedRecipe;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.level.block.entity.FurnaceBlockEntity;
+import net.minecraft.data.recipes.RecipeOutput;
 import net.minecraft.world.level.material.Fluids;
-import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.FluidUtil;
-
-import java.util.HashSet;
-import java.util.Optional;
-import java.util.Set;
-import java.util.function.Consumer;
+import com.gregtechceu.gtceu.compat.fluids.FluidStack;
 
 import static com.gregtechceu.gtceu.api.GTValues.*;
+import static com.gregtechceu.gtceu.api.data.tag.TagPrefix.*;
 import static com.gregtechceu.gtceu.common.data.GTMaterials.*;
 import static com.gregtechceu.gtceu.common.data.GTRecipeTypes.*;
 
 public class FuelRecipes {
 
-    public static void addBoilerFuel(Consumer<FinishedRecipe> provider, Set<Item> added,
-                                     Item item, int burnTime) {
-        if (added.contains(item) || burnTime <= 0) {
-            return;
-        }
-        added.add(item);
-
-        Optional<FluidStack> containedFluid = FluidUtil.getFluidContained(item.getDefaultInstance());
-        if (containedFluid.isEmpty()) {
-            ResourceLocation id = BuiltInRegistries.ITEM.getKey(item);
-            STEAM_BOILER_RECIPES.recipeBuilder(GTCEu.id(id.getNamespace() + "_" + id.getPath()))
-                    .inputItems(item)
-                    .duration(burnTime)
-                    .save(provider);
-        } else {
-            FluidStack fluid = new FluidStack(containedFluid.get(), 250);
-            ResourceLocation id = BuiltInRegistries.FLUID.getKey(fluid.getFluid());
-
-            // the lava recipe's duration is 4/9 of the bucket's burn time
-            // the creosote recipe's duration is 7/32 of the bucket's burn time
-            // as such, the mean ratio is 191/576, or approximately 1/3.
-            STEAM_BOILER_RECIPES.recipeBuilder(id.getNamespace() + "_" + id.getPath())
-                    .inputFluids(fluid)
-                    .duration(burnTime / 3)
-                    .save(provider);
-        }
-    }
-
-    public static void init(Consumer<FinishedRecipe> provider) {
-        // TODO this all needs to be cleaned up, but this will make it somewhat work for now
-        // do these first because for some reason vanilla fuels are not set up yet at this phase?
-        Set<Item> addedItems = new HashSet<>();
-        for (var fuelEntry : FurnaceBlockEntity.getFuel().entrySet()) {
-            addBoilerFuel(provider, addedItems, fuelEntry.getKey(), fuelEntry.getValue());
-        }
-        for (Item item : BuiltInRegistries.ITEM) {
-            int burnTime = GTUtil.getItemBurnTime(item);
-            addBoilerFuel(provider, addedItems, item, burnTime);
-        }
+    public static void init(RecipeOutput provider) {
+        // furnace fuel-based recipes are handled by BoilerFuelLogic for dynamic burn time + data map support.
 
         // override the default fluid recipes for lava and creosote
         STEAM_BOILER_RECIPES.recipeBuilder("minecraft_lava")
@@ -91,8 +43,8 @@ public class FuelRecipes {
                 .duration(50)
                 .save(provider);
 
-        LARGE_BOILER_RECIPES.recipeBuilder("gtceu_oil_heavy")
-                .inputFluids(OilHeavy.getFluid(32))
+        LARGE_BOILER_RECIPES.recipeBuilder("gtceu_heavy_oil")
+                .inputFluids(HeavyOil.getFluid(32))
                 .duration(50)
                 .save(provider);
 
@@ -191,7 +143,7 @@ public class FuelRecipes {
                 .save(provider);
 
         COMBUSTION_GENERATOR_FUELS.recipeBuilder("light_oil")
-                .inputFluids(OilLight.getFluid(32))
+                .inputFluids(LightOil.getFluid(32))
                 .duration(5)
                 .EUt(-V[LV])
                 .save(provider);

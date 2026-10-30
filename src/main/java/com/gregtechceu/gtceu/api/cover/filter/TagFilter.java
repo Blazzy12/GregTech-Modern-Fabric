@@ -5,10 +5,8 @@ import com.gregtechceu.gtceu.common.mui.widgets.textfield.TextEditorWidget;
 import com.gregtechceu.gtceu.data.lang.LangHandler;
 import com.gregtechceu.gtceu.utils.TagExprFilter;
 
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.tags.TagKey;
-import net.minecraft.world.item.ItemStack;
 
 import brachy.modularui.factory.GuiData;
 import brachy.modularui.screen.RichTooltip;
@@ -16,6 +14,8 @@ import brachy.modularui.screen.UISettings;
 import brachy.modularui.value.sync.PanelSyncManager;
 import brachy.modularui.value.sync.StringSyncValue;
 import brachy.modularui.widgets.layout.Flow;
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
 import it.unimi.dsi.fastutil.objects.Object2BooleanMap;
 import it.unimi.dsi.fastutil.objects.Object2BooleanOpenHashMap;
 import lombok.Getter;
@@ -37,26 +37,18 @@ public class TagFilter<T, S> extends Filter<T> {
     private final Function<T, S> tagHolderObject;
     private final Function<T, Stream<TagKey<S>>> tagsSupplier;
 
-    public TagFilter(ItemStack stack, Function<T, S> tagHolderObjectSupplier,
+    public TagFilter(String filterString, Function<T, S> tagHolderObjectSupplier,
                      Function<T, Stream<TagKey<S>>> tagsSupplier) {
-        super(stack);
+        this.filterString = filterString;
         this.tagHolderObject = tagHolderObjectSupplier;
         this.tagsSupplier = tagsSupplier;
-
-        var tag = stack.getOrCreateTag();
-
-        // oreDict is backwards compat
-        filterString = tag.contains("filter_string") ? tag.getString("filter_string") : tag.getString("oreDict");
-        matchExpr = TagExprFilter.parseExpression(filterString);
     }
 
-    public @Nullable CompoundTag writeFilterNBT() {
-        if (filterString.isBlank()) {
-            return null;
-        }
-        var tag = new CompoundTag();
-        tag.putString("filter_string", filterString);
-        return tag;
+    public TagFilter(Function<T, S> tagHolderObjectSupplier,
+                     Function<T, Stream<TagKey<S>>> tagsSupplier) {
+        this.filterString = "";
+        this.tagHolderObject = tagHolderObjectSupplier;
+        this.tagsSupplier = tagsSupplier;
     }
 
     public void setFilterString(String filterString) {
@@ -81,8 +73,12 @@ public class TagFilter<T, S> extends Filter<T> {
     private boolean testTagExpr(T t) {
         Set<String> tags = tagsSupplier.apply(t)
                 .map(TagKey::location)
-                .map(ResourceLocation::toString)
+                .map(Identifier::toString)
                 .collect(Collectors.toSet());
+
+        if (matchExpr == null && !filterString.isEmpty()) {
+            matchExpr = TagExprFilter.parseExpression(filterString);
+        }
 
         return matchExpr != null && matchExpr.matches(tags);
     }
@@ -97,5 +93,31 @@ public class TagFilter<T, S> extends Filter<T> {
         var result = testTagExpr(t);
         matchResultCache.put(tagHolder, result);
         return result;
+    }
+
+    @Override
+    public Filter<T> createCopy() {
+        return new TagFilter<>(filterString, tagHolderObject, tagsSupplier);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        TagFilter<?, ?> tagFilter = (TagFilter<?, ?>) o;
+        return filterString.equals(tagFilter.filterString);
+    }
+
+    @Override
+    public int hashCode() {
+        return filterString.hashCode();
+    }
+
+    public static <T, S> Codec<TagFilter<T, S>> codec(Function<T, S> tagHolderObjectSupplier,
+                                                      Function<T, Stream<TagKey<S>>> tagsSupplier) {
+        return RecordCodecBuilder.create(instance -> instance.group(
+                Codec.STRING.fieldOf("filterString").forGetter(v -> v.filterString))
+                .apply(instance, s -> new TagFilter<>(s, tagHolderObjectSupplier, tagsSupplier)));
     }
 }

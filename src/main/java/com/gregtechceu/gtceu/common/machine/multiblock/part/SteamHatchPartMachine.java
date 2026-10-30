@@ -5,8 +5,8 @@ import com.gregtechceu.gtceu.api.capability.recipe.IO;
 import com.gregtechceu.gtceu.api.machine.trait.notifiable.NotifiableFluidTank;
 import com.gregtechceu.gtceu.common.data.GTMaterials;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
-import net.minecraftforge.fluids.FluidType;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.fluids.FluidType;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 

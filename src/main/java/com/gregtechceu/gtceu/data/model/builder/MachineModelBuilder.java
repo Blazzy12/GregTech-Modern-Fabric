@@ -1,21 +1,17 @@
 package com.gregtechceu.gtceu.data.model.builder;
 
-import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.api.machine.MachineDefinition;
 import com.gregtechceu.gtceu.api.registry.registrate.provider.GTBlockstateProvider;
 import com.gregtechceu.gtceu.client.model.machine.MachineModelLoader;
 import com.gregtechceu.gtceu.client.model.machine.MachineRenderState;
 import com.gregtechceu.gtceu.client.renderer.machine.DynamicRender;
-import com.gregtechceu.gtceu.core.mixins.forge.ConfiguredModelBuilderAccessor;
-import com.gregtechceu.gtceu.core.mixins.forge.ConfiguredModelListAccessor;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.Property;
-import net.minecraftforge.client.model.generators.*;
-import net.minecraftforge.client.model.generators.BlockStateProvider.ConfiguredModelList;
-import net.minecraftforge.client.model.generators.ConfiguredModel;
-import net.minecraftforge.common.data.ExistingFileHelper;
+import com.gregtechceu.gtceu.compat.client.model.generators.*;
+import com.gregtechceu.gtceu.compat.client.model.generators.BlockStateProvider.ConfiguredModelList;
+import com.gregtechceu.gtceu.compat.common.data.ExistingFileHelper;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.*;
@@ -25,6 +21,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import com.mojang.serialization.JsonOps;
 import lombok.Getter;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
@@ -52,15 +49,15 @@ public class MachineModelBuilder<T extends ModelBuilder<T>> extends CustomLoader
     @Getter
     private final List<String> replaceableTextures = new ArrayList<>();
     @Getter
-    private final SortedMap<String, ResourceLocation> textureOverrides = new TreeMap<>();
+    private final SortedMap<String, Identifier> textureOverrides = new TreeMap<>();
 
     protected MachineModelBuilder(T parent, ExistingFileHelper existingFileHelper, MachineDefinition owner) {
-        super(MachineModelLoader.ID, parent, existingFileHelper);
+        super(MachineModelLoader.ID, parent, existingFileHelper, true);
         this.owner = owner;
     }
 
     @Override
-    public JsonObject toJson(JsonObject json) {
+    public @NotNull JsonObject toJson(@NotNull JsonObject json) {
         json = super.toJson(json);
 
         json.addProperty("machine", owner.getId().toString());
@@ -96,8 +93,7 @@ public class MachineModelBuilder<T extends ModelBuilder<T>> extends CustomLoader
         if (!this.dynamicRenders.isEmpty()) {
             JsonArray dynamicRenders = new JsonArray();
             for (DynamicRender<?, ?> render : this.dynamicRenders) {
-                JsonElement serialized = DynamicRender.CODEC.encodeStart(JsonOps.INSTANCE, render)
-                        .getOrThrow(false, GTCEu.LOGGER::error);
+                JsonElement serialized = DynamicRender.CODEC.encodeStart(JsonOps.INSTANCE, render).getOrThrow();
                 dynamicRenders.add(serialized);
             }
             json.add("dynamic_renders", dynamicRenders);
@@ -139,10 +135,10 @@ public class MachineModelBuilder<T extends ModelBuilder<T>> extends CustomLoader
     }
 
     public static JsonElement configuredModelListToJSON(ConfiguredModelList list) {
-        List<ConfiguredModel> models = ((ConfiguredModelListAccessor) list).gtceu$getModels();
+        List<ConfiguredModel> models = list.getModels();
 
         if (models.size() == 1) {
-            return configuredModelToJSON(models.get(0), false);
+            return configuredModelToJSON(models.getFirst(), false);
         } else {
             JsonArray ret = new JsonArray();
             for (ConfiguredModel m : models) {
@@ -191,7 +187,7 @@ public class MachineModelBuilder<T extends ModelBuilder<T>> extends CustomLoader
      * @param texture  The name of the texture in this model
      * @param material The texture to replace
      */
-    public MachineModelBuilder<T> addTextureOverride(String material, ResourceLocation texture) {
+    public MachineModelBuilder<T> addTextureOverride(String material, Identifier texture) {
         this.textureOverrides.put(material, texture);
         return this;
     }
@@ -272,7 +268,7 @@ public class MachineModelBuilder<T extends ModelBuilder<T>> extends CustomLoader
      * @see ConfiguredModel.Builder
      */
     public ConfiguredModel.Builder<PartBuilder> part() {
-        return ConfiguredModelBuilderAccessor.builder(models -> {
+        return new ConfiguredModel.Builder<>(models -> {
             PartBuilder part = new PartBuilder(new ConfiguredModelList(models));
             this.parts.add(part);
             return part;
@@ -284,7 +280,7 @@ public class MachineModelBuilder<T extends ModelBuilder<T>> extends CustomLoader
      *
      * @param model the model to use
      * @return the model builder
-     * @see MachineModelBuilder#part(ResourceLocation)
+     * @see MachineModelBuilder#part(Identifier)
      */
     public PartBuilder part(ModelFile model) {
         return part().modelFile(model).addModel();
@@ -297,7 +293,7 @@ public class MachineModelBuilder<T extends ModelBuilder<T>> extends CustomLoader
      * @return the model builder
      * @see MachineModelBuilder#part(ModelFile)
      */
-    public PartBuilder part(ResourceLocation model) {
+    public PartBuilder part(Identifier model) {
         return part(new ModelFile.ExistingModelFile(model, existingFileHelper));
     }
 
@@ -318,7 +314,7 @@ public class MachineModelBuilder<T extends ModelBuilder<T>> extends CustomLoader
                                                      Property<?>... ignored) {
         Set<PartialState<T>> seen = new HashSet<>();
         for (MachineRenderState fullState : owner.getStateDefinition().getPossibleStates()) {
-            Map<Property<?>, Comparable<?>> propertyValues = Maps.newLinkedHashMap(fullState.getValues());
+            Map<Property<?>, Comparable<?>> propertyValues = com.gregtechceu.gtceu.utils.GTUtil.stateValues(fullState);
             for (Property<?> p : ignored) {
                 propertyValues.remove(p);
             }
@@ -339,15 +335,15 @@ public class MachineModelBuilder<T extends ModelBuilder<T>> extends CustomLoader
                                                             Property<?>... ignored) {
         Set<PartialState<T>> seen = new HashSet<>();
         for (MachineRenderState fullState : owner.getStateDefinition().getPossibleStates()) {
-            Map<Property<?>, Comparable<?>> propertyValues = Maps.newLinkedHashMap(fullState.getValues());
+            Map<Property<?>, Comparable<?>> propertyValues = com.gregtechceu.gtceu.utils.GTUtil.stateValues(fullState);
             for (Property<?> p : ignored) {
                 propertyValues.remove(p);
             }
             PartialState<T> partialState = new PartialState<>(owner, propertyValues, this);
             if (seen.add(partialState)) {
-                ConfiguredModelListAccessor old = (ConfiguredModelListAccessor) getModels().get(partialState);
+                BlockStateProvider.ConfiguredModelList old = getModels().get(partialState);
                 if (old == null) continue;
-                ConfiguredModel[] oldModels = old.gtceu$getModels().toArray(ConfiguredModel[]::new);
+                ConfiguredModel[] oldModels = old.getModels().toArray(ConfiguredModel[]::new);
 
                 replaceModels(partialState, mapper.apply(fullState, oldModels));
             }
@@ -654,14 +650,13 @@ public class MachineModelBuilder<T extends ModelBuilder<T>> extends CustomLoader
         protected boolean matchesState(MachineRenderState state, boolean useOr,
                                        Multimap<Property<?>, Comparable<?>> conditions,
                                        List<ConditionGroup> nestedConditionGroups) {
-            var stateValues = state.getValues();
+            var stateValues = com.gregtechceu.gtceu.utils.GTUtil.stateValues(state);
             boolean matched = !useOr;
 
             if (!conditions.isEmpty()) {
-                for (var entry : stateValues.entrySet()) {
-                    Property<?> property = entry.getKey();
-                    Comparable<?> value = entry.getValue();
-                    boolean contains = conditions.containsEntry(property, value);
+                for (var entry : conditions.asMap().entrySet()) {
+                    Comparable<?> value = stateValues.get(entry.getKey());
+                    boolean contains = entry.getValue().contains(value);
 
                     if (useOr) {
                         // any OR condition can match

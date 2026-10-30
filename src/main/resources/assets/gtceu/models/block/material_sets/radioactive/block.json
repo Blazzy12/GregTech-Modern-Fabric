@@ -1,6 +1,6 @@
 {
   "parent": "gtceu:block/material_sets/dull/block",
-  "loader": "forge:composite",
+  "fabric:type": "gtceu:composite",
   "children": {
     "base": {
       "parent": "gtceu:block/cube/tinted/all_0",

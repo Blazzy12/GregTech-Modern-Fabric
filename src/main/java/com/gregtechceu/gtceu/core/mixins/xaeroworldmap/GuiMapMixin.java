@@ -20,6 +20,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import xaero.lib.client.gui.widget.Tooltip;
 import xaero.map.MapProcessor;
+import xaero.lib.client.gui.ScreenBase;
 import xaero.map.gui.*;
 
 @Mixin(value = GuiMap.class, remap = false)
@@ -117,7 +118,7 @@ public abstract class GuiMapMixin extends ScreenBase implements IRightClickableE
                     GTCEu.id("textures/gui/widget/button_" + button.name + ".png"),
                     guiButton -> {
                         ButtonState.toggleButton(button);
-                        init(minecraft, width, height);
+                        rebuildWidgets();
                     },
                     () -> new Tooltip("gtceu.button." + button.name));
 

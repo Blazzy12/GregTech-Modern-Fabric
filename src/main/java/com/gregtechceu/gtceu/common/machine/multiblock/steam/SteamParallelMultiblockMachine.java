@@ -22,7 +22,7 @@ import com.gregtechceu.gtceu.common.data.GTMaterials;
 import com.gregtechceu.gtceu.common.mui.GTMultiblockTextUtil;
 import com.gregtechceu.gtceu.config.ConfigHolder;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
 import net.minecraft.network.chat.Component;
 
 import brachy.modularui.drawable.GuiTextures;
@@ -148,12 +148,7 @@ public class SteamParallelMultiblockMachine extends WorkableMultiblockMachine im
         listWidget
                 .child(GTMultiblockTextUtil.addUnformedWarning(this, syncManager))
                 .child(GTMultiblockTextUtil.addSteamUsageLine(this.steamEnergy, syncManager))
-                .child(GTMultiblockTextUtil.addWorkingStatusLine(this, syncManager));
-
-        for (var child : GTMultiblockTextUtil.addRecipeFailReasonLines(this, syncManager))
-            listWidget.child(child);
-
-        listWidget
+                .child(GTMultiblockTextUtil.addWorkingStatusLine(this, syncManager))
                 .child(GTMultiblockTextUtil.addProgressLine(this, syncManager))
                 .child(GTMultiblockTextUtil.addParallelLine(this, syncManager))
                 .child(GTMultiblockTextUtil.addOutputLines(this, syncManager));

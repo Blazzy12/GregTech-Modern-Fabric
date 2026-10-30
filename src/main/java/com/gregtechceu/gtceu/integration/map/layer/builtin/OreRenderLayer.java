@@ -3,8 +3,8 @@ package com.gregtechceu.gtceu.integration.map.layer.builtin;
 import com.gregtechceu.gtceu.api.data.chemical.ChemicalHelper;
 import com.gregtechceu.gtceu.api.data.chemical.material.Material;
 import com.gregtechceu.gtceu.api.data.tag.TagPrefix;
+import com.gregtechceu.gtceu.api.data.worldgen.GTOreDefinition;
 import com.gregtechceu.gtceu.api.data.worldgen.ores.GeneratedVeinMetadata;
-import com.gregtechceu.gtceu.client.ClientProxy;
 import com.gregtechceu.gtceu.config.ConfigHolder;
 import com.gregtechceu.gtceu.integration.map.GenericMapRenderer;
 import com.gregtechceu.gtceu.integration.map.layer.MapRenderLayer;
@@ -34,17 +34,17 @@ public class OreRenderLayer extends MapRenderLayer {
 
     public static Component getName(GeneratedVeinMetadata vein) {
         // noinspection ConstantValue IDK, it crashed
-        if (vein == null || vein.definition() == null ||
-                ClientProxy.CLIENT_ORE_VEINS.inverse().get(vein.definition()) == null) {
+        if (vein == null || vein.definition() == null || vein.definition().unwrapKey().isEmpty()) {
             return Component.translatable("gtceu.minimap.ore_vein.depleted");
         }
-        return Component.translatable(OreVeinRecipeWidget.getOreName(vein.definition()));
+        return Component.translatable(OreVeinRecipeWidget.getOreName(vein.definition().value()));
     }
 
     public static @Nullable Material getMaterial(@NotNull GeneratedVeinMetadata vein) {
         Material firstMaterial = null;
-        if (!vein.definition().indicatorGenerators().isEmpty()) {
-            var blockOrMaterial = vein.definition().indicatorGenerators().get(0).block();
+        GTOreDefinition definition = vein.definition().value();
+        if (!definition.indicatorGenerators().isEmpty()) {
+            var blockOrMaterial = definition.indicatorGenerators().getFirst().block();
             firstMaterial = blockOrMaterial == null ? null : blockOrMaterial.map(
                     state -> {
                         var matStack = ChemicalHelper.getMaterialStack(state.getBlock());
@@ -52,8 +52,8 @@ public class OreRenderLayer extends MapRenderLayer {
                     },
                     Function.identity());
         }
-        if (firstMaterial == null) {
-            firstMaterial = vein.definition().veinGenerator().getAllMaterials().get(0);
+        if (firstMaterial == null && !definition.veinGenerator().getAllMaterials().isEmpty()) {
+            firstMaterial = definition.veinGenerator().getAllMaterials().getFirst();
         }
         return firstMaterial;
     }
@@ -66,13 +66,13 @@ public class OreRenderLayer extends MapRenderLayer {
         }
         tooltip.add(title);
 
-        for (var filler : vein.definition().veinGenerator().getAllEntries()) {
+        for (var filler : vein.definition().value().veinGenerator().getAllEntries()) {
             filler.vein().ifLeft(state -> {
                 tooltip.add(Component.literal(ConfigHolder.INSTANCE.compat.minimap.oreNamePrefix)
                         .append(state.getBlock().getName()));
             }).ifRight(material -> {
                 tooltip.add(Component.literal(ConfigHolder.INSTANCE.compat.minimap.oreNamePrefix)
-                        .append(TagPrefix.ore.getLocalizedName(material)));
+                        .append(TagPrefix.ore.value().getLocalizedName(material)));
             });
         }
         return tooltip;

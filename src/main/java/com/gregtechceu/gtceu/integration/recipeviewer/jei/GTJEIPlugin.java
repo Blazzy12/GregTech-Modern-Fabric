@@ -14,31 +14,29 @@ import com.gregtechceu.gtceu.integration.recipeviewer.jei.orevein.GTBedrockFluid
 import com.gregtechceu.gtceu.integration.recipeviewer.jei.orevein.GTBedrockOreInfoCategory;
 import com.gregtechceu.gtceu.integration.recipeviewer.jei.orevein.GTOreVeinInfoCategory;
 import com.gregtechceu.gtceu.integration.recipeviewer.jei.recipe.GTRecipeJEICategory;
+import com.gregtechceu.gtceu.integration.recipeviewer.jei.subtype.CircuitSubtypeInterpreter;
+import com.gregtechceu.gtceu.integration.recipeviewer.jei.subtype.MaterialSubtypeInterpreter;
 import com.gregtechceu.gtceu.integration.recipeviewer.jei.subtype.PotionFluidSubtypeInterpreter;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.item.alchemy.Potion;
-import net.minecraftforge.fluids.FluidStack;
+import net.minecraft.resources.Identifier;
+import com.gregtechceu.gtceu.compat.fluids.FluidStack;
 
 import lombok.Getter;
 import mezz.jei.api.IModPlugin;
 import mezz.jei.api.JeiPlugin;
-import mezz.jei.api.forge.ForgeTypes;
 import mezz.jei.api.helpers.IJeiHelpers;
 import mezz.jei.api.helpers.IPlatformFluidHelper;
+import mezz.jei.api.fabric.constants.FabricTypes;
+import mezz.jei.api.fabric.ingredients.fluids.IJeiFluidIngredient;
 import mezz.jei.api.registration.*;
 import mezz.jei.api.runtime.IJeiRuntime;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import javax.annotation.ParametersAreNonnullByDefault;
-
-@MethodsReturnNonnullByDefault
-@ParametersAreNonnullByDefault
 @JeiPlugin
 public class GTJEIPlugin implements IModPlugin {
 
@@ -46,7 +44,7 @@ public class GTJEIPlugin implements IModPlugin {
     private static IJeiRuntime runtime = null;
 
     @Override
-    public ResourceLocation getPluginUid() {
+    public @NotNull Identifier getPluginUid() {
         return GTCEu.id("jei_plugin");
     }
 
@@ -56,31 +54,29 @@ public class GTJEIPlugin implements IModPlugin {
     }
 
     @Override
-    public void registerCategories(IRecipeCategoryRegistration registry) {
-        if (GTCEu.Mods.isEMILoaded()) return;
-        IJeiHelpers jeiHelpers = registry.getJeiHelpers();
+    public void registerCategories(@NotNull IRecipeCategoryRegistration registry) {
+        if (!GTCEu.Mods.isJEILoaded()) return;
 
+        IJeiHelpers jeiHelpers = registry.getJeiHelpers();
         registry.addRecipeCategories(new MultiblockInfoJeiCategory(jeiHelpers));
         if (!ConfigHolder.INSTANCE.compat.hideOreProcessingDiagrams)
             registry.addRecipeCategories(new GTOreProcessingJeiCategory(jeiHelpers));
-
         registry.addRecipeCategories(new GTOreVeinInfoCategory(jeiHelpers));
         registry.addRecipeCategories(new GTBedrockFluidInfoCategory(jeiHelpers));
-        registry.addRecipeCategories(new ProgrammedCircuitJeiCategory(jeiHelpers));
-
         if (ConfigHolder.INSTANCE.machines.doBedrockOres)
             registry.addRecipeCategories(new GTBedrockOreInfoCategory(jeiHelpers));
-
         for (GTRecipeCategory category : GTRegistries.RECIPE_CATEGORIES) {
             if (category.shouldRegisterDisplays()) {
                 registry.addRecipeCategories(new GTRecipeJEICategory(jeiHelpers, category));
             }
         }
+        registry.addRecipeCategories(new ProgrammedCircuitJeiCategory(jeiHelpers));
     }
 
     @Override
-    public void registerRecipeCatalysts(IRecipeCatalystRegistration registration) {
-        if (GTCEu.Mods.isEMILoaded()) return;
+    public void registerRecipeCatalysts(@NotNull IRecipeCatalystRegistration registration) {
+        if (!GTCEu.Mods.isJEILoaded()) return;
+
         GTRecipeJEICategory.registerRecipeCatalysts(registration);
         if (!ConfigHolder.INSTANCE.compat.hideOreProcessingDiagrams)
             GTOreProcessingJeiCategory.registerRecipeCatalysts(registration);
@@ -94,7 +90,7 @@ public class GTJEIPlugin implements IModPlugin {
     }
 
     @Override
-    public void registerRecipes(IRecipeRegistration registration) {
+    public void registerRecipes(@NotNull IRecipeRegistration registration) {
         if (GTCEu.Mods.isEMILoaded()) return;
         GTCEu.LOGGER.info("JEI register");
         MultiblockInfoJeiCategory.registerRecipes(registration);
@@ -106,34 +102,36 @@ public class GTJEIPlugin implements IModPlugin {
         if (ConfigHolder.INSTANCE.machines.doBedrockOres)
             GTBedrockOreInfoCategory.registerRecipes(registration);
         registration.addRecipes(ProgrammedCircuitJeiCategory.RECIPE_TYPE,
-                List.of(new ProgrammedCircuitJeiCategory.GTProgrammedCircuitWrapper()));
+                List.of(new Object()));
     }
 
     @Override
-    public void registerItemSubtypes(ISubtypeRegistration registration) {
-        if (GTCEu.Mods.isEMILoaded()) return;
-        registration.useNbtForSubtypes(GTItems.PROGRAMMED_CIRCUIT.asItem());
-        registration.useNbtForSubtypes(GTItems.TURBINE_ROTOR.asItem());
+    public void registerItemSubtypes(@NotNull ISubtypeRegistration registration) {
+        if (!GTCEu.Mods.isJEILoaded()) return;
+
+        registration.registerSubtypeInterpreter(GTItems.PROGRAMMED_CIRCUIT.asItem(),
+                CircuitSubtypeInterpreter.INSTANCE);
+        registration.registerSubtypeInterpreter(GTItems.TURBINE_ROTOR.asItem(), MaterialSubtypeInterpreter.INSTANCE);
     }
 
     @Override
-    public <T> void registerFluidSubtypes(ISubtypeRegistration registration,
-                                          IPlatformFluidHelper<T> platformFluidHelper) {
-        if (GTCEu.Mods.isEMILoaded()) return;
-        PotionFluidSubtypeInterpreter interpreter = new PotionFluidSubtypeInterpreter();
+    public <T> void registerFluidSubtypes(@NotNull ISubtypeRegistration registration,
+                                          @NotNull IPlatformFluidHelper<T> platformFluidHelper) {
+        if (!GTCEu.Mods.isJEILoaded()) return;
+
+        PotionFluidSubtypeInterpreter interpreter = PotionFluidSubtypeInterpreter.INSTANCE;
         PotionFluid potionFluid = GTFluids.POTION.get();
-        registration.registerSubtypeInterpreter(ForgeTypes.FLUID_STACK, potionFluid.getSource(), interpreter);
-        registration.registerSubtypeInterpreter(ForgeTypes.FLUID_STACK, potionFluid.getFlowing(), interpreter);
+        registration.registerSubtypeInterpreter(FabricTypes.FLUID_STACK, potionFluid.getSource(), interpreter);
+        registration.registerSubtypeInterpreter(FabricTypes.FLUID_STACK, potionFluid.getFlowing(), interpreter);
     }
 
     @Override
     public void registerExtraIngredients(IExtraIngredientRegistration registration) {
-        if (GTCEu.Mods.isEMILoaded()) return;
-        Collection<FluidStack> potionFluids = new ArrayList<>(BuiltInRegistries.POTION.size());
-        for (Potion potion : BuiltInRegistries.POTION) {
-            FluidStack potionFluid = PotionFluid.of(1000, potion);
-            potionFluids.add(potionFluid);
-        }
-        registration.addExtraIngredients(ForgeTypes.FLUID_STACK, potionFluids);
+        if (!GTCEu.Mods.isJEILoaded()) return;
+
+        Collection<IJeiFluidIngredient> potionFluids = new ArrayList<>(BuiltInRegistries.POTION.size());
+        BuiltInRegistries.POTION.listElements().forEach(potion -> potionFluids.add(
+                JEIFluids.of(PotionFluid.of(1000, potion))));
+        registration.addExtraIngredients(FabricTypes.FLUID_STACK, potionFluids);
     }
 }

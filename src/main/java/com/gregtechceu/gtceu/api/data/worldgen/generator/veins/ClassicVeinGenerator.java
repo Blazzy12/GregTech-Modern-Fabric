@@ -7,8 +7,10 @@ import com.gregtechceu.gtceu.api.data.worldgen.generator.VeinGenerator;
 import com.gregtechceu.gtceu.api.data.worldgen.ores.OreBlockPlacer;
 import com.gregtechceu.gtceu.api.data.worldgen.ores.OreVeinUtil;
 import com.gregtechceu.gtceu.api.registry.GTRegistries;
+import com.gregtechceu.gtceu.common.data.worldgen.GTVeinGenerators;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 import net.minecraft.core.SectionPos;
 import net.minecraft.util.ExtraCodecs;
 import net.minecraft.util.RandomSource;
@@ -18,16 +20,18 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.BulkSectionAccess;
 import net.minecraft.world.level.chunk.LevelChunkSection;
 import net.minecraft.world.level.levelgen.XoroshiroRandomSource;
-import net.minecraft.world.level.levelgen.feature.configurations.OreConfiguration;
+import net.minecraft.world.level.levelgen.feature.BlockReplacement;
 import net.minecraft.world.level.levelgen.structure.templatesystem.AlwaysTrueTest;
 import net.minecraft.world.level.levelgen.structure.templatesystem.RuleTest;
 
 import com.google.common.base.Preconditions;
 import com.mojang.datafixers.util.Either;
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 
@@ -40,9 +44,10 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 @Accessors(fluent = true, chain = true)
+@NoArgsConstructor
 public class ClassicVeinGenerator extends VeinGenerator {
 
-    public static final Codec<ClassicVeinGenerator> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+    public static final MapCodec<ClassicVeinGenerator> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
             Layer.CODEC.fieldOf("primary").forGetter(val -> val.primary),
             Layer.CODEC.fieldOf("secondary").forGetter(val -> val.secondary),
             Layer.CODEC.fieldOf("between").forGetter(val -> val.between),
@@ -64,10 +69,6 @@ public class ClassicVeinGenerator extends VeinGenerator {
 
     @Setter
     private RuleTest[] rules;
-
-    public ClassicVeinGenerator(GTOreDefinition entry) {
-        super(entry);
-    }
 
     public ClassicVeinGenerator(Layer primary, Layer secondary, Layer between, Layer sporadic, int yRadius) {
         this.primary = primary;
@@ -190,8 +191,8 @@ public class ClassicVeinGenerator extends VeinGenerator {
     }
 
     @Override
-    public Codec<? extends VeinGenerator> codec() {
-        return CODEC;
+    public VeinGeneratorType<?> type() {
+        return GTVeinGenerators.CLASSIC.value();
     }
 
     public ClassicVeinGenerator primary(Consumer<Layer.Builder> builder) {
@@ -229,14 +230,13 @@ public class ClassicVeinGenerator extends VeinGenerator {
     @AllArgsConstructor
     public static class Layer {
 
+        // spotless:off
         public static final Codec<Layer> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-                Codec.either(OreConfiguration.TargetBlockState.CODEC.listOf(), GTRegistries.MATERIALS.codec())
-                        .fieldOf("targets").forGetter(layer -> layer.target),
-                ExtraCodecs.intRange(-1, Integer.MAX_VALUE).optionalFieldOf("layers", -1)
-                        .forGetter(layer -> layer.layers))
-                .apply(instance, Layer::new));
-
-        public final Either<List<OreConfiguration.TargetBlockState>, Material> target;
+                Codec.either(BlockReplacement.CODEC.listOf(), GTRegistries.MATERIALS.byNameCodec()).fieldOf("targets").forGetter(layer -> layer.target),
+                ExtraCodecs.intRange(-1, Integer.MAX_VALUE).optionalFieldOf("layers", -1).forGetter(layer -> layer.layers)
+        ).apply(instance, Layer::new));
+        // spotless:on
+        public final Either<List<BlockReplacement>, Material> target;
         public int layers;
 
         public void place(BlockState blockState, BulkSectionAccess access, LevelChunkSection section, long randomSeed,
@@ -247,12 +247,12 @@ public class ClassicVeinGenerator extends VeinGenerator {
             int z = SectionPos.sectionRelative(pos.getZ());
 
             target.ifLeft(blockStates -> {
-                for (OreConfiguration.TargetBlockState targetState : blockStates) {
+                for (BlockReplacement targetState : blockStates) {
                     if (!OreVeinUtil.canPlaceOre(blockState, access::getBlockState, random, entry, targetState, pos))
                         continue;
-                    if (targetState.state.isAir())
+                    if (targetState.state().isAir())
                         continue;
-                    section.setBlockState(x, y, z, targetState.state, false);
+                    section.setBlockState(x, y, z, targetState.state(), false);
                     break;
                 }
             }).ifRight(material -> {
@@ -278,7 +278,7 @@ public class ClassicVeinGenerator extends VeinGenerator {
 
         public static class Builder {
 
-            private Either<List<OreConfiguration.TargetBlockState>, Material> target;
+            private Either<List<BlockReplacement>, Material> target;
             private int size = -1;
             private final RuleTest[] rules;
 
@@ -296,12 +296,17 @@ public class ClassicVeinGenerator extends VeinGenerator {
 
             public Layer.Builder state(BlockState state) {
                 this.target = Either
-                        .left(Arrays.stream(this.rules).map(rule -> OreConfiguration.target(rule, state)).toList());
+                        .left(Arrays.stream(this.rules).map(rule -> BlockReplacement.replace(rule, state)).toList());
                 return this;
             }
 
             public Layer.Builder mat(Material material) {
                 this.target = Either.right(material);
+                return this;
+            }
+
+            public Layer.Builder mat(Holder<Material> material) {
+                this.target = Either.right(material.value());
                 return this;
             }
 

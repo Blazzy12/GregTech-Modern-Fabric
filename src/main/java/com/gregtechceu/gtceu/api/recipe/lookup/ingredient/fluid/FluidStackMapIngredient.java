@@ -1,11 +1,13 @@
 package com.gregtechceu.gtceu.api.recipe.lookup.ingredient.fluid;
 
-import com.gregtechceu.gtceu.api.recipe.ingredient.FluidIngredient;
+import com.gregtechceu.gtceu.api.recipe.ingredient.IntProviderFluidIngredient;
 import com.gregtechceu.gtceu.api.recipe.lookup.ingredient.AbstractMapIngredient;
 
-import net.minecraftforge.fluids.FluidStack;
+import net.minecraft.core.Holder;
+import net.minecraft.world.level.material.Fluid;
+import com.gregtechceu.gtceu.compat.fluids.FluidStack;
+import com.gregtechceu.gtceu.compat.fluids.crafting.SingleFluidIngredient;
 
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Collections;
@@ -14,27 +16,18 @@ import java.util.List;
 public class FluidStackMapIngredient extends AbstractMapIngredient {
 
     protected FluidStack stack;
-    protected FluidIngredient ingredient = null;
+
+    public FluidStackMapIngredient(Holder<Fluid> fluid) {
+        this(new FluidStack(fluid, 1));
+    }
 
     public FluidStackMapIngredient(FluidStack stack) {
         this.stack = stack;
     }
 
-    public FluidStackMapIngredient(FluidStack stack, FluidIngredient ingredient) {
-        this.stack = stack;
-        this.ingredient = ingredient;
-    }
-
     @NotNull
-    public static List<AbstractMapIngredient> from(@NotNull FluidIngredient ingredient) {
-        List<AbstractMapIngredient> ingredients = new ObjectArrayList<>();
-        for (FluidIngredient.Value value : ingredient.values) {
-            if (value instanceof FluidIngredient.FluidValue fluidValue) {
-                FluidStack stack = new FluidStack(fluidValue.fluid(), ingredient.getAmount(), ingredient.getNbt());
-                ingredients.add(new FluidStackMapIngredient(stack, ingredient));
-            }
-        }
-        return ingredients;
+    public static List<AbstractMapIngredient> from(@NotNull SingleFluidIngredient ingredient) {
+        return Collections.singletonList(new FluidStackMapIngredient(ingredient.fluid()));
     }
 
     @NotNull
@@ -42,27 +35,21 @@ public class FluidStackMapIngredient extends AbstractMapIngredient {
         return Collections.singletonList(new FluidStackMapIngredient(stack));
     }
 
+    @NotNull
+    public static List<AbstractMapIngredient> from(@NotNull IntProviderFluidIngredient ingredient) {
+        return Collections.singletonList(new FluidStackMapIngredient(ingredient.getMaxSizeStack()));
+    }
+
     @Override
     protected int hash() {
-        return stack.hashCode();
+        return FluidStack.hashFluidAndComponents(stack);
     }
 
     @Override
     public boolean equals(Object o) {
         if (super.equals(o)) {
             FluidStackMapIngredient other = (FluidStackMapIngredient) o;
-            if (this.stack.getFluid() != other.stack.getFluid()) {
-                return false;
-            }
-            if (this.ingredient != null) {
-                if (other.ingredient != null) {
-                    return this.ingredient.equals(other.ingredient);
-                } else {
-                    return this.ingredient.test(other.stack);
-                }
-            } else if (other.ingredient != null) {
-                return other.ingredient.test(this.stack);
-            }
+            return FluidStack.isSameFluid(this.stack, other.stack);
         }
         return false;
     }

@@ -1,6 +1,6 @@
 {
   "parent": "minecraft:block/block",
-  "loader": "gtceu:machine",
+  "fabric:type": "gtceu:machine",
   "machine": "gtceu:wooden_tank_valve",
   "texture_overrides": {
     "bottom": "gtceu:block/casings/wood_wall/bottom",

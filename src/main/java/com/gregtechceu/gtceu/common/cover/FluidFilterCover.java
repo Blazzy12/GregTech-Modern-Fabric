@@ -1,5 +1,7 @@
 package com.gregtechceu.gtceu.common.cover;
 
+import com.gregtechceu.gtceu.core.fabric.ItemStackNbt;
+
 import com.gregtechceu.gtceu.api.capability.ICoverable;
 import com.gregtechceu.gtceu.api.cover.CoverBehavior;
 import com.gregtechceu.gtceu.api.cover.CoverDefinition;
@@ -13,12 +15,11 @@ import com.gregtechceu.gtceu.common.cover.data.FilterMode;
 import com.gregtechceu.gtceu.common.cover.data.ManualIOMode;
 import com.gregtechceu.gtceu.common.mui.GTMuiCoverUtil;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.fluids.FluidStack;
+import com.gregtechceu.gtceu.compat.fluids.FluidStack;
 
 import brachy.modularui.factory.SidedPosGuiData;
 import brachy.modularui.screen.UISettings;
@@ -136,14 +137,15 @@ public class FluidFilterCover extends CoverBehavior implements IMuiCover {
     public void copyConfig(CompoundTag tag) {
         tag.putInt("manualIO", getAllowFlow().ordinal());
         tag.putInt("filterMode", getFilterMode().ordinal());
-        tag.put("filter", attachItem.serializeNBT());
+        tag.put("filter", ItemStackNbt.save(attachItem, coverHolder.getLevel().registryAccess()));
     }
 
     @Override
     public void pasteConfig(ServerPlayer player, CompoundTag tag) {
-        setAllowFlow(ManualIOMode.values()[tag.getInt("manualIO")]);
-        setFilterMode(FilterMode.values()[tag.getInt("filterMode")]);
-        fluidFilter = Filters.loadFluidFilter(ItemStack.of(tag.getCompound("filter")));
+        setAllowFlow(ManualIOMode.values()[tag.getIntOr("manualIO", 0)]);
+        setFilterMode(FilterMode.values()[tag.getIntOr("filterMode", 0)]);
+        fluidFilter = Filters.loadFluidFilter(
+                ItemStackNbt.parseOptional(coverHolder.getLevel().registryAccess(), tag.getCompoundOrEmpty("filter")));
         super.pasteConfig(player, tag);
     }
 }

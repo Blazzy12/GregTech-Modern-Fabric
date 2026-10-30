@@ -2,14 +2,12 @@ package com.gregtechceu.gtceu.client.renderer.item;
 
 import com.gregtechceu.gtceu.api.item.IGTTool;
 import com.gregtechceu.gtceu.api.item.component.IDurabilityBar;
-import com.gregtechceu.gtceu.api.item.tool.ToolHelper;
 import com.gregtechceu.gtceu.client.util.RenderUtil;
-import com.gregtechceu.gtceu.core.mixins.client.GuiGraphicsAccessor;
 
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.renderer.RenderType;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.util.FastColor;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.util.ARGB;
 import net.minecraft.world.item.ItemStack;
 
 import brachy.modularui.drawable.GuiDraw;
@@ -19,19 +17,19 @@ public final class ToolChargeBarRenderer {
 
     private static final int BAR_W = 12;
 
-    private static final int colorShadow = FastColor.ARGB32.color(255, 0, 0, 0);
-    private static final int colorBG = FastColor.ARGB32.color(255, 0x0E, 0x01, 0x16);
+    private static final int colorShadow = ARGB.color(255, 0, 0, 0);
+    private static final int colorBG = ARGB.color(255, 0x0E, 0x01, 0x16);
 
-    private static final int colorBarLeftEnergy = FastColor.ARGB32.color(255, 0, 101, 178);
-    private static final int colorBarRightEnergy = FastColor.ARGB32.color(255, 217, 238, 255);
+    private static final int colorBarLeftEnergy = ARGB.color(255, 0, 101, 178);
+    private static final int colorBarRightEnergy = ARGB.color(255, 217, 238, 255);
 
-    private static final int colorBarLeftDurability = FastColor.ARGB32.color(255, 20, 124, 0);
-    private static final int colorBarRightDurability = FastColor.ARGB32.color(255, 115, 255, 89);
+    private static final int colorBarLeftDurability = ARGB.color(255, 20, 124, 0);
+    private static final int colorBarRightDurability = ARGB.color(255, 115, 255, 89);
 
-    private static final int colorBarLeftDepleted = FastColor.ARGB32.color(255, 122, 0, 0);
-    private static final int colorBarRightDepleted = FastColor.ARGB32.color(255, 255, 27, 27);
+    private static final int colorBarLeftDepleted = ARGB.color(255, 122, 0, 0);
+    private static final int colorBarRightDepleted = ARGB.color(255, 255, 27, 27);
 
-    public static void render(GuiGraphics graphics, int level, int xPosition, int yPosition, int offset, boolean shadow,
+    public static void render(GuiGraphicsExtractor graphics, int level, int xPosition, int yPosition, int offset, boolean shadow,
                               int left, int right, boolean doDepletedColor) {
         if (doDepletedColor && level <= BAR_W / 4) {
             left = colorBarLeftDepleted;
@@ -40,28 +38,26 @@ public final class ToolChargeBarRenderer {
 
         int x = xPosition + 2;
         int y = yPosition + 13 - offset;
-        RenderUtil.fillHorizontalGradient(graphics, RenderType.gui(), x, y, x + level, y + 1, left, right, 190);
         // graphics.fill(RenderType.guiOverlay(), x + BAR_W, y, x + BAR_W - level, y - 1, colorBG);
 
         GuiDraw.drawRect(graphics, x, y, 13, shadow ? 2 : 1, colorShadow);
         GuiDraw.drawHorizontalGradientRect(graphics, x, y, level, 1, left, right);
-        ((GuiGraphicsAccessor) graphics).callFlushIfUnmanaged();
     }
 
-    public static void renderBarsTool(GuiGraphics graphics, IGTTool tool, ItemStack stack, int xPosition,
-                                      int yPosition) {
-        boolean renderedDurability = false;
-        CompoundTag tag = stack.getOrCreateTag();
-        if (!tag.getBoolean(ToolHelper.UNBREAKABLE_KEY)) {
-            renderedDurability = renderDurabilityBar(graphics, stack.getBarWidth(), xPosition, yPosition);
+    public static boolean renderBarsTool(GuiGraphicsExtractor graphics, IGTTool tool, ItemStack stack,
+                                         int xPosition, int yPosition) {
+        boolean rendered = false;
+        if (!stack.has(DataComponents.UNBREAKABLE)) {
+            rendered = renderDurabilityBar(graphics, stack.getBarWidth(), xPosition, yPosition);
         }
         if (tool.isElectric()) {
-            renderElectricBar(graphics, tool.getCharge(stack), tool.getMaxCharge(stack), xPosition, yPosition,
-                    renderedDurability);
+            rendered |= renderElectricBar(graphics, tool.getCharge(stack), tool.getMaxCharge(stack),
+                    xPosition, yPosition, rendered);
         }
+        return rendered;
     }
 
-    public static boolean renderElectricBar(GuiGraphics graphics, long charge, long maxCharge, int xPosition,
+    public static boolean renderElectricBar(GuiGraphicsExtractor graphics, long charge, long maxCharge, int xPosition,
                                             int yPosition, boolean renderedDurability) {
         if (charge > 0 && maxCharge > 0) {
             int level = Math.round(charge * 13.0F / maxCharge);
@@ -72,11 +68,12 @@ public final class ToolChargeBarRenderer {
         return false;
     }
 
-    public static boolean renderDurabilityBar(GuiGraphics graphics, ItemStack stack, IDurabilityBar manager,
+    public static boolean renderDurabilityBar(GuiGraphicsExtractor graphics, ItemStack stack, IDurabilityBar manager,
                                               int xPosition, int yPosition) {
         float level = manager.getDurabilityForDisplay(stack);
-        if (level == 0.0 && !manager.showEmptyBar(stack)) return false;
-        if (level == 1.0 && !manager.showFullBar(stack)) return false;
+        if (level <= 0.0f && !manager.showEmptyBar(stack)) return false;
+        if (level >= 1.0f && !manager.showFullBar(stack)) return false;
+
         IntIntPair colors = manager.getDurabilityColorsForDisplay(stack);
         boolean doDepletedColor = manager.doDamagedStateColors(stack);
         int left = colors != null ? colors.leftInt() : colorBarLeftDurability;
@@ -85,7 +82,7 @@ public final class ToolChargeBarRenderer {
         return true;
     }
 
-    private static boolean renderDurabilityBar(GuiGraphics graphics, int level, int xPosition, int yPosition) {
+    private static boolean renderDurabilityBar(GuiGraphicsExtractor graphics, int level, int xPosition, int yPosition) {
         render(graphics, level, xPosition, yPosition, 0, true, colorBarLeftDurability, colorBarRightDurability, true);
         return true;
     }

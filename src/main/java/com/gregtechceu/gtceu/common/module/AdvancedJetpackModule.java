@@ -9,12 +9,13 @@ import com.gregtechceu.gtceu.common.item.armor.AdvancedJetpack;
 import com.gregtechceu.gtceu.config.ConfigHolder;
 
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 
 import brachy.modularui.api.drawable.Text;
 import brachy.modularui.value.sync.PanelSyncManager;
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import lombok.Getter;
 
@@ -27,12 +28,12 @@ public class AdvancedJetpackModule extends JetpackModule {
             6_400_000L * (long) Math.max(1, Math.pow(4, ConfigHolder.INSTANCE.tools.voltageTierAdvImpeller - 4)),
             ConfigHolder.INSTANCE.tools.voltageTierAdvImpeller);
 
-    public AdvancedJetpackModule(ResourceLocation id) {
+    public AdvancedJetpackModule(Identifier id) {
         super(id);
     }
 
     @Override
-    public Codec<? extends ModuleData> moduleDataCodec() {
+    public MapCodec<? extends ModuleData> moduleDataCodec() {
         return ThrusterModuleData.CODEC;
     }
 
@@ -76,7 +77,7 @@ public class AdvancedJetpackModule extends JetpackModule {
     public static class ThrusterModuleData extends ModuleData {
 
         // spotless:off
-        public static final Codec<ThrusterModuleData> CODEC = RecordCodecBuilder.create(instance -> baseCodec(instance).and(
+        public static final MapCodec<ThrusterModuleData> CODEC = RecordCodecBuilder.mapCodec(instance -> baseCodec(instance).and(
                 Codec.BOOL.optionalFieldOf("omnidirectional", true).forGetter(ThrusterModuleData::isOmnidirectional)
         ).apply(instance, ThrusterModuleData::new));
         // spotless:on

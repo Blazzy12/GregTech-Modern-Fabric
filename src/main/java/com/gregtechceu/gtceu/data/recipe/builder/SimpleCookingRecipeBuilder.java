@@ -1,34 +1,41 @@
 package com.gregtechceu.gtceu.data.recipe.builder;
 
-import com.gregtechceu.gtceu.GTCEu;
-import com.gregtechceu.gtceu.utils.data.NBTToJsonConverter;
+import net.minecraft.core.registries.Registries;
 
+import net.minecraft.resources.ResourceKey;
+
+import net.minecraft.world.item.ItemStackTemplate;
+
+import net.minecraft.world.item.crafting.Recipe;
+
+import com.gregtechceu.gtceu.api.recipe.ingredient.ExDataComponentIngredient;
+
+import net.minecraft.core.component.DataComponentExactPredicate;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.data.recipes.FinishedRecipe;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.data.recipes.RecipeOutput;
+import net.minecraft.resources.Identifier;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.*;
 import net.minecraft.world.level.ItemLike;
-import net.minecraftforge.common.crafting.StrictNBTIngredient;
+import com.gregtechceu.gtceu.compat.common.crafting.DataComponentIngredient;
 
-import com.google.gson.JsonObject;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.function.Consumer;
+import java.util.Objects;
 
 @Accessors(chain = true, fluent = true)
-@SuppressWarnings("deprecation")
 public class SimpleCookingRecipeBuilder<T extends AbstractCookingRecipe> {
 
+    private final RecipeConstructor<T> constructor;
     protected final String folder;
-    protected final RecipeSerializer<T> serializer;
+
     protected @Nullable Ingredient input;
     @Setter
-    protected @Nullable String group;
+    protected String group = "";
     @Setter
     protected CookingBookCategory category = CookingBookCategory.MISC;
 
@@ -38,36 +45,45 @@ public class SimpleCookingRecipeBuilder<T extends AbstractCookingRecipe> {
     @Setter
     protected int cookingTime;
     @Setter
-    protected @Nullable ResourceLocation id;
+    protected @Nullable Identifier id;
 
-    protected SimpleCookingRecipeBuilder(@Nullable ResourceLocation id, String folder, RecipeSerializer<T> serializer) {
+    protected SimpleCookingRecipeBuilder(@Nullable Identifier id, String folder,
+                                         RecipeConstructor<T> constructor) {
         this.id = id;
         this.folder = folder;
-        this.serializer = serializer;
+        this.constructor = constructor;
     }
 
-    public static SimpleCookingRecipeBuilder<CampfireCookingRecipe> campfireCooking(@Nullable ResourceLocation id) {
-        return new SimpleCookingRecipeBuilder<>(id, "campfire_cooking", RecipeSerializer.CAMPFIRE_COOKING_RECIPE);
+    public static SimpleCookingRecipeBuilder<CampfireCookingRecipe> campfireCooking(@Nullable Identifier id) {
+        return new SimpleCookingRecipeBuilder<>(id, "campfire_cooking", CampfireCookingRecipe::new);
     }
 
-    public static SimpleCookingRecipeBuilder<SmeltingRecipe> smelting(@Nullable ResourceLocation id) {
-        return new SimpleCookingRecipeBuilder<>(id, "smelting", RecipeSerializer.SMELTING_RECIPE);
+    public static SimpleCookingRecipeBuilder<SmeltingRecipe> smelting(@Nullable Identifier id) {
+        return new SimpleCookingRecipeBuilder<>(id, "smelting", SmeltingRecipe::new);
     }
 
-    public static SimpleCookingRecipeBuilder<BlastingRecipe> blasting(@Nullable ResourceLocation id) {
-        return new SimpleCookingRecipeBuilder<>(id, "blasting", RecipeSerializer.BLASTING_RECIPE);
+    public static SimpleCookingRecipeBuilder<BlastingRecipe> blasting(@Nullable Identifier id) {
+        return new SimpleCookingRecipeBuilder<>(id, "blasting", BlastingRecipe::new);
     }
 
-    public static SimpleCookingRecipeBuilder<SmokingRecipe> smoking(@Nullable ResourceLocation id) {
-        return new SimpleCookingRecipeBuilder<>(id, "smoking", RecipeSerializer.SMOKING_RECIPE);
+    public static SimpleCookingRecipeBuilder<SmokingRecipe> smoking(@Nullable Identifier id) {
+        return new SimpleCookingRecipeBuilder<>(id, "smoking", SmokingRecipe::new);
     }
 
     public SimpleCookingRecipeBuilder<T> input(TagKey<Item> tag) {
-        return input(Ingredient.of(tag));
+        return input(Ingredient.of(com.gregtechceu.gtceu.utils.TagUtil.holderSet(net.minecraft.core.registries.BuiltInRegistries.ITEM, tag)));
+    }
+
+    public SimpleCookingRecipeBuilder<T> input(TagKey<Item> tag, DataComponentExactPredicate components, boolean strict) {
+        return input(ExDataComponentIngredient.of(strict, components, tag));
     }
 
     public SimpleCookingRecipeBuilder<T> input(ItemStack itemStack) {
-        input = itemStack.hasTag() ? StrictNBTIngredient.of(itemStack) : Ingredient.of(itemStack);
+        if (!itemStack.getComponentsPatch().isEmpty()) {
+            input = DataComponentIngredient.of(true, itemStack);
+        } else {
+            input = Ingredient.of((itemStack).getItem());
+        }
         return this;
     }
 
@@ -90,71 +106,26 @@ public class SimpleCookingRecipeBuilder<T extends AbstractCookingRecipe> {
         return this;
     }
 
-    protected ResourceLocation defaultId() {
+    protected Identifier defaultId() {
         return BuiltInRegistries.ITEM.getKey(output.getItem());
     }
 
-    public void toJson(JsonObject json) {
-        if (group != null) {
-            json.addProperty("group", group);
-        }
-
-        if (input == null || input.isEmpty()) {
-            GTCEu.LOGGER.error("{} recipe {} input is empty", folder, id);
-            throw new IllegalArgumentException(id + ": input item is empty");
-        }
-        if (output.isEmpty()) {
-            GTCEu.LOGGER.error("{} recipe {} output is empty", folder, id);
-            throw new IllegalArgumentException(id + ": output item is empty");
-        }
-
-        json.add("ingredient", input.toJson());
-
-        JsonObject result = new JsonObject();
-        result.addProperty("item", BuiltInRegistries.ITEM.getKey(output.getItem()).toString());
-        if (output.getCount() > 1) {
-            result.addProperty("count", output.getCount());
-        }
-        if (output.hasTag() && output.getTag() != null) {
-            result.add("nbt", NBTToJsonConverter.getObject(output.getTag()));
-        }
-        json.add("result", result);
-
-        json.addProperty("experience", experience);
-        json.addProperty("cookingtime", cookingTime);
+    private T create() {
+        Objects.requireNonNull(input, "Input ingredient cannot be null");
+        return constructor.create(new Recipe.CommonInfo(true),
+                new AbstractCookingRecipe.CookingBookInfo(this.category, this.group), this.input,
+                ItemStackTemplate.fromNonEmptyStack(this.output), this.experience, this.cookingTime);
     }
 
-    public void save(Consumer<FinishedRecipe> consumer) {
-        ResourceLocation recipeId = (id == null ? defaultId() : id).withPrefix(folder + "/");
+    public void save(RecipeOutput consumer) {
+        consumer.accept(ResourceKey.create(Registries.RECIPE, id == null ? defaultId() : id.withPrefix(folder + "/")),
+                create(), null);
+    }
 
-        consumer.accept(new FinishedRecipe() {
+    @FunctionalInterface
+    public interface RecipeConstructor<T extends AbstractCookingRecipe> {
 
-            @Override
-            public void serializeRecipeData(JsonObject pJson) {
-                toJson(pJson);
-            }
-
-            @Override
-            public ResourceLocation getId() {
-                return recipeId;
-            }
-
-            @Override
-            public RecipeSerializer<?> getType() {
-                return serializer;
-            }
-
-            @Nullable
-            @Override
-            public JsonObject serializeAdvancement() {
-                return null;
-            }
-
-            @Nullable
-            @Override
-            public ResourceLocation getAdvancementId() {
-                return null;
-            }
-        });
+        T create(Recipe.CommonInfo commonInfo, AbstractCookingRecipe.CookingBookInfo bookInfo,
+                 Ingredient ingredient, ItemStackTemplate result, float experience, int cookingTime);
     }
 }

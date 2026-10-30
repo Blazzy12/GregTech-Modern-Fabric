@@ -68,6 +68,22 @@ public record Content(Object content, int chance, int maxChance) {
         return chance > 0 && chance < maxChance;
     }
 
+    /**
+     * Attempts to fix and round the given chance boost due to potential differences
+     * between the max chance and {@link ChanceLogic#getMaxChancedValue()}.
+     * <br />
+     * The worst case would be {@code 5,001 / 10,000} , meaning the boost would
+     * have to be halved to have the intended effect.
+     *
+     * @param chanceBoost the chance boost to be fixed
+     * @return the fixed chance boost
+     */
+    private int fixBoost(int chanceBoost) {
+        float error = (float) ChanceLogic.getMaxChancedValue() / maxChance;
+        int fixed = Math.round(Math.abs(chanceBoost) / error);
+        return chanceBoost < 0 ? -fixed : fixed;
+    }
+
     public static void addChanceTooltips(RichTooltip tooltip, Content content, ChanceLogic logic) {
         if (content.chance() < ChanceLogic.getMaxChancedValue()) {
             if (content.chance() == 0) {
@@ -75,7 +91,7 @@ public record Content(Object content, int chance, int maxChance) {
             } else {
                 float baseChanceFloat = 100f * content.chance() / content.maxChance();
 
-                if (logic != ChanceLogic.NONE && logic != ChanceLogic.OR) {
+                if (logic != ChanceLogic.NONE.value() && logic != ChanceLogic.OR.value()) {
                     tooltip.addLine(Component.translatable("gtceu.gui.content.chance_no_boost_logic",
                             FormattingUtil.formatNumber2Places(baseChanceFloat), logic.getTranslation())
                             .withStyle(ChatFormatting.YELLOW));

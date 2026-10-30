@@ -1,23 +1,21 @@
 package com.gregtechceu.gtceu.common.worldgen.modifier;
 
 import com.gregtechceu.gtceu.api.data.worldgen.BiomeWeightModifier;
-import com.gregtechceu.gtceu.common.data.worldgen.GTPlacementModifiers;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.levelgen.placement.PlacementContext;
 import net.minecraft.world.level.levelgen.placement.PlacementModifier;
-import net.minecraft.world.level.levelgen.placement.PlacementModifierType;
 
-import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 
 import java.util.List;
-import java.util.stream.Stream;
+import java.util.function.Consumer;
 
-public class BiomeDependentPlacement extends PlacementModifier {
+public class BiomeDependentPlacement implements PlacementModifier {
 
-    public static final Codec<BiomeDependentPlacement> CODEC = BiomeWeightModifier.CODEC.listOf().fieldOf("modifiers")
-            .xmap(BiomeDependentPlacement::new, placement -> placement.modifiers).codec();
+    public static final MapCodec<BiomeDependentPlacement> CODEC = BiomeWeightModifier.CODEC.listOf()
+            .fieldOf("modifiers").xmap(BiomeDependentPlacement::new, placement -> placement.modifiers);
 
     public final List<BiomeWeightModifier> modifiers;
 
@@ -26,20 +24,19 @@ public class BiomeDependentPlacement extends PlacementModifier {
     }
 
     @Override
-    public Stream<BlockPos> getPositions(PlacementContext context, RandomSource random, BlockPos pos) {
-        Stream<BlockPos> positions = Stream.of(pos);
+    public void modify(PlacementContext context, RandomSource random, BlockPos pos, Consumer<BlockPos> output) {
         for (BiomeWeightModifier modifier : modifiers) {
-            if (modifier.addedWeight < 100 && random.nextInt(100) >= modifier.addedWeight) {
-                if (modifier.biomes.get().contains(context.getLevel().getBiome(pos))) {
-                    return Stream.of();
+            if (modifier.biomes.contains(context.getLevel().getBiome(pos))) {
+                if (modifier.addedWeight < 100 && random.nextInt(100) >= modifier.addedWeight) {
+                    return;
                 }
             }
         }
-        return positions;
+        output.accept(pos);
     }
 
     @Override
-    public PlacementModifierType<?> type() {
-        return GTPlacementModifiers.BIOME_DEPENDENT.get();
+    public MapCodec<? extends PlacementModifier> codec() {
+        return CODEC;
     }
 }

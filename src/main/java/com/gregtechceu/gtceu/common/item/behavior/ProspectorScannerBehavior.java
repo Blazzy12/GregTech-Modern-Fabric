@@ -1,20 +1,21 @@
 package com.gregtechceu.gtceu.common.item.behavior;
 
+import net.minecraft.world.InteractionResult;
+
 import com.gregtechceu.gtceu.api.capability.GTCapabilityHelper;
 import com.gregtechceu.gtceu.api.capability.IElectricItem;
 import com.gregtechceu.gtceu.api.item.component.IAddInformation;
 import com.gregtechceu.gtceu.api.item.component.IInteractionItem;
 import com.gregtechceu.gtceu.api.item.component.prospector.ProspectorMode;
 import com.gregtechceu.gtceu.api.mui.IItemUIHolder;
+import com.gregtechceu.gtceu.common.data.item.GTDataComponents;
 import com.gregtechceu.gtceu.common.mui.GTGuiTextures;
 import com.gregtechceu.gtceu.common.mui.widgets.prospector.ProspectorMapHandler;
 import com.gregtechceu.gtceu.config.ConfigHolder;
 
 import net.minecraft.ChatFormatting;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -33,7 +34,6 @@ import brachy.modularui.widgets.ToggleButton;
 import brachy.modularui.widgets.layout.Flow;
 import brachy.modularui.widgets.textfield.TextFieldWidget;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.Arrays;
 import java.util.List;
@@ -56,16 +56,11 @@ public class ProspectorScannerBehavior implements IItemUIHolder, IInteractionIte
         if (stack.isEmpty()) {
             return this.modes[0];
         }
-        CompoundTag tag = stack.getTag();
-        if (tag == null) {
-            return this.modes[0];
-        }
-        return this.modes[tag.getInt("Mode") % this.modes.length];
+        return modes[stack.getOrDefault(GTDataComponents.SCANNER_MODE, (byte) 0) % modes.length];
     }
 
     public void setNextMode(ItemStack stack) {
-        CompoundTag tag = stack.getOrCreateTag();
-        tag.putInt("Mode", (tag.getInt("Mode") + 1) % this.modes.length);
+        stack.update(GTDataComponents.SCANNER_MODE, (byte) 0, mode -> (byte) ((mode + 1) % modes.length));
     }
 
     public boolean drainEnergy(@NotNull ItemStack stack, boolean simulate) {
@@ -78,25 +73,26 @@ public class ProspectorScannerBehavior implements IItemUIHolder, IInteractionIte
     }
 
     @Override
-    public InteractionResultHolder<ItemStack> use(Item item, Level level, Player player, InteractionHand usedHand) {
+    public InteractionResult use(ItemStack item, Level level, Player player,
+                                                  InteractionHand usedHand) {
         ItemStack heldItem = player.getItemInHand(usedHand);
         if (player.isShiftKeyDown() && this.modes.length > 1) {
-            if (!level.isClientSide) {
+            if (!level.isClientSide()) {
                 setNextMode(heldItem);
                 ProspectorMode<?> mode = getMode(heldItem);
                 player.sendSystemMessage(Component.translatable(mode.unlocalizedName));
             }
-            return InteractionResultHolder.sidedSuccess(heldItem, level.isClientSide);
+            return InteractionResult.SUCCESS.heldItemTransformedTo(heldItem);
         }
-        if (!player.isCreative() && !drainEnergy(heldItem, true)) {
+        if (!player.isCreative() && !drainEnergy(item, true)) {
             player.sendSystemMessage(Component.translatable("behavior.prospector.not_enough_energy"));
-            return InteractionResultHolder.sidedSuccess(heldItem, level.isClientSide);
+            return InteractionResult.SUCCESS.heldItemTransformedTo(heldItem);
         }
         return IItemUIHolder.super.use(item, level, player, usedHand);
     }
 
     @Override
-    public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltipComponents,
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context, List<Component> tooltipComponents,
                                 TooltipFlag isAdvanced) {
         tooltipComponents.add(Component.translatable("behavior.prospector.tooltip.radius", this.radius));
         tooltipComponents.add(Component.translatable("behavior.prospector.tooltip.modes"));

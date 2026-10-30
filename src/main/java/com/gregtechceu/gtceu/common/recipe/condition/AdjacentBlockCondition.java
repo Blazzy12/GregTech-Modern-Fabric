@@ -11,11 +11,11 @@ import com.gregtechceu.gtceu.utils.codec.GTCodecUtils;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderSet;
-import net.minecraft.core.RegistryCodecs;
+import net.minecraft.core.registries.codec.RegistryCodecs;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -26,7 +26,7 @@ import brachy.modularui.api.drawable.Text;
 import brachy.modularui.integration.recipeviewer.RecipeSlotRole;
 import brachy.modularui.integration.recipeviewer.RecipeViewerSlotWidget;
 import brachy.modularui.widgets.layout.Flow;
-import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import lombok.NoArgsConstructor;
 import org.jetbrains.annotations.NotNull;
@@ -39,8 +39,8 @@ import java.util.function.Supplier;
 public class AdjacentBlockCondition extends RecipeCondition<AdjacentBlockCondition> {
 
     // spotless:off
-    public static final Codec<AdjacentBlockCondition> CODEC = RecordCodecBuilder.create(instance -> RecipeCondition.isReverse(instance).and(
-            GTCodecUtils.lazyParsingCodec(RegistryCodecs.homogeneousList(Registries.BLOCK)).listOf()
+    public static final MapCodec<AdjacentBlockCondition> CODEC = RecordCodecBuilder.mapCodec(instance -> RecipeCondition.isReverse(instance).and(
+            GTCodecUtils.lazyParsingCodec(RegistryCodecs.holderSet(Registries.BLOCK)).listOf()
                     .fieldOf("blocks").forGetter(AdjacentBlockCondition::getBlockSuppliers)
     ).apply(instance, AdjacentBlockCondition::new));
     // spotless:on
@@ -80,7 +80,7 @@ public class AdjacentBlockCondition extends RecipeCondition<AdjacentBlockConditi
 
     public static AdjacentBlockCondition fromTags(Collection<TagKey<Block>> tags) {
         return new AdjacentBlockCondition(tags.stream()
-                .<HolderSet<Block>>map(BuiltInRegistries.BLOCK::getOrCreateTag)
+                .<HolderSet<Block>>map(tag -> com.gregtechceu.gtceu.utils.TagUtil.holderSet(BuiltInRegistries.BLOCK, tag))
                 .toList());
     }
 
@@ -91,7 +91,7 @@ public class AdjacentBlockCondition extends RecipeCondition<AdjacentBlockConditi
 
     @Override
     public RecipeConditionType<AdjacentBlockCondition> getType() {
-        return GTRecipeConditions.ADJACENT_BLOCK;
+        return GTRecipeConditions.ADJACENT_BLOCK.value();
     }
 
     @Override
@@ -161,11 +161,11 @@ public class AdjacentBlockCondition extends RecipeCondition<AdjacentBlockConditi
         if (recipe != null && recipe.data.contains("blockA") && recipe.data.contains("blockB")) {
             this.resolvedBlocks.clear();
 
-            Block blockA = BuiltInRegistries.BLOCK.get(ResourceLocation.parse(recipe.data.getString("blockA")));
+            Block blockA = BuiltInRegistries.BLOCK.getValue(Identifier.parse(recipe.data.getStringOr("blockA", "")));
             if (!blockA.defaultBlockState().isAir()) {
                 this.resolvedBlocks.add(HolderSet.direct(blockA.builtInRegistryHolder()));
             }
-            Block blockB = BuiltInRegistries.BLOCK.get(ResourceLocation.parse(recipe.data.getString("blockB")));
+            Block blockB = BuiltInRegistries.BLOCK.getValue(Identifier.parse(recipe.data.getStringOr("blockB", "")));
             if (!blockB.defaultBlockState().isAir()) {
                 this.resolvedBlocks.add(HolderSet.direct(blockB.builtInRegistryHolder()));
             }

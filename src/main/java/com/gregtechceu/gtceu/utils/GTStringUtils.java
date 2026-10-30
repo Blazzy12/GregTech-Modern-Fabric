@@ -1,16 +1,14 @@
 package com.gregtechceu.gtceu.utils;
 
 import net.minecraft.ChatFormatting;
-import net.minecraft.Util;
+import net.minecraft.util.Util;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.ComponentContents;
-import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.network.chat.*;
+import net.minecraft.network.chat.contents.PlainTextContents;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.properties.Property;
-import net.minecraftforge.fluids.FluidStack;
+import com.gregtechceu.gtceu.compat.fluids.FluidStack;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -34,8 +32,8 @@ public class GTStringUtils {
     @NotNull
     @SuppressWarnings("deprecation")
     public static String itemStackToString(@NotNull ItemStack stack) {
-        ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(stack.getItem());
-        return stack.getCount() + "x_" + itemId.getNamespace() + "_" + itemId.getPath();
+        Identifier itemId = BuiltInRegistries.ITEM.getKey(stack.getItem());
+        return stack.getCount() + "x_" + itemId.toDebugFileName();
     }
 
     public static int parseInt(String s, int defaultValue) {
@@ -53,7 +51,7 @@ public class GTStringUtils {
     @NotNull
     @SuppressWarnings("deprecation")
     public static String fluidStackToString(@NotNull FluidStack stack) {
-        ResourceLocation fluidId = BuiltInRegistries.FLUID.getKey(stack.getFluid());
+        Identifier fluidId = BuiltInRegistries.FLUID.getKey(stack.getFluid());
         return stack.getAmount() + "x_" + fluidId.getNamespace() + "_" + fluidId.getPath();
     }
 
@@ -112,7 +110,7 @@ public class GTStringUtils {
 
     public static void append(List<MutableComponent> components, @Nullable String s) {
         if (s != null)
-            GTUtil.getLast(components).append(s);
+            components.getLast().append(s);
     }
 
     public static void append(List<MutableComponent> components, char c) {
@@ -123,8 +121,8 @@ public class GTStringUtils {
         if (lines == null) return;
         if (lines.isEmpty()) return;
         for (Component line : lines) {
-            GTUtil.getLast(components).append(line);
-            components.add(MutableComponent.create(ComponentContents.EMPTY));
+            components.getLast().append(line);
+            components.add(MutableComponent.create(PlainTextContents.EMPTY));
         }
         components.remove(components.size() - 1);
     }
@@ -144,22 +142,26 @@ public class GTStringUtils {
         return out.get(0);
     }
 
-    public static Component toComponent(ListTag arr) {
+    public static Component toCompactedComponent(List<String> list) {
         MutableComponent component = Component.literal("[");
-        if (arr.size() <= 5) {
-            for (int i = 0; i < arr.size(); i++) {
-                component.append(Component.literal('"' + arr.getString(i) + '"').withStyle(ChatFormatting.DARK_AQUA));
-                if (i != arr.size() - 1) component.append(", ");
+        if (list.size() <= 5) {
+            for (int i = 0; i < list.size(); i++) {
+                component.append(Component.literal('"' + list.get(i) + '"').withStyle(ChatFormatting.DARK_AQUA));
+                if (i != list.size() - 1) {
+                    component.append(ComponentUtils.DEFAULT_NO_STYLE_SEPARATOR);
+                }
             }
         } else {
             for (int i = 0; i < 2; i++) {
-                component.append(Component.literal('"' + arr.getString(i) + '"').withStyle(ChatFormatting.DARK_AQUA));
-                component.append(", ");
+                component.append(Component.literal('"' + list.get(i) + '"').withStyle(ChatFormatting.DARK_AQUA));
+                component.append(ComponentUtils.DEFAULT_NO_STYLE_SEPARATOR);
             }
-            component.append("..., ");
-            for (int i = arr.size() - 2; i < arr.size(); i++) {
-                component.append(Component.literal('"' + arr.getString(i) + '"').withStyle(ChatFormatting.DARK_AQUA));
-                if (i != arr.size() - 1) component.append(", ");
+            component.append(CommonComponents.ELLIPSIS).append(ComponentUtils.DEFAULT_NO_STYLE_SEPARATOR);
+            for (int i = list.size() - 2; i < list.size(); i++) {
+                component.append(Component.literal('"' + list.get(i) + '"').withStyle(ChatFormatting.DARK_AQUA));
+                if (i != list.size() - 1) {
+                    component.append(ComponentUtils.DEFAULT_NO_STYLE_SEPARATOR);
+                }
             }
         }
         component.append("]");

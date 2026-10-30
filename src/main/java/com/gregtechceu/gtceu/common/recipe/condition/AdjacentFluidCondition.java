@@ -11,23 +11,23 @@ import com.gregtechceu.gtceu.utils.codec.GTCodecUtils;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderSet;
-import net.minecraft.core.RegistryCodecs;
+import net.minecraft.core.registries.codec.RegistryCodecs;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.FluidState;
-import net.minecraftforge.fluids.FluidStack;
+import com.gregtechceu.gtceu.compat.fluids.FluidStack;
 
 import brachy.modularui.api.drawable.Text;
 import brachy.modularui.integration.recipeviewer.RecipeSlotRole;
 import brachy.modularui.integration.recipeviewer.RecipeViewerSlotWidget;
 import brachy.modularui.integration.recipeviewer.entry.fluid.FluidStackList;
 import brachy.modularui.widgets.layout.Flow;
-import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import lombok.NoArgsConstructor;
 import org.jetbrains.annotations.NotNull;
@@ -40,8 +40,8 @@ import java.util.function.Supplier;
 public class AdjacentFluidCondition extends RecipeCondition<AdjacentFluidCondition> {
 
     // spotless:off
-    public static final Codec<AdjacentFluidCondition> CODEC = RecordCodecBuilder.create(instance -> RecipeCondition.isReverse(instance).and(
-            GTCodecUtils.lazyParsingCodec(RegistryCodecs.homogeneousList(Registries.FLUID)).listOf()
+    public static final MapCodec<AdjacentFluidCondition> CODEC = RecordCodecBuilder.mapCodec(instance -> RecipeCondition.isReverse(instance).and(
+            GTCodecUtils.lazyParsingCodec(RegistryCodecs.holderSet(Registries.FLUID)).listOf()
                     .fieldOf("fluids").forGetter(AdjacentFluidCondition::getFluidSuppliers)
     ).apply(instance, AdjacentFluidCondition::new));
     // spotless:on
@@ -84,7 +84,7 @@ public class AdjacentFluidCondition extends RecipeCondition<AdjacentFluidConditi
 
     public static AdjacentFluidCondition fromTags(Collection<TagKey<Fluid>> tags) {
         return new AdjacentFluidCondition(tags.stream()
-                .<HolderSet<Fluid>>map(BuiltInRegistries.FLUID::getOrCreateTag)
+                .<HolderSet<Fluid>>map(tag -> com.gregtechceu.gtceu.utils.TagUtil.holderSet(BuiltInRegistries.FLUID, tag))
                 .toList());
     }
 
@@ -95,14 +95,14 @@ public class AdjacentFluidCondition extends RecipeCondition<AdjacentFluidConditi
 
     @Override
     public RecipeConditionType<AdjacentFluidCondition> getType() {
-        return GTRecipeConditions.ADJACENT_FLUID;
+        return GTRecipeConditions.ADJACENT_FLUID.value();
     }
 
     @Override
     public Component getTooltips() {
         var tooltips = Component.translatable("recipe.condition.adjacent_fluid.tooltip");
         fluids.forEach(set -> {
-            var id = set.get().get(0).get().getFluidType().getDescription();
+            var id = set.get().get(0).value().getFluidType().getDescription();
             tooltips.append(" ").append(id);
         });
         return tooltips;
@@ -173,11 +173,11 @@ public class AdjacentFluidCondition extends RecipeCondition<AdjacentFluidConditi
         if (recipe != null && recipe.data.contains("fluidA") && recipe.data.contains("fluidB")) {
             this.resolvedFluids.clear();
 
-            Fluid fluidA = BuiltInRegistries.FLUID.get(ResourceLocation.parse(recipe.data.getString("fluidA")));
+            Fluid fluidA = BuiltInRegistries.FLUID.getValue(Identifier.parse(recipe.data.getStringOr("fluidA", "")));
             if (!fluidA.defaultFluidState().isEmpty()) {
                 this.resolvedFluids.add(HolderSet.direct(fluidA.builtInRegistryHolder()));
             }
-            Fluid fluidB = BuiltInRegistries.FLUID.get(ResourceLocation.parse(recipe.data.getString("fluidB")));
+            Fluid fluidB = BuiltInRegistries.FLUID.getValue(Identifier.parse(recipe.data.getStringOr("fluidB", "")));
             if (!fluidB.defaultFluidState().isEmpty()) {
                 this.resolvedFluids.add(HolderSet.direct(fluidB.builtInRegistryHolder()));
             }

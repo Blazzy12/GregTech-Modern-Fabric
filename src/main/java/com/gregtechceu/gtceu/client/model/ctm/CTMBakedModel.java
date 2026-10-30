@@ -1,15 +1,16 @@
 package com.gregtechceu.gtceu.client.model.ctm;
 
-import net.minecraft.client.renderer.RenderType;
-import net.minecraft.client.renderer.block.model.BakedQuad;
-import net.minecraft.client.resources.model.BakedModel;
+import net.minecraft.client.renderer.chunk.ChunkSectionLayer;
+
+import com.gregtechceu.gtceu.compat.client.model.BakedQuad;
+import com.gregtechceu.gtceu.compat.client.model.BakedModel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.util.RandomSource;
-import net.minecraft.world.level.BlockAndTintGetter;
+import net.minecraft.client.renderer.block.BlockAndTintGetter;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.client.model.BakedModelWrapper;
-import net.minecraftforge.client.model.data.ModelData;
+import com.gregtechceu.gtceu.compat.client.model.BakedModelWrapper;
+import com.gregtechceu.gtceu.compat.client.model.data.ModelData;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -30,7 +31,7 @@ public class CTMBakedModel<T extends BakedModel> extends BakedModelWrapper<T> {
     @SuppressWarnings("DataFlowIssue")
     @Override
     public List<BakedQuad> getQuads(@Nullable BlockState state, @Nullable Direction side,
-                                    RandomSource rand, ModelData data, @Nullable RenderType renderType) {
+                                    RandomSource rand, ModelData data, @Nullable ChunkSectionLayer renderType) {
         ModelData parentModelData = data.has(PARENT_MODEL_DATA) ? data.get(PARENT_MODEL_DATA) : data;
         if (state == null || side == null) {
             return super.getQuads(state, side, rand, parentModelData, renderType);

@@ -7,7 +7,6 @@ import com.gregtechceu.gtceu.api.multiblock.util.BlockInfo;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 
-import dev.latvian.mods.rhino.util.HideFromJS;
 import lombok.Getter;
 import org.jetbrains.annotations.ApiStatus;
 
@@ -96,8 +95,7 @@ public abstract class BasePredicate implements SettingsHolder<BasePredicate> {
         return true;
     }
 
-    @HideFromJS
-    @ApiStatus.Internal
+        @ApiStatus.Internal
     public BasePredicate markImmutable() {
         this.mutable = false;
         return this;

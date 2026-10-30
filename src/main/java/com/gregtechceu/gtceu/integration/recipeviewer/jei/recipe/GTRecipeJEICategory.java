@@ -11,20 +11,23 @@ import com.gregtechceu.gtceu.api.recipe.gui.GTRecipeViewerWidget;
 import com.gregtechceu.gtceu.api.registry.GTRegistries;
 import com.gregtechceu.gtceu.common.data.GTRecipeTypes;
 
-import net.minecraft.Util;
+import net.minecraft.util.Util;
 import net.minecraft.network.chat.Component;
 
 import brachy.modularui.integration.jei.JeiIngredientHandler;
 import brachy.modularui.integration.jei.recipe.ModularUIJeiCategory;
 import mezz.jei.api.constants.RecipeTypes;
 import mezz.jei.api.constants.VanillaTypes;
-import mezz.jei.api.forge.ForgeTypes;
 import mezz.jei.api.gui.builder.IRecipeLayoutBuilder;
 import mezz.jei.api.gui.drawable.IDrawable;
 import mezz.jei.api.helpers.IJeiHelpers;
+import com.gregtechceu.gtceu.integration.recipeviewer.jei.JEIFluids;
+
+import mezz.jei.api.fabric.constants.FabricTypes;
 import mezz.jei.api.recipe.IFocusGroup;
 import mezz.jei.api.recipe.RecipeIngredientRole;
 import mezz.jei.api.recipe.RecipeType;
+import mezz.jei.api.recipe.types.IRecipeType;
 import mezz.jei.api.registration.IRecipeCatalystRegistration;
 import mezz.jei.api.registration.IRecipeRegistration;
 import org.jetbrains.annotations.Nullable;
@@ -36,7 +39,7 @@ import java.util.function.Function;
 public class GTRecipeJEICategory extends ModularUIJeiCategory<GTRecipe> {
 
     public static final Function<GTRecipeCategory, RecipeType<GTRecipe>> TYPES = Util
-            .memoize(c -> new RecipeType<>(c.registryKey, GTRecipe.class));
+            .memoize(c -> new RecipeType<>(c.id, GTRecipe.class));
 
     private final GTRecipeCategory category;
 
@@ -52,7 +55,10 @@ public class GTRecipeJEICategory extends ModularUIJeiCategory<GTRecipe> {
 
     @Override
     public Component getTitle() {
-        return Component.translatable(category.getLanguageKey());
+        // categories have no names of their own in GT's lang files; the default ones are named like their type
+        String typeName = net.minecraft.locale.Language.getInstance()
+                .getOrDefault(category.getRecipeType().getTranslationKey());
+        return Component.translatableWithFallback(category.getLanguageKey(), typeName);
     }
 
     @Override
@@ -82,7 +88,8 @@ public class GTRecipeJEICategory extends ModularUIJeiCategory<GTRecipe> {
                     .mapIngredientToEntryList(ItemRecipeCapability.CAP.of(itemContent.content()));
 
             JeiIngredientHandler.toJeiIngredient(mapped).forEach(
-                    stack -> builder.addSlot(RecipeIngredientRole.INPUT).addIngredient(VanillaTypes.ITEM_STACK, stack));
+                    stack -> builder.addInvisibleIngredients(RecipeIngredientRole.INPUT)
+                            .addIngredient(VanillaTypes.ITEM_STACK, stack));
         }
 
         for (var fluidContent : fluidIn) {
@@ -90,15 +97,17 @@ public class GTRecipeJEICategory extends ModularUIJeiCategory<GTRecipe> {
                     .mapIngredientToEntryList(FluidRecipeCapability.CAP.of(fluidContent.content()));
 
             JeiIngredientHandler.toJeiIngredient(mapped).forEach(
-                    stack -> builder.addSlot(RecipeIngredientRole.INPUT).addIngredient(ForgeTypes.FLUID_STACK, stack));
+                    stack -> builder.addInvisibleIngredients(RecipeIngredientRole.INPUT)
+                            .addIngredient(FabricTypes.FLUID_STACK, JEIFluids.of(stack)));
         }
 
         for (var itemContent : itemOut) {
             var mapped = ItemRecipeCapability
                     .mapIngredientToEntryList(ItemRecipeCapability.CAP.of(itemContent.content()));
 
-            JeiIngredientHandler.toJeiIngredient(mapped).forEach(stack -> builder.addSlot(RecipeIngredientRole.OUTPUT)
-                    .addIngredient(VanillaTypes.ITEM_STACK, stack));
+            JeiIngredientHandler.toJeiIngredient(mapped)
+                    .forEach(stack -> builder.addInvisibleIngredients(RecipeIngredientRole.OUTPUT)
+                            .addIngredient(VanillaTypes.ITEM_STACK, stack));
         }
 
         for (var fluidContent : fluidOut) {
@@ -106,7 +115,8 @@ public class GTRecipeJEICategory extends ModularUIJeiCategory<GTRecipe> {
                     .mapIngredientToEntryList(FluidRecipeCapability.CAP.of(fluidContent.content()));
 
             JeiIngredientHandler.toJeiIngredient(mapped).forEach(
-                    stack -> builder.addSlot(RecipeIngredientRole.OUTPUT).addIngredient(ForgeTypes.FLUID_STACK, stack));
+                    stack -> builder.addInvisibleIngredients(RecipeIngredientRole.OUTPUT)
+                            .addIngredient(FabricTypes.FLUID_STACK, JEIFluids.of(stack)));
         }
     }
 
@@ -145,7 +155,7 @@ public class GTRecipeJEICategory extends ModularUIJeiCategory<GTRecipe> {
         }
     }
 
-    public static RecipeType<?> machineType(GTRecipeCategory category) {
+    public static IRecipeType<?> machineType(GTRecipeCategory category) {
         if (category == GTRecipeTypes.FURNACE_RECIPES.getCategory()) return RecipeTypes.SMELTING;
         return TYPES.apply(category);
     }

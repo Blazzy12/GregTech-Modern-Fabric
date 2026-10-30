@@ -1,7 +1,7 @@
 package com.gregtechceu.gtceu.api.transfer.item;
 
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.items.IItemHandler;
+import com.gregtechceu.gtceu.compat.items.IItemHandler;
 
 import org.jetbrains.annotations.NotNull;
 

@@ -3,6 +3,7 @@ package com.gregtechceu.gtceu.common.machine.multiblock.steam;
 import com.gregtechceu.gtceu.api.GTValues;
 import com.gregtechceu.gtceu.api.blockentity.BlockEntityCreationInfo;
 import com.gregtechceu.gtceu.api.capability.recipe.*;
+import com.gregtechceu.gtceu.api.capability.recipe.IO;
 import com.gregtechceu.gtceu.api.machine.MetaMachine;
 import com.gregtechceu.gtceu.api.machine.TickableSubscription;
 import com.gregtechceu.gtceu.api.machine.feature.IMuiMachine;
@@ -10,7 +11,6 @@ import com.gregtechceu.gtceu.api.machine.feature.IVoidable;
 import com.gregtechceu.gtceu.api.machine.multiblock.WorkableMultiblockMachine;
 import com.gregtechceu.gtceu.api.machine.trait.recipe.RecipeLogic;
 import com.gregtechceu.gtceu.api.recipe.GTRecipe;
-import com.gregtechceu.gtceu.api.recipe.ingredient.FluidIngredient;
 import com.gregtechceu.gtceu.api.recipe.modifier.ModifierFunction;
 import com.gregtechceu.gtceu.api.recipe.modifier.RecipeModifier;
 import com.gregtechceu.gtceu.api.sync_system.annotations.SaveField;
@@ -25,9 +25,12 @@ import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.material.Fluids;
+import com.gregtechceu.gtceu.compat.fluids.crafting.SizedFluidIngredient;
 
 import brachy.modularui.api.drawable.Text;
 import brachy.modularui.api.widget.IWidget;
+import brachy.modularui.drawable.GuiTextures;
+import brachy.modularui.drawable.Icon;
 import brachy.modularui.factory.PosGuiData;
 import brachy.modularui.screen.UISettings;
 import brachy.modularui.utils.Alignment;
@@ -38,7 +41,9 @@ import brachy.modularui.value.sync.IntSyncValue;
 import brachy.modularui.value.sync.PanelSyncManager;
 import brachy.modularui.value.sync.StringSyncValue;
 import brachy.modularui.widget.ParentWidget;
+import brachy.modularui.widget.Widget;
 import brachy.modularui.widgets.ButtonWidget;
+import brachy.modularui.widgets.ListWidget;
 import brachy.modularui.widgets.layout.Flow;
 import brachy.modularui.widgets.textfield.TextFieldWidget;
 import lombok.Getter;
@@ -125,28 +130,29 @@ public class LargeBoilerMachine extends WorkableMultiblockMachine implements IMu
                 steamGenerated = 0;
             } else if (maxDrain > 0) { // if maxDrain is 0 because throttle is too low, skip trying to make steam
                 // drain water
-                var drainWater = List.of(FluidIngredient.of(Fluids.WATER, maxDrain));
+                var drainWater = List.of(SizedFluidIngredient.of(Fluids.WATER, maxDrain));
                 List<IRecipeHandler<?>> inputTanks = new ArrayList<>();
                 inputTanks.addAll(getCapabilitiesFlat(IO.IN, FluidRecipeCapability.CAP));
                 inputTanks.addAll(getCapabilitiesFlat(IO.BOTH, FluidRecipeCapability.CAP));
                 for (IRecipeHandler<?> tank : inputTanks) {
-                    drainWater = (List<FluidIngredient>) tank.handleRecipe(IO.IN, null, drainWater, false);
+                    drainWater = (List<SizedFluidIngredient>) tank.handleRecipe(IO.IN, null, drainWater, false);
                     if (drainWater.isEmpty()) {
                         break;
                     }
                 }
-                var drained = drainWater.isEmpty() ? maxDrain : maxDrain - drainWater.get(0).getAmount();
+                var drained = drainWater.isEmpty() ? maxDrain :
+                        maxDrain - drainWater.getFirst().amount();
 
                 steamGenerated = drained * ConfigHolder.INSTANCE.machines.largeBoilers.steamPerWater;
 
                 if (drained > 0) {
                     // fill steam
-                    var fillSteam = List.of(FluidIngredient.of(GTMaterials.Steam.getFluid(steamGenerated)));
+                    var fillSteam = List.of(SizedFluidIngredient.of(GTMaterials.Steam.getFluid(steamGenerated)));
                     List<IRecipeHandler<?>> outputTanks = new ArrayList<>();
                     outputTanks.addAll(getCapabilitiesFlat(IO.OUT, FluidRecipeCapability.CAP));
                     outputTanks.addAll(getCapabilitiesFlat(IO.BOTH, FluidRecipeCapability.CAP));
                     for (IRecipeHandler<?> tank : outputTanks) {
-                        fillSteam = (List<FluidIngredient>) tank.handleRecipe(IO.OUT, null, fillSteam, false);
+                        fillSteam = (List<SizedFluidIngredient>) tank.handleRecipe(IO.OUT, null, fillSteam, false);
                         if (fillSteam.isEmpty()) break;
                     }
                 }
@@ -208,8 +214,28 @@ public class LargeBoilerMachine extends WorkableMultiblockMachine implements IMu
     @Override
     public void buildMainUI(ParentWidget<?> mainWidget, PosGuiData guiData, PanelSyncManager syncManager,
                             UISettings settings) {
-        mainWidget.child(getMainTextPanel(syncManager)
+        mainWidget.child(getMainTextPanel(syncManager, 186, 146)
                 .margin(4, 2));
+    }
+
+    public Widget<?> getMainTextPanel(PanelSyncManager syncManager, int width, int height) {
+        var parentWidget = new ParentWidget<>();
+        var listWidget = new ListWidget<>();
+        listWidget
+                .width(width - 6)
+                .height(height - 6)
+                .childSeparator(Icon.EMPTY_2PX)
+                .crossAxisAlignment(Alignment.CrossAxis.START)
+                .collapseDisabledChildren()
+                .posRel(Alignment.CenterLeft)
+                .left(3)
+                .top(3);
+        parentWidget.size(width, height)
+                .background(GuiTextures.DISPLAY);
+
+        listWidget.children(getWidgetsForDisplay(syncManager));
+        parentWidget.child(listWidget.left(3).top(3));
+        return parentWidget;
     }
 
     @Override
@@ -266,8 +292,8 @@ public class LargeBoilerMachine extends WorkableMultiblockMachine implements IMu
         var textField = new TextFieldWidget() {
 
             @Override
-            public boolean onMouseScrolled(double delta) {
-                int inc = (int) delta * (MouseData.create(-1).shift() ? 5 : 1);
+            public boolean onMouseScrolled(double scrollX, double scrollY) {
+                int inc = (int) ((int) scrollX + scrollY) * (MouseData.create(-1).shift() ? 5 : 1);
                 int val = Mth.clamp(syncValue.getIntValue() + inc, 25, 100);
                 syncValue.setIntValue(val, true, true);
                 return true;

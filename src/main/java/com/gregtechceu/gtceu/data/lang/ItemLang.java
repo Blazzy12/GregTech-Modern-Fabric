@@ -1,8 +1,6 @@
 package com.gregtechceu.gtceu.data.lang;
 
-import com.gregtechceu.gtceu.api.data.tag.TagPrefix;
 import com.gregtechceu.gtceu.api.item.tool.GTToolType;
-import com.gregtechceu.gtceu.api.registry.GTRegistries;
 
 import com.tterrag.registrate.providers.RegistrateLangProvider;
 
@@ -19,39 +17,20 @@ public class ItemLang {
     }
 
     private static void initGeneratedNames(RegistrateLangProvider provider) {
-        // RecipeTypes
-        for (var recipeType : GTRegistries.RECIPE_TYPES) {
-            provider.add(recipeType.registryName.toLanguageKey(), toEnglishName(recipeType.registryName.getPath()));
-        }
-
-        // Recipe Categories
-        provider.add("gtceu.recipe.category.arc_furnace_recycling", "Arc Scrapping");
-        provider.add("gtceu.recipe.category.macerator_recycling", "Part Grinding");
-        provider.add("gtceu.recipe.category.extractor_recycling", "Scrap Remelting");
-        provider.add("gtceu.recipe.category.ore_crushing", "Ore Grinding");
-        provider.add("gtceu.recipe.category.ore_forging", "Ore Crushing");
-        provider.add("gtceu.recipe.category.ore_bathing", "Ore Treating");
-        provider.add("gtceu.recipe.category.chem_dyes", "Chemical Dyeing");
-        provider.add("gtceu.recipe.category.ingot_molding", "Metal Molding");
-
-        // TagPrefix
-        for (TagPrefix tagPrefix : TagPrefix.values()) {
-            provider.add(tagPrefix.getUnlocalizedName(), tagPrefix.langValue);
-        }
         // GTToolType
         for (GTToolType toolType : GTToolType.getTypes().values()) {
             provider.add(toolType.getUnlocalizedName(), toEnglishName(toolType.name));
         }
 
-        provider.add("tagprefix.polymer.plate", "%s Sheet");
-        provider.add("tagprefix.polymer.foil", "Thin %s Sheet");
-        provider.add("tagprefix.polymer.nugget", "%s Chip");
-        provider.add("tagprefix.polymer.dense_plate", "Dense %s Sheet");
-        provider.add("tagprefix.polymer.double_plate", "Double %s Sheet");
-        provider.add("tagprefix.polymer.tiny_dust", "Tiny Pile of %s Pulp");
-        provider.add("tagprefix.polymer.small_dust", "Small Pile of %s Pulp");
-        provider.add("tagprefix.polymer.dust", "%s Pulp");
-        provider.add("tagprefix.polymer.ingot", "%s Ingot");
+        provider.add("tag_prefix.gtceu.plate.polymer", "%s Sheet");
+        provider.add("tag_prefix.gtceu.foil.polymer", "Thin %s Sheet");
+        provider.add("tag_prefix.gtceu.nugget.polymer", "%s Chip");
+        provider.add("tag_prefix.gtceu.dense_plate.polymer", "Dense %s Sheet");
+        provider.add("tag_prefix.gtceu.double_plate.polymer", "Double %s Sheet");
+        provider.add("tag_prefix.gtceu.tiny_dust.polymer", "Tiny Pile of %s Pulp");
+        provider.add("tag_prefix.gtceu.small_dust.polymer", "Small Pile of %s Pulp");
+        provider.add("tag_prefix.gtceu.dust.polymer", "%s Pulp");
+        provider.add("tag_prefix.gtceu.ingot.polymer", "%s Ingot");
     }
 
     private static void initItemNames(RegistrateLangProvider provider) {
@@ -67,19 +46,19 @@ public class ItemLang {
         provider.add("item.gtceu.bottle_casting_mold.tooltip", "§7Mold for making Bottles");
         provider.add("item.gtceu.ingot_casting_mold.tooltip", "§7Mold for making Ingots");
         provider.add("item.gtceu.ball_casting_mold.tooltip", "§7Mold for making Balls");
+        provider.add("item.gtceu.tiny_pipe_casting_mold.tooltip", "§7Mold for making tiny Pipes");
+        provider.add("item.gtceu.small_pipe_casting_mold.tooltip", "§7Mold for making small Pipes");
+        provider.add("item.gtceu.normal_pipe_casting_mold.tooltip", "§7Mold for making Pipes");
+        provider.add("item.gtceu.large_pipe_casting_mold.tooltip", "§7Mold for making large Pipes");
+        provider.add("item.gtceu.huge_pipe_casting_mold.tooltip", "§7Mold for making full Block Pipes");
         provider.add("item.gtceu.block_casting_mold.tooltip", "§7Mold for making Blocks");
         provider.add("item.gtceu.nugget_casting_mold.tooltip", "§7Mold for making Nuggets");
         provider.add("item.gtceu.cylinder_casting_mold.tooltip", "§7Mold for shaping Cylinders");
         provider.add("item.gtceu.anvil_casting_mold.tooltip", "§7Mold for shaping Anvils");
         provider.add("item.gtceu.name_casting_mold.tooltip",
                 "§7Mold for naming Items in the Forming Press (rename Mold with Anvil)");
-        provider.add("item.gtceu.gear_casting_mold.small.tooltip", "§7Mold for making small Gears");
+        provider.add("item.gtceu.small_gear_casting_mold.tooltip", "§7Mold for making small Gears");
         provider.add("item.gtceu.rotor_casting_mold.tooltip", "§7Mold for making Rotors");
-        provider.add("item.gtceu.pipe.tiny_casting_mold.tooltip", "§7Mold for making tiny Pipes");
-        provider.add("item.gtceu.pipe.small_casting_mold.tooltip", "§7Mold for making small Pipes");
-        provider.add("item.gtceu.pipe.normal_casting_mold.tooltip", "§7Mold for making Pipes");
-        provider.add("item.gtceu.pipe.large_casting_mold.tooltip", "§7Mold for making large Pipes");
-        provider.add("item.gtceu.pipe.huge_casting_mold.tooltip", "§7Mold for making full Block Pipes");
         provider.add("item.gtceu.plate_extruder_mold.tooltip", "§7Extruder Shape for making Plates");
         provider.add("item.gtceu.rod_extruder_mold.tooltip", "§7Extruder Shape for making Rods");
         provider.add("item.gtceu.bolt_extruder_mold.tooltip", "§7Extruder Shape for making Bolts");
@@ -89,11 +68,11 @@ public class ItemLang {
                 "§7Extruder Shape for, wait, can't we just use a Furnace?");
         provider.add("item.gtceu.wire_extruder_mold.tooltip", "§7Extruder Shape for making Wires");
         provider.add("item.gtceu.casing_extruder_mold.tooltip", "§7Extruder Shape for making Item Casings");
-        provider.add("item.gtceu.pipe.tiny_extruder_mold.tooltip", "§7Extruder Shape for making tiny Pipes");
-        provider.add("item.gtceu.pipe.small_extruder_mold.tooltip", "§7Extruder Shape for making small Pipes");
-        provider.add("item.gtceu.pipe.normal_extruder_mold.tooltip", "§7Extruder Shape for making Pipes");
-        provider.add("item.gtceu.pipe.large_extruder_mold.tooltip", "§7Extruder Shape for making large Pipes");
-        provider.add("item.gtceu.pipe.huge_extruder_mold.tooltip", "§7Extruder Shape for making full Block Pipes");
+        provider.add("item.gtceu.tiny_pipe_extruder_mold.tooltip", "§7Extruder Shape for making tiny Pipes");
+        provider.add("item.gtceu.small_pipe_extruder_mold.tooltip", "§7Extruder Shape for making small Pipes");
+        provider.add("item.gtceu.normal_pipe_extruder_mold.tooltip", "§7Extruder Shape for making Pipes");
+        provider.add("item.gtceu.large_pipe_extruder_mold.tooltip", "§7Extruder Shape for making large Pipes");
+        provider.add("item.gtceu.huge_pipe_extruder_mold.tooltip", "§7Extruder Shape for making full Block Pipes");
         provider.add("item.gtceu.block_extruder_mold.tooltip", "§7Extruder Shape for making Blocks");
         provider.add("item.gtceu.sword_extruder_mold.tooltip", "§7Extruder Shape for making Swords");
         provider.add("item.gtceu.pickaxe_extruder_mold.tooltip", "§7Extruder Shape for making Pickaxes");
@@ -105,9 +84,9 @@ public class ItemLang {
         provider.add("item.gtceu.saw_extruder_mold.tooltip", "§7Extruder Shape for making Saws");
         provider.add("item.gtceu.gear_extruder_mold.tooltip", "§7Extruder Shape for making Gears");
         provider.add("item.gtceu.bottle_extruder_mold.tooltip", "§7Extruder Shape for making Bottles");
-        provider.add("item.gtceu.gear_small_extruder_mold.tooltip", "§7Extruder Shape for making Small Gears");
+        provider.add("item.gtceu.small_gear_extruder_mold.tooltip", "§7Extruder Shape for making Small Gears");
         provider.add("item.gtceu.foil_extruder_mold.tooltip", "§7Extruder Shape for making Foils from Non-Metals");
-        provider.add("item.gtceu.rod_long_extruder_mold.tooltip", "§7Extruder Shape for making Long Rods");
+        provider.add("item.gtceu.long_rod_extruder_mold.tooltip", "§7Extruder Shape for making Long Rods"); // unused
         provider.add("item.gtceu.rotor_extruder_mold.tooltip", "§7Extruder Shape for making Rotors");
         provider.add("item.gtceu.empty_spray_can.tooltip", "§7Can be filled with sprays of various colors");
         provider.add("fluid_cell.empty", "Empty");
@@ -304,7 +283,7 @@ public class ItemLang {
                 "§7Filters §fFluid§7 I/O as §fCover§7.\nCan be used as an §fElectric Pump§7 and §fFluid Regulator§7 upgrade.");
         multilineLang(provider, "item.gtceu.fluid_tag_filter.tooltip",
                 "§7Filters §fFluid§7 I/O with §fFluid Tags§7 as §fCover§7.\nCan be used as an §fElectric Pump§7 and §fFluid Regulator§7 upgrade.");
-        multilineLang(provider, "item.gtceu.item_smart_filter.tooltip",
+        multilineLang(provider, "item.gtceu.smart_item_filter.tooltip",
                 "§7Filters §fItem§7 I/O with §fMachine Recipes§7 as §fCover§7.\nCan be used as a §fConveyor Module§7 and §fRobotic Arm§7 upgrade.");
         provider.add("item.gtceu.machine_controller.tooltip", "§7Turns Machines §fON/OFF§7 as §fCover§7.");
         provider.add("item.gtceu.activity_detector_cover.tooltip",
@@ -350,7 +329,7 @@ public class ItemLang {
         provider.add("item.gtceu.basic_tape.tooltip",
                 "§7Not strong enough for mechanical issues\nCan be used to pick up crates without dropping their items");
         provider.add("item.gtceu.terminal.tooltip",
-                "Shift + R-Click on a controller to automatically build a multiblock with items from your inventory");
+                "Shift + R-Click on a controller to automatically build the multiblock");
 
         provider.add("item.gtceu.sus_record.desc", "sussy!");
     }

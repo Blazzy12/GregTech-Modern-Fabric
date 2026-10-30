@@ -22,7 +22,6 @@ import com.gregtechceu.gtceu.common.machine.multiblock.part.hpca.HPCAComponentPa
 import com.gregtechceu.gtceu.common.machine.trait.hpca.HPCAComponentTrait;
 import com.gregtechceu.gtceu.common.machine.trait.hpca.HPCAComputationProviderTrait;
 import com.gregtechceu.gtceu.common.machine.trait.hpca.HPCACoolantProviderTrait;
-import com.gregtechceu.gtceu.common.mui.GTByteBufAdapters;
 import com.gregtechceu.gtceu.common.mui.GTGuiTextures;
 import com.gregtechceu.gtceu.common.mui.GTMultiblockTextUtil;
 import com.gregtechceu.gtceu.config.ConfigHolder;
@@ -30,24 +29,26 @@ import com.gregtechceu.gtceu.utils.GTStringUtils;
 import com.gregtechceu.gtceu.utils.GTTransferUtils;
 
 import net.minecraft.ChatFormatting;
-import net.minecraft.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.capability.IFluidHandler;
+import com.gregtechceu.gtceu.compat.fluids.FluidStack;
+import com.gregtechceu.gtceu.compat.fluids.capability.IFluidHandler;
 
 import brachy.modularui.api.drawable.IDrawable;
 import brachy.modularui.api.drawable.Text;
 import brachy.modularui.api.widget.IWidget;
 import brachy.modularui.screen.RichTooltip;
+import brachy.modularui.utils.serialization.network.ByteBufAdapters;
 import brachy.modularui.value.sync.GenericSyncValue;
-import brachy.modularui.value.sync.LongSyncValue;
 import brachy.modularui.value.sync.PanelSyncManager;
 import brachy.modularui.widgets.TextWidget;
 import brachy.modularui.widgets.layout.Grid;
@@ -251,8 +252,9 @@ public class HPCAMachine extends WorkableElectricMultiblockMachine
                         isFlipped());
             }
         }
-        GenericSyncValue<Component> text = GenericSyncValue.builder(Component.class)
-                .adapter(GTByteBufAdapters.COMPONENT)
+        GenericSyncValue<RegistryFriendlyByteBuf, Component> text = GenericSyncValue
+                .<RegistryFriendlyByteBuf, Component>builder(Component.class)
+                .adapter(ByteBufAdapters.COMPONENT)
                 .getter(() -> {
                     List<Component> list = new ArrayList<>();
                     hpcaHandler.addErrors(list);
@@ -262,16 +264,12 @@ public class HPCAMachine extends WorkableElectricMultiblockMachine
                 })
                 .build();
         syncManager.syncValue("text", text);
-
-        LongSyncValue currentEUt = new LongSyncValue(hpcaHandler::getCurrentEUt);
-        syncManager.syncValue("currentEUt", currentEUt);
-
         List<IWidget> widgets = new ArrayList<>();
         widgets.add(GTMultiblockTextUtil.addUnformedWarning(this, syncManager));
         widgets.add(GTMultiblockTextUtil.addWorkingStatusLine(this, syncManager,
                 () -> Component.translatable("gtceu.multiblock.running").withStyle(ChatFormatting.GREEN),
                 () -> Component.translatable("gtceu.multiblock.hpca.error_power").withStyle(ChatFormatting.RED)));
-        widgets.add(GTMultiblockTextUtil.addEnergyUsageExactLine(this, syncManager, currentEUt));
+        widgets.add(GTMultiblockTextUtil.addEnergyUsageExactLine(this, syncManager));
         widgets.addAll(GTMultiblockTextUtil.addRecipeFailReasonLines(this, syncManager));
         widgets.add(new TextWidget<>(Text.dynamic(text::getValue)));
         widgets.add(new Grid()
@@ -294,7 +292,7 @@ public class HPCAMachine extends WorkableElectricMultiblockMachine
     // int startY = 59;
     //
     // // we need to know what components we have on the client
-    // if (getLevel().isClientSide) {
+    // if (getLevel().isClientSide()) {
     // if (isFormed) {
     // hpcaHandler.tryGatherClientComponents(this.getLevel(), this.getPos(), this.getFrontFacing(),
     // this.getUpwardsFacing(), this.isFlipped);
@@ -525,7 +523,7 @@ public class HPCAMachine extends WorkableElectricMultiblockMachine
                 int remainingCoolant = maxCoolantDrain;
                 for (var fluid : BuiltInRegistries.FLUID.getTagOrEmpty(HPCA_COOLANTS)) {
                     FluidStack drained = GTTransferUtils.drainFluidAccountNotifiableList(coolantTank,
-                            new FluidStack(fluid.get(), remainingCoolant), IFluidHandler.FluidAction.EXECUTE);
+                            new FluidStack(fluid, remainingCoolant), IFluidHandler.FluidAction.EXECUTE);
                     remainingCoolant -= drained.getAmount();
                     if (remainingCoolant <= 0) break;
                 }
@@ -545,7 +543,7 @@ public class HPCAMachine extends WorkableElectricMultiblockMachine
                 int remainingCoolant = coolantToDrain;
                 for (var fluid : BuiltInRegistries.FLUID.getTagOrEmpty(HPCA_COOLANTS)) {
                     FluidStack drained = GTTransferUtils.drainFluidAccountNotifiableList(coolantTank,
-                            new FluidStack(fluid.get(), remainingCoolant), IFluidHandler.FluidAction.EXECUTE);
+                            new FluidStack(fluid, remainingCoolant), IFluidHandler.FluidAction.EXECUTE);
                     remainingCoolant -= drained.getAmount();
                     if (remainingCoolant <= 0) break;
                 }
@@ -764,7 +762,7 @@ public class HPCAMachine extends WorkableElectricMultiblockMachine
             if (components.get(index).getMachine() instanceof HPCAComponentPartMachine componentPartMachine) {
                 ItemStack stack = componentPartMachine.getDefinition().asStack();
                 RichTooltip tooltip = new RichTooltip();
-                stack.getTooltipLines(null, TooltipFlag.NORMAL).forEach(tooltip::addLine);
+                stack.getTooltipLines(Item.TooltipContext.EMPTY, null, TooltipFlag.NORMAL).forEach(tooltip::addLine);
                 return tooltip;
             }
             return new RichTooltip();

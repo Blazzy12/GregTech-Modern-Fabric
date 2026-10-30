@@ -3,13 +3,15 @@ package com.gregtechceu.gtceu.api.item.module;
 import com.gregtechceu.gtceu.api.GTValues;
 import com.gregtechceu.gtceu.api.capability.GTCapabilityHelper;
 
+import net.minecraft.core.Holder;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 
 import lombok.Getter;
 import lombok.Setter;
 import org.jetbrains.annotations.ApiStatus;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Locale;
 
@@ -19,11 +21,11 @@ public abstract class TieredItemModule extends ItemModule implements ITieredItem
     private final int tier;
     @Getter
     @Setter(onMethod_ = @ApiStatus.Internal)
-    private ItemModule[] otherTierModules;
+    private @Nullable Holder<ItemModule>[] otherTierModules;
 
-    private final ResourceLocation baseLocation;
+    private final Identifier baseLocation;
 
-    public TieredItemModule(ResourceLocation id, int tier) {
+    public TieredItemModule(Identifier id, int tier) {
         super(id);
         this.tier = tier;
         this.baseLocation = getId().withPath(p -> p.replaceFirst(GTValues.VN[tier].toLowerCase(Locale.ROOT) + "_", ""));
@@ -33,7 +35,10 @@ public abstract class TieredItemModule extends ItemModule implements ITieredItem
     public boolean canApplyTo(ItemStack stack) {
         IModularItem modularItem = GTCapabilityHelper.getModularItem(stack);
         if (modularItem == null) return false;
-        for (ItemModule module : otherTierModules) if (modularItem.getModuleContext(module) != null) return false;
+        for (Holder<ItemModule> module : otherTierModules) {
+            if (module == null) continue;
+            if (modularItem.getModuleContext(module.value()) != null) return false;
+        }
         return super.canApplyTo(stack);
     }
 

@@ -5,27 +5,24 @@ import com.gregtechceu.gtceu.api.data.worldgen.generator.IndicatorGenerator;
 import com.gregtechceu.gtceu.api.data.worldgen.ores.GeneratedVeinMetadata;
 import com.gregtechceu.gtceu.api.data.worldgen.ores.OreIndicatorPlacer;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.state.BlockState;
 
 import com.mojang.datafixers.util.Either;
-import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
+import lombok.NoArgsConstructor;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Collections;
 import java.util.Map;
 
-import javax.annotation.ParametersAreNonnullByDefault;
-
-@MethodsReturnNonnullByDefault
-@ParametersAreNonnullByDefault
+@NoArgsConstructor
 public class NoopIndicatorGenerator extends IndicatorGenerator {
 
     public static final NoopIndicatorGenerator INSTANCE = new NoopIndicatorGenerator();
-    public static final Codec<NoopIndicatorGenerator> CODEC = Codec.unit(() -> INSTANCE);
+    public static final MapCodec<NoopIndicatorGenerator> CODEC = MapCodec.unit(() -> INSTANCE);
 
     @Override
     public Map<ChunkPos, OreIndicatorPlacer> generate(WorldGenLevel level, RandomSource random,
@@ -46,7 +43,7 @@ public class NoopIndicatorGenerator extends IndicatorGenerator {
     }
 
     @Override
-    public Codec<? extends IndicatorGenerator> codec() {
+    public MapCodec<? extends IndicatorGenerator> codec() {
         return CODEC;
     }
 }

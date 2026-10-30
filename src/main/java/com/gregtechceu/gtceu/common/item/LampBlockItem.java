@@ -1,26 +1,26 @@
 package com.gregtechceu.gtceu.common.item;
 
-import com.gregtechceu.gtceu.client.renderer.item.LampItemRenderer;
 import com.gregtechceu.gtceu.common.block.LampBlock;
+import com.gregtechceu.gtceu.common.data.item.GTDataComponents;
 
-import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
 import net.minecraft.core.NonNullList;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.client.extensions.common.IClientItemExtensions;
+import com.gregtechceu.gtceu.compat.client.extensions.common.IClientItemExtensions;
 
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
+import io.netty.buffer.ByteBuf;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Consumer;
 
 import javax.annotation.ParametersAreNonnullByDefault;
-
-import static com.gregtechceu.gtceu.common.block.LampBlock.isBloomEnabled;
-import static com.gregtechceu.gtceu.common.block.LampBlock.isInverted;
-import static com.gregtechceu.gtceu.common.block.LampBlock.isLightEnabled;
 
 @ParametersAreNonnullByDefault
 public class LampBlockItem extends BlockItem {
@@ -39,17 +39,12 @@ public class LampBlockItem extends BlockItem {
         BlockState state = super.getPlacementState(context);
         if (state == null) return null;
 
-        return getStateFromStack(context.getItemInHand(), state);
-    }
-
-    public BlockState getStateFromStack(ItemStack stack, BlockState baseState) {
-        if (!stack.hasTag() || !stack.is(this)) {
-            return baseState;
-        }
-        var tag = stack.getTag();
-        return baseState.setValue(LampBlock.INVERTED, isInverted(tag))
-                .setValue(LampBlock.BLOOM, isBloomEnabled(tag))
-                .setValue(LampBlock.LIGHT, isLightEnabled(tag));
+        LampBlockItem.LampData data = context.getItemInHand().getOrDefault(GTDataComponents.LAMP_DATA,
+                LampBlockItem.LampData.EMPTY);
+        return getBlock().defaultBlockState()
+                .setValue(LampBlock.INVERTED, data.inverted())
+                .setValue(LampBlock.BLOOM, data.bloom())
+                .setValue(LampBlock.LIGHT, data.lit());
     }
 
     public void fillItemCategory(CreativeModeTab category, NonNullList<ItemStack> items) {
@@ -58,14 +53,19 @@ public class LampBlockItem extends BlockItem {
         }
     }
 
-    @Override
-    public void initializeClient(Consumer<IClientItemExtensions> consumer) {
-        consumer.accept(new IClientItemExtensions() {
+    // Lamp item rendering (LampItemRenderer) moves to a special item model in the client port.
 
-            @Override
-            public BlockEntityWithoutLevelRenderer getCustomRenderer() {
-                return LampItemRenderer.getInstance();
-            }
-        });
+    public record LampData(boolean inverted, boolean bloom, boolean lit) {
+
+        public static final LampData EMPTY = new LampData(false, false, false);
+        public static final Codec<LampData> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+                Codec.BOOL.fieldOf("inverted").forGetter(LampData::inverted),
+                Codec.BOOL.fieldOf("bloom").forGetter(LampData::bloom),
+                Codec.BOOL.fieldOf("lit").forGetter(LampData::lit)).apply(instance, LampData::new));
+        public static final StreamCodec<ByteBuf, LampData> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.BOOL, LampData::inverted,
+                ByteBufCodecs.BOOL, LampData::bloom,
+                ByteBufCodecs.BOOL, LampData::lit,
+                LampData::new);
     }
 }

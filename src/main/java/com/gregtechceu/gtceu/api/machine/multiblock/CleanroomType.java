@@ -26,7 +26,7 @@ public class CleanroomType {
     private final int tier;
     private final String translationKey;
 
-    public CleanroomType(@NotNull String name, int tier, @NotNull String translationKey) {
+    public CleanroomType(String name, int tier, String translationKey) {
         if (CLEANROOM_TYPES.get(name) != null)
             throw new IllegalArgumentException(
                     String.format("CleanroomType with name %s is already registered!", name));

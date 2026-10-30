@@ -2,6 +2,7 @@ package com.gregtechceu.gtceu.api.recipe;
 
 import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.api.capability.recipe.*;
+import com.gregtechceu.gtceu.api.capability.recipe.IO;
 import com.gregtechceu.gtceu.api.machine.trait.recipe.RecipeHandlerGroup;
 import com.gregtechceu.gtceu.api.machine.trait.recipe.RecipeHandlerGroupColor;
 import com.gregtechceu.gtceu.api.machine.trait.recipe.RecipeHandlerGroupDistinctness;
@@ -10,21 +11,26 @@ import com.gregtechceu.gtceu.api.machine.trait.recipe.RecipeLogic;
 import com.gregtechceu.gtceu.api.recipe.condition.RecipeConditionType;
 import com.gregtechceu.gtceu.api.recipe.content.Content;
 import com.gregtechceu.gtceu.api.recipe.ingredient.EnergyStack;
-import com.gregtechceu.gtceu.api.recipe.ingredient.FluidIngredient;
+import com.gregtechceu.gtceu.api.recipe.ingredient.ExDataComponentFluidIngredient;
 import com.gregtechceu.gtceu.api.recipe.ingredient.IRangedIngredient;
 import com.gregtechceu.gtceu.config.ConfigHolder;
 import com.gregtechceu.gtceu.data.recipe.builder.GTRecipeBuilder;
 import com.gregtechceu.gtceu.utils.GTUtil;
+import com.gregtechceu.gtceu.utils.TagUtil;
 
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.fluids.FluidStack;
+import net.minecraft.world.item.crafting.Ingredient;
+import com.gregtechceu.gtceu.compat.common.crafting.DataComponentIngredient;
+import com.gregtechceu.gtceu.compat.common.crafting.SizedIngredient;
+import com.gregtechceu.gtceu.compat.fluids.FluidStack;
+import com.gregtechceu.gtceu.compat.fluids.crafting.FluidIngredient;
+import com.gregtechceu.gtceu.compat.fluids.crafting.SizedFluidIngredient;
 
-import it.unimi.dsi.fastutil.objects.Object2IntMap;
-import it.unimi.dsi.fastutil.objects.Reference2IntMap;
-import it.unimi.dsi.fastutil.objects.Reference2ObjectArrayMap;
-import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.Pair;
+import it.unimi.dsi.fastutil.objects.*;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -120,7 +126,7 @@ public class RecipeHelper {
     public static List<FluidStack> getInputFluids(GTRecipe recipe) {
         return recipe.getInputContents(FluidRecipeCapability.CAP).stream()
                 .map(content -> FluidRecipeCapability.CAP.of(content.content()))
-                .map(ingredient -> ingredient.getStacks()[0])
+                .map(ingredient -> ingredient.getFluids()[0])
                 .collect(Collectors.toList());
     }
 
@@ -159,7 +165,7 @@ public class RecipeHelper {
     public static List<FluidStack> getOutputFluids(GTRecipe recipe) {
         return recipe.getOutputContents(FluidRecipeCapability.CAP).stream()
                 .map(content -> FluidRecipeCapability.CAP.of(content.content()))
-                .map(ingredient -> ingredient.getStacks()[0])
+                .map(ingredient -> ingredient.getFluids()[0])
                 .collect(Collectors.toList());
     }
 
@@ -172,7 +178,7 @@ public class RecipeHelper {
     public static List<FluidStack> getOutputFluids(GTRecipeBuilder builder) {
         return builder.output.getOrDefault(FluidRecipeCapability.CAP, Collections.emptyList()).stream()
                 .map(content -> FluidRecipeCapability.CAP.of(content.content()))
-                .map(ingredient -> ingredient.getStacks()[0])
+                .map(ingredient -> ingredient.getFluids()[0])
                 .collect(Collectors.toList());
     }
 
@@ -256,8 +262,8 @@ public class RecipeHelper {
      */
     public static ActionResult checkConditions(GTRecipe recipe, @NotNull RecipeLogic recipeLogic) {
         if (recipe.conditions.isEmpty()) return ActionResult.SUCCESS;
-        Map<RecipeConditionType<?>, List<RecipeCondition>> or = new Reference2ObjectArrayMap<>();
-        for (RecipeCondition condition : recipe.conditions) {
+        Map<RecipeConditionType<?>, List<RecipeCondition<?>>> or = new Reference2ObjectArrayMap<>();
+        for (RecipeCondition<?> condition : recipe.conditions) {
             if (condition.isOr()) {
                 or.computeIfAbsent(condition.getType(), type -> new ArrayList<>()).add(condition);
             } else if (!condition.check(recipe, recipeLogic)) {
@@ -267,11 +273,11 @@ public class RecipeHelper {
             }
         }
 
-        for (List<RecipeCondition> conditions : or.values()) {
+        for (List<RecipeCondition<?>> conditions : or.values()) {
             boolean passed = conditions.isEmpty();
             MutableComponent component = Component.translatable("gtceu.recipe_logic.condition_fails")
                     .append(": ");
-            for (RecipeCondition condition : conditions) {
+            for (RecipeCondition<?> condition : conditions) {
                 passed = condition.check(recipe, recipeLogic);
                 if (passed) break;
                 else component.append(condition.getTooltips());
@@ -378,7 +384,7 @@ public class RecipeHelper {
         map.computeIfAbsent(key, $ -> new ArrayList<>(undyed)).add(handler);
     }
 
-    public static int getRatioForDistillery(FluidIngredient fluidInput, FluidIngredient fluidOutput,
+    public static int getRatioForDistillery(SizedFluidIngredient fluidInput, SizedFluidIngredient fluidOutput,
                                             @Nullable ItemStack output) {
         int[] divisors = new int[] { 2, 5, 10, 25, 50 };
         int ratio = -1;
@@ -400,9 +406,35 @@ public class RecipeHelper {
         return Math.max(1, ratio);
     }
 
-    public static boolean isFluidStackDivisibleForDistillery(FluidIngredient fluidStack, int divisor) {
-        int amount = (fluidStack instanceof IRangedIngredient ranged ? ranged.getMaxRoll() : fluidStack.getAmount());
-        return amount % divisor == 0 && amount / divisor >= 25;
+    public static boolean isFluidStackDivisibleForDistillery(SizedFluidIngredient fluidStack, int divisor) {
+        int amount = (fluidStack.ingredient() instanceof IRangedIngredient ranged ? ranged.getMaxRoll() :
+                fluidStack.amount());
+        return fluidStack.amount() % divisor == 0 && fluidStack.amount() / divisor >= 25;
+    }
+
+    public static SizedFluidIngredient makeSizedFluidIngredient(FluidStack stack) {
+        return new SizedFluidIngredient(makeFluidIngredient(stack), stack.getAmount());
+    }
+
+    public static FluidIngredient makeFluidIngredient(FluidStack stack) {
+        var tagKey = TagUtil.createFluidTag(BuiltInRegistries.FLUID.getKey(stack.getFluid()).getPath());
+        if (stack.getComponentsPatch().isEmpty()) {
+            return FluidIngredient.tag(tagKey);
+        } else {
+            return ExDataComponentFluidIngredient.of(true, stack.getComponents(), tagKey);
+        }
+    }
+
+    public static SizedIngredient makeSizedIngredient(ItemStack stack) {
+        return new SizedIngredient(makeItemIngredient(stack), stack.getCount());
+    }
+
+    public static Ingredient makeItemIngredient(ItemStack stack) {
+        if (stack.getComponentsPatch().isEmpty()) {
+            return Ingredient.of((stack).getItem());
+        } else {
+            return DataComponentIngredient.of(true, stack);
+        }
     }
 
     /**
@@ -423,7 +455,9 @@ public class RecipeHelper {
         for (List<Content> input : runningRecipe.inputs.values()) {
             for (ListIterator<Content> iterator = input.listIterator(); iterator.hasNext();) {
                 Content content = iterator.next();
-                if (content.content() instanceof IRangedIngredient ranged) {
+                Pair isRanged = isRanged(content);
+                if (isRanged.left().equals(Boolean.TRUE)) {
+                    IRangedIngredient ranged = (IRangedIngredient) isRanged.right();
                     count = ranged.rollSampledCount();
                     zero = (count == 0);
                     if (zero) ranged.setSampledCount(ranged.getMaxRoll());
@@ -436,7 +470,9 @@ public class RecipeHelper {
         for (List<Content> output : runningRecipe.outputs.values()) {
             for (ListIterator<Content> iterator = output.listIterator(); iterator.hasNext();) {
                 Content content = iterator.next();
-                if (content.content() instanceof IRangedIngredient ranged) {
+                Pair isRanged = isRanged(content);
+                if (isRanged.left().equals(Boolean.TRUE)) {
+                    IRangedIngredient ranged = (IRangedIngredient) isRanged.right();
                     count = ranged.rollSampledCount();
                     zero = (count == 0);
                     if (zero) ranged.setSampledCount(ranged.getMaxRoll());
@@ -475,7 +511,9 @@ public class RecipeHelper {
             List<Content> handler = entry.getValue();
             for (ListIterator<Content> iterator = handler.listIterator(); iterator.hasNext();) {
                 Content content = iterator.next();
-                if (content.content() instanceof IRangedIngredient ranged) {
+                Pair isRanged = isRanged(content);
+                if (isRanged.left().equals(Boolean.TRUE)) {
+                    IRangedIngredient ranged = (IRangedIngredient) isRanged.right();
                     count = ranged.rollSampledCount();
                     zero = (count == 0);
                     if (zero) ranged.setSampledCount(ranged.getMaxRoll());
@@ -491,7 +529,9 @@ public class RecipeHelper {
             List<Content> handler = entry.getValue();
             for (ListIterator<Content> iterator = handler.listIterator(); iterator.hasNext();) {
                 Content content = iterator.next();
-                if (content.content() instanceof IRangedIngredient ranged) {
+                Pair isRanged = isRanged(content);
+                if (isRanged.left().equals(Boolean.TRUE)) {
+                    IRangedIngredient ranged = (IRangedIngredient) isRanged.right();
                     count = ranged.rollSampledCount();
                     zero = (count == 0);
                     if (zero) ranged.setSampledCount(ranged.getMaxRoll());
@@ -503,5 +543,26 @@ public class RecipeHelper {
             }
         }
         return runningRecipe;
+    }
+
+    /**
+     * Unwraps a {@link Content} to check if its contained ingredient is a Ranged Ingredient.
+     * Doing this is necessary because NeoForge's {@link SizedIngredient} and {@link SizedFluidIngredient} are Final
+     * classes with no superclasses or interfaces which wrap internal ingredients in different ways, so there's no
+     * shared way to check them together.
+     * 
+     * @return a {@link Pair} of True/False the ingredient was ranged, and the Ranged Ingredient (if True) or Null (if
+     *         False)
+     */
+    public static Pair<Boolean, @Nullable IRangedIngredient> isRanged(Content content) {
+        if (content.content() instanceof SizedIngredient sized &&
+                sized.ingredient().getCustomIngredient() instanceof IRangedIngredient ranged) {
+            return new ObjectObjectImmutablePair<>(Boolean.TRUE, ranged);
+        }
+        if (content.content() instanceof SizedFluidIngredient sized &&
+                sized.ingredient() instanceof IRangedIngredient ranged) {
+            return new ObjectObjectImmutablePair<>(Boolean.TRUE, ranged);
+        }
+        return new ObjectObjectImmutablePair<>(Boolean.FALSE, null);
     }
 }

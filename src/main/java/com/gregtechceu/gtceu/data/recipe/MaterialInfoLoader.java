@@ -7,8 +7,9 @@ import com.gregtechceu.gtceu.common.data.GTMaterials;
 import com.gregtechceu.gtceu.config.ConfigHolder;
 
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.DyeColor;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
 
@@ -22,10 +23,14 @@ public class MaterialInfoLoader {
         for (DyeColor color : DyeColor.values()) {
             String dye = color.getName();
             ItemMaterialData.registerMaterialInfo(
-                    BuiltInRegistries.ITEM.get(ResourceLocation.withDefaultNamespace(dye + "_terracotta")),
+                    new ItemStack(
+                            BuiltInRegistries.ITEM.getValue(Identifier.withDefaultNamespace(dye + "_terracotta")))
+                            .getItem(),
                     new ItemMaterialInfo(new MaterialStack(GTMaterials.Clay, M * 4)));
             ItemMaterialData.registerMaterialInfo(
-                    BuiltInRegistries.ITEM.get(ResourceLocation.withDefaultNamespace(dye + "_glazed_terracotta")),
+                    new ItemStack(BuiltInRegistries.ITEM
+                            .getValue(Identifier.withDefaultNamespace(dye + "_glazed_terracotta")))
+                            .getItem(),
                     new ItemMaterialInfo(new MaterialStack(GTMaterials.Clay, M * 4)));
         }
 
@@ -139,17 +144,17 @@ public class MaterialInfoLoader {
         ItemMaterialData.registerMaterialInfo(Items.STONE_SWORD, new ItemMaterialInfo(
                 new MaterialStack(GTMaterials.Stone, M * 2), new MaterialStack(GTMaterials.Wood, M / 4)));
 
-        ItemMaterialData.registerMaterialInfo(Items.WEATHERED_COPPER,
+        ItemMaterialData.registerMaterialInfo(Items.COPPER_BLOCK.weathering().weathered(),
                 new ItemMaterialInfo(new MaterialStack(GTMaterials.Copper, M * 9)));
-        ItemMaterialData.registerMaterialInfo(Items.EXPOSED_COPPER,
+        ItemMaterialData.registerMaterialInfo(Items.COPPER_BLOCK.weathering().exposed(),
                 new ItemMaterialInfo(new MaterialStack(GTMaterials.Copper, M * 9)));
-        ItemMaterialData.registerMaterialInfo(Items.OXIDIZED_COPPER,
+        ItemMaterialData.registerMaterialInfo(Items.COPPER_BLOCK.weathering().oxidized(),
                 new ItemMaterialInfo(new MaterialStack(GTMaterials.Copper, M * 9)));
-        ItemMaterialData.registerMaterialInfo(Items.WAXED_WEATHERED_COPPER,
+        ItemMaterialData.registerMaterialInfo(Items.COPPER_BLOCK.waxed().weathered(),
                 new ItemMaterialInfo(new MaterialStack(GTMaterials.Copper, M * 9)));
-        ItemMaterialData.registerMaterialInfo(Items.WAXED_EXPOSED_COPPER,
+        ItemMaterialData.registerMaterialInfo(Items.COPPER_BLOCK.waxed().exposed(),
                 new ItemMaterialInfo(new MaterialStack(GTMaterials.Copper, M * 9)));
-        ItemMaterialData.registerMaterialInfo(Items.WAXED_OXIDIZED_COPPER,
+        ItemMaterialData.registerMaterialInfo(Items.COPPER_BLOCK.waxed().oxidized(),
                 new ItemMaterialInfo(new MaterialStack(GTMaterials.Copper, M * 9)));
     }
 }

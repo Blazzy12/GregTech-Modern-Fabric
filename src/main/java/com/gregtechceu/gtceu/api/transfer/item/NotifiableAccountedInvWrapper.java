@@ -3,8 +3,8 @@ package com.gregtechceu.gtceu.api.transfer.item;
 import com.gregtechceu.gtceu.api.machine.trait.notifiable.NotifiableItemStackHandler;
 
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.items.IItemHandlerModifiable;
-import net.minecraftforge.items.wrapper.CombinedInvWrapper;
+import com.gregtechceu.gtceu.compat.items.IItemHandlerModifiable;
+import com.gregtechceu.gtceu.compat.items.wrapper.CombinedInvWrapper;
 
 import org.jetbrains.annotations.NotNull;
 

@@ -6,45 +6,37 @@ import com.gregtechceu.gtceu.api.recipe.GTRecipeSerializer;
 import com.gregtechceu.gtceu.common.machine.multiblock.electric.monitor.MonitorGroup;
 
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.ComponentSerialization;
 
 import brachy.modularui.utils.EqualityTest;
 import brachy.modularui.utils.serialization.network.*;
 import com.google.gson.JsonObject;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.JsonOps;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.Objects;
 
 public class GTByteBufAdapters {
 
     // spotless:off
-    public static final IByteBufAdapter<MonitorGroup> MONITOR_GROUPS = makeAdapter(MonitorGroup.CODEC);
-    public static final IByteBufAdapter<Component> COMPONENT = ByteBufAdapters.makeAdapter(FriendlyByteBuf::readComponent, FriendlyByteBuf::writeComponent,
-            (a, b) -> Objects.equals(a.toString(), b.toString()));
-    public static final IByteBufAdapter<PatternError> PATTERN_ERRORS = makeAdapter(PatternError.CODEC);
+    public static final IByteBufAdapter<FriendlyByteBuf, MonitorGroup> MONITOR_GROUPS = makeAdapter(MonitorGroup.CODEC);
+    public static final IByteBufAdapter<FriendlyByteBuf, Component> COMPONENT = makeAdapter(ComponentSerialization.CODEC);
+    public static final IByteBufAdapter<FriendlyByteBuf, PatternError> PATTERN_ERRORS = makeAdapter(PatternError.CODEC);
 
     // spotless:on
 
-    public static final IByteBufAdapter<GTRecipe> GTRECIPE = new IByteBufAdapter<>() {
+    public static final IByteBufAdapter<RegistryFriendlyByteBuf, GTRecipe> GTRECIPE = new IByteBufAdapter<>() {
 
         @Override
-        public @Nullable GTRecipe deserialize(FriendlyByteBuf buffer) {
-            if (!buffer.readBoolean()) {
-                return null;
-            }
-            return GTRecipeSerializer.fromNetworkWithoutDatapackSync(buffer);
+        public void encode(RegistryFriendlyByteBuf buffer, GTRecipe u) {
+            GTRecipeSerializer.toNetwork(buffer, u);
         }
 
         @Override
-        public void serialize(FriendlyByteBuf buffer, @Nullable GTRecipe u) {
-            if (u == null) {
-                buffer.writeBoolean(false);
-                return;
-            }
-            buffer.writeBoolean(true);
-            GTRecipeSerializer.SERIALIZER.toNetwork(buffer, u);
+        public GTRecipe decode(RegistryFriendlyByteBuf buffer) {
+            return GTRecipeSerializer.fromNetwork(buffer);
         }
 
         @Override
@@ -53,17 +45,17 @@ public class GTByteBufAdapters {
         }
     };
 
-    public static <T> IByteBufAdapter<T> makeAdapter(Codec<T> codec) {
+    public static <T> IByteBufAdapter<FriendlyByteBuf, T> makeAdapter(Codec<T> codec) {
         return new IByteBufAdapter<>() {
 
             @Override
-            public T deserialize(FriendlyByteBuf buffer) {
-                return buffer.readJsonWithCodec(codec);
+            public void encode(FriendlyByteBuf buffer, T u) {
+                buffer.writeJsonWithCodec(codec, u);
             }
 
             @Override
-            public void serialize(FriendlyByteBuf buffer, T u) {
-                buffer.writeJsonWithCodec(codec, u);
+            public T decode(FriendlyByteBuf buffer) {
+                return buffer.readLenientJsonWithCodec(codec);
             }
 
             @Override

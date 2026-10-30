@@ -2,34 +2,28 @@ package com.gregtechceu.gtceu.data.recipe.misc;
 
 import com.gregtechceu.gtceu.common.data.GTRecipeCategories;
 
-import net.minecraft.data.recipes.FinishedRecipe;
+import net.minecraft.data.recipes.RecipeOutput;
 import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 
-import java.util.function.Consumer;
-
 import static com.gregtechceu.gtceu.api.GTValues.*;
-import static com.gregtechceu.gtceu.api.data.tag.TagPrefix.block;
-import static com.gregtechceu.gtceu.api.data.tag.TagPrefix.plate;
-import static com.gregtechceu.gtceu.common.data.GTBlocks.LARGE_METAL_SHEETS;
-import static com.gregtechceu.gtceu.common.data.GTBlocks.METAL_SHEETS;
-import static com.gregtechceu.gtceu.common.data.GTBlocks.STUDS;
+import static com.gregtechceu.gtceu.api.data.tag.TagPrefix.*;
+import static com.gregtechceu.gtceu.common.data.GTBlocks.*;
 import static com.gregtechceu.gtceu.common.data.GTMaterials.*;
-import static com.gregtechceu.gtceu.common.data.GTRecipeTypes.ASSEMBLER_RECIPES;
-import static com.gregtechceu.gtceu.common.data.GTRecipeTypes.CHEMICAL_BATH_RECIPES;
+import static com.gregtechceu.gtceu.common.data.GTRecipeTypes.*;
 
 public class DecorationRecipes {
 
     private DecorationRecipes() {}
 
-    public static void init(Consumer<FinishedRecipe> provider) {
+    public static void init(RecipeOutput provider) {
         assemblerRecipes(provider);
         dyeRecipes(provider);
         copperOxidationRecipes(provider);
     }
 
-    private static void assemblerRecipes(Consumer<FinishedRecipe> provider) {
+    private static void assemblerRecipes(RecipeOutput provider) {
         ASSEMBLER_RECIPES.recipeBuilder("metal_sheet_white")
                 .inputItems(block, Concrete, 5)
                 .inputItems(plate, Iron, 2)
@@ -55,7 +49,7 @@ public class DecorationRecipes {
                 .addMaterialInfo(true).save(provider);
     }
 
-    private static void dyeRecipes(Consumer<FinishedRecipe> provider) {
+    private static void dyeRecipes(RecipeOutput provider) {
         for (DyeColor color : DyeColor.values()) {
             CHEMICAL_BATH_RECIPES.recipeBuilder("metal_sheet_%s".formatted(color.getName()))
                     .inputItems(METAL_SHEETS.get(DyeColor.WHITE).asStack())
@@ -83,118 +77,118 @@ public class DecorationRecipes {
         }
     }
 
-    private static void copperOxidationRecipes(Consumer<FinishedRecipe> provider) {
-        registerOxidationChain(provider, "copper_block", Items.COPPER_BLOCK, Items.EXPOSED_COPPER,
-                Items.WEATHERED_COPPER, Items.OXIDIZED_COPPER);
-        registerOxidationChain(provider, "cut_copper", Items.CUT_COPPER, Items.EXPOSED_CUT_COPPER,
-                Items.WEATHERED_CUT_COPPER, Items.OXIDIZED_CUT_COPPER);
-        registerOxidationChain(provider, "cut_copper_stairs", Items.CUT_COPPER_STAIRS, Items.EXPOSED_CUT_COPPER_STAIRS,
-                Items.WEATHERED_CUT_COPPER_STAIRS, Items.OXIDIZED_CUT_COPPER_STAIRS);
-        registerOxidationChain(provider, "cut_copper_slab", Items.CUT_COPPER_SLAB, Items.EXPOSED_CUT_COPPER_SLAB,
-                Items.WEATHERED_CUT_COPPER_SLAB, Items.OXIDIZED_CUT_COPPER_SLAB);
+    private static void copperOxidationRecipes(RecipeOutput provider) {
+        registerOxidationChain(provider, "copper_block", Items.COPPER_BLOCK.weathering().unaffected(), Items.COPPER_BLOCK.weathering().exposed(),
+                Items.COPPER_BLOCK.weathering().weathered(), Items.COPPER_BLOCK.weathering().oxidized());
+        registerOxidationChain(provider, "cut_copper", Items.CUT_COPPER.weathering().unaffected(), Items.CUT_COPPER.weathering().exposed(),
+                Items.CUT_COPPER.weathering().weathered(), Items.CUT_COPPER.weathering().oxidized());
+        registerOxidationChain(provider, "cut_copper_stairs", Items.CUT_COPPER_STAIRS.weathering().unaffected(), Items.CUT_COPPER_STAIRS.weathering().exposed(),
+                Items.CUT_COPPER_STAIRS.weathering().weathered(), Items.CUT_COPPER_STAIRS.weathering().oxidized());
+        registerOxidationChain(provider, "cut_copper_slab", Items.CUT_COPPER_SLAB.weathering().unaffected(), Items.CUT_COPPER_SLAB.weathering().exposed(),
+                Items.CUT_COPPER_SLAB.weathering().weathered(), Items.CUT_COPPER_SLAB.weathering().oxidized());
 
         // Waxing recipes
         CHEMICAL_BATH_RECIPES.recipeBuilder("waxing_copper_block")
-                .inputItems(Items.COPPER_BLOCK)
+                .inputItems(Items.COPPER_BLOCK.weathering().unaffected())
                 .inputFluids(Wax, L / 2)
-                .outputItems(Items.WAXED_COPPER_BLOCK)
+                .outputItems(Items.COPPER_BLOCK.waxed().unaffected())
                 .EUt(VA[ULV]).duration(10)
                 .save(provider);
         CHEMICAL_BATH_RECIPES.recipeBuilder("waxing_exposed_copper")
-                .inputItems(Items.EXPOSED_COPPER)
+                .inputItems(Items.COPPER_BLOCK.weathering().exposed())
                 .inputFluids(Wax, L / 2)
-                .outputItems(Items.WAXED_EXPOSED_COPPER)
+                .outputItems(Items.COPPER_BLOCK.waxed().exposed())
                 .EUt(VA[ULV]).duration(10)
                 .save(provider);
         CHEMICAL_BATH_RECIPES.recipeBuilder("waxing_weathered_copper")
-                .inputItems(Items.WEATHERED_COPPER)
+                .inputItems(Items.COPPER_BLOCK.weathering().weathered())
                 .inputFluids(Wax, L / 2)
-                .outputItems(Items.WAXED_WEATHERED_COPPER)
+                .outputItems(Items.COPPER_BLOCK.waxed().weathered())
                 .EUt(VA[ULV]).duration(10)
                 .save(provider);
         CHEMICAL_BATH_RECIPES.recipeBuilder("waxing_oxidized_copper")
-                .inputItems(Items.OXIDIZED_COPPER)
+                .inputItems(Items.COPPER_BLOCK.weathering().oxidized())
                 .inputFluids(Wax, L / 2)
-                .outputItems(Items.WAXED_OXIDIZED_COPPER)
+                .outputItems(Items.COPPER_BLOCK.waxed().oxidized())
                 .EUt(VA[ULV]).duration(10)
                 .save(provider);
         CHEMICAL_BATH_RECIPES.recipeBuilder("waxing_cut_copper")
-                .inputItems(Items.CUT_COPPER)
+                .inputItems(Items.CUT_COPPER.weathering().unaffected())
                 .inputFluids(Wax, L / 2)
-                .outputItems(Items.WAXED_CUT_COPPER)
+                .outputItems(Items.CUT_COPPER.waxed().unaffected())
                 .EUt(VA[ULV]).duration(10)
                 .save(provider);
         CHEMICAL_BATH_RECIPES.recipeBuilder("waxing_exposed_cut_copper")
-                .inputItems(Items.EXPOSED_CUT_COPPER)
+                .inputItems(Items.CUT_COPPER.weathering().exposed())
                 .inputFluids(Wax, L / 2)
-                .outputItems(Items.WAXED_EXPOSED_CUT_COPPER)
+                .outputItems(Items.CUT_COPPER.waxed().exposed())
                 .EUt(VA[ULV]).duration(10)
                 .save(provider);
         CHEMICAL_BATH_RECIPES.recipeBuilder("waxing_weathered_cut_copper")
-                .inputItems(Items.WEATHERED_CUT_COPPER)
+                .inputItems(Items.CUT_COPPER.weathering().weathered())
                 .inputFluids(Wax, L / 2)
-                .outputItems(Items.WAXED_WEATHERED_CUT_COPPER)
+                .outputItems(Items.CUT_COPPER.waxed().weathered())
                 .EUt(VA[ULV]).duration(10)
                 .save(provider);
         CHEMICAL_BATH_RECIPES.recipeBuilder("waxing_oxidized_cut_copper")
-                .inputItems(Items.OXIDIZED_CUT_COPPER)
+                .inputItems(Items.CUT_COPPER.weathering().oxidized())
                 .inputFluids(Wax, L / 2)
-                .outputItems(Items.WAXED_OXIDIZED_CUT_COPPER)
+                .outputItems(Items.CUT_COPPER.waxed().oxidized())
                 .EUt(VA[ULV]).duration(10)
                 .save(provider);
         CHEMICAL_BATH_RECIPES.recipeBuilder("waxing_cut_copper_stairs")
-                .inputItems(Items.CUT_COPPER_STAIRS)
+                .inputItems(Items.CUT_COPPER_STAIRS.weathering().unaffected())
                 .inputFluids(Wax, L / 2)
-                .outputItems(Items.WAXED_CUT_COPPER_STAIRS)
+                .outputItems(Items.CUT_COPPER_STAIRS.waxed().unaffected())
                 .EUt(VA[ULV]).duration(10)
                 .save(provider);
         CHEMICAL_BATH_RECIPES.recipeBuilder("waxing_exposed_cut_copper_stairs")
-                .inputItems(Items.EXPOSED_CUT_COPPER_STAIRS)
+                .inputItems(Items.CUT_COPPER_STAIRS.weathering().exposed())
                 .inputFluids(Wax, L / 2)
-                .outputItems(Items.WAXED_EXPOSED_CUT_COPPER_STAIRS)
+                .outputItems(Items.CUT_COPPER_STAIRS.waxed().exposed())
                 .EUt(VA[ULV]).duration(10)
                 .save(provider);
         CHEMICAL_BATH_RECIPES.recipeBuilder("waxing_weathered_cut_copper_stairs")
-                .inputItems(Items.WEATHERED_CUT_COPPER_STAIRS)
+                .inputItems(Items.CUT_COPPER_STAIRS.weathering().weathered())
                 .inputFluids(Wax, L / 2)
-                .outputItems(Items.WAXED_WEATHERED_CUT_COPPER_STAIRS)
+                .outputItems(Items.CUT_COPPER_STAIRS.waxed().weathered())
                 .EUt(VA[ULV]).duration(10)
                 .save(provider);
         CHEMICAL_BATH_RECIPES.recipeBuilder("waxing_oxidized_cut_copper_stairs")
-                .inputItems(Items.OXIDIZED_CUT_COPPER_STAIRS)
+                .inputItems(Items.CUT_COPPER_STAIRS.weathering().oxidized())
                 .inputFluids(Wax, L / 2)
-                .outputItems(Items.WAXED_OXIDIZED_CUT_COPPER_STAIRS)
+                .outputItems(Items.CUT_COPPER_STAIRS.waxed().oxidized())
                 .EUt(VA[ULV]).duration(10)
                 .save(provider);
         CHEMICAL_BATH_RECIPES.recipeBuilder("waxing_cut_copper_slab")
-                .inputItems(Items.CUT_COPPER_SLAB)
+                .inputItems(Items.CUT_COPPER_SLAB.weathering().unaffected())
                 .inputFluids(Wax, L / 2)
-                .outputItems(Items.WAXED_CUT_COPPER_SLAB)
+                .outputItems(Items.CUT_COPPER_SLAB.waxed().unaffected())
                 .EUt(VA[ULV]).duration(10)
                 .save(provider);
         CHEMICAL_BATH_RECIPES.recipeBuilder("waxing_exposed_cut_copper_slab")
-                .inputItems(Items.EXPOSED_CUT_COPPER_SLAB)
+                .inputItems(Items.CUT_COPPER_SLAB.weathering().exposed())
                 .inputFluids(Wax, L / 2)
-                .outputItems(Items.WAXED_EXPOSED_CUT_COPPER_SLAB)
+                .outputItems(Items.CUT_COPPER_SLAB.waxed().exposed())
                 .EUt(VA[ULV]).duration(10)
                 .save(provider);
         CHEMICAL_BATH_RECIPES.recipeBuilder("waxing_weathered_cut_copper_slab")
-                .inputItems(Items.WEATHERED_CUT_COPPER_SLAB)
+                .inputItems(Items.CUT_COPPER_SLAB.weathering().weathered())
                 .inputFluids(Wax, L / 2)
-                .outputItems(Items.WAXED_WEATHERED_CUT_COPPER_SLAB)
+                .outputItems(Items.CUT_COPPER_SLAB.waxed().weathered())
                 .EUt(VA[ULV]).duration(10)
                 .save(provider);
         CHEMICAL_BATH_RECIPES.recipeBuilder("waxing_oxidized_cut_copper_slab")
-                .inputItems(Items.OXIDIZED_CUT_COPPER_SLAB)
+                .inputItems(Items.CUT_COPPER_SLAB.weathering().oxidized())
                 .inputFluids(Wax, L / 2)
-                .outputItems(Items.WAXED_OXIDIZED_CUT_COPPER_SLAB)
+                .outputItems(Items.CUT_COPPER_SLAB.waxed().oxidized())
                 .EUt(VA[ULV]).duration(10)
                 .save(provider);
     }
 
     private static final String[] OXIDATION_STAGES = { "raw", "exposed", "weathered", "oxidized" };
 
-    private static void registerOxidationChain(Consumer<FinishedRecipe> provider, String name, Item... items) {
+    private static void registerOxidationChain(RecipeOutput provider, String name, Item... items) {
         for (int i = 0; i < items.length - 1; i++) {
             CHEMICAL_BATH_RECIPES
                     .recipeBuilder(

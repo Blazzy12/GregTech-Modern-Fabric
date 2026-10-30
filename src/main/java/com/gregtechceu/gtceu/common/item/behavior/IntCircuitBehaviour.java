@@ -6,24 +6,23 @@ import com.gregtechceu.gtceu.api.machine.MetaMachine;
 import com.gregtechceu.gtceu.api.machine.trait.notifiable.NotifiableItemStackHandler;
 import com.gregtechceu.gtceu.api.mui.IItemUIHolder;
 import com.gregtechceu.gtceu.common.data.GTItems;
+import com.gregtechceu.gtceu.common.data.item.GTDataComponents;
 import com.gregtechceu.gtceu.common.machine.trait.ProgrammableCircuitSlotTrait;
 import com.gregtechceu.gtceu.common.mui.GTMuiWidgets;
 import com.gregtechceu.gtceu.config.ConfigHolder;
 
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.context.UseOnContext;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 
 import brachy.modularui.factory.PlayerInventoryGuiData;
 import brachy.modularui.screen.ModularPanel;
 import brachy.modularui.screen.UISettings;
 import brachy.modularui.value.sync.PanelSyncManager;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
@@ -32,7 +31,11 @@ public class IntCircuitBehaviour implements IAddInformation, IItemUIHolder {
     public static final int CIRCUIT_MAX = 32;
 
     public static ItemStack stack(int configuration) {
-        var stack = GTItems.PROGRAMMED_CIRCUIT.asStack();
+        return stack(configuration, 1);
+    }
+
+    public static ItemStack stack(int configuration, int count) {
+        var stack = GTItems.PROGRAMMED_CIRCUIT.asStack(count);
         setCircuitConfiguration(stack, configuration);
         return stack;
     }
@@ -42,31 +45,19 @@ public class IntCircuitBehaviour implements IAddInformation, IItemUIHolder {
             GTCEu.LOGGER.error("Given circuit configuration %d is out of range!".formatted(configuration));
             configuration = 0;
         }
-        var tagCompound = itemStack.getOrCreateTag();
-        tagCompound.putInt("Configuration", configuration);
+        itemStack.set(GTDataComponents.CIRCUIT_CONFIG, configuration);
     }
 
     public static int getCircuitConfiguration(ItemStack itemStack) {
-        if (!isIntegratedCircuit(itemStack)) return 0;
-        var tagCompound = itemStack.getTag();
-        if (tagCompound != null) {
-            return tagCompound.getInt("Configuration");
-        }
-        return 0;
+        return itemStack.getOrDefault(GTDataComponents.CIRCUIT_CONFIG, 0);
     }
 
     public static boolean isIntegratedCircuit(ItemStack itemStack) {
-        boolean isCircuit = GTItems.PROGRAMMED_CIRCUIT.isIn(itemStack);
-        if (isCircuit && !itemStack.hasTag()) {
-            var compound = new CompoundTag();
-            compound.putInt("Configuration", 0);
-            itemStack.setTag(compound);
-        }
-        return isCircuit;
+        return GTItems.PROGRAMMED_CIRCUIT.isIn(itemStack);
     }
 
     @Override
-    public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltipComponents,
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context, List<Component> tooltipComponents,
                                 TooltipFlag isAdvanced) {
         int configuration = getCircuitConfiguration(stack);
         tooltipComponents.add(Component.translatable("metaitem.int_circuit.configuration", configuration));

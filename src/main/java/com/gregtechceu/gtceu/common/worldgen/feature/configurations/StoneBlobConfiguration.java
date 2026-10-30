@@ -1,18 +1,16 @@
 package com.gregtechceu.gtceu.common.worldgen.feature.configurations;
 
 import net.minecraft.util.valueproviders.IntProvider;
-import net.minecraft.world.level.levelgen.feature.configurations.FeatureConfiguration;
-import net.minecraft.world.level.levelgen.feature.configurations.OreConfiguration;
 
-import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.world.level.levelgen.feature.BlockReplacement;
 
-public record StoneBlobConfiguration(OreConfiguration.TargetBlockState state, IntProvider size)
-        implements FeatureConfiguration {
+public record StoneBlobConfiguration(BlockReplacement state, IntProvider size) {
 
-    public static final Codec<StoneBlobConfiguration> CODEC = RecordCodecBuilder.create(
+    public static final MapCodec<StoneBlobConfiguration> CODEC = RecordCodecBuilder.mapCodec(
             instance -> instance.group(
-                    OreConfiguration.TargetBlockState.CODEC.fieldOf("state").forGetter(StoneBlobConfiguration::state),
-                    IntProvider.codec(1, 64).fieldOf("size").forGetter(StoneBlobConfiguration::size))
+                    BlockReplacement.CODEC.fieldOf("state").forGetter(StoneBlobConfiguration::state),
+                    net.minecraft.util.valueproviders.IntProviders.codec(1, 64).fieldOf("size").forGetter(StoneBlobConfiguration::size))
                     .apply(instance, StoneBlobConfiguration::new));
 }

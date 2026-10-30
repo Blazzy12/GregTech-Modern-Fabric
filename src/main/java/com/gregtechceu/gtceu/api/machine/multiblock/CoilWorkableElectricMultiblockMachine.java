@@ -8,7 +8,7 @@ import com.gregtechceu.gtceu.api.multiblock.error.CoilMatchingError;
 import com.gregtechceu.gtceu.api.sync_system.annotations.SyncToClient;
 import com.gregtechceu.gtceu.common.block.CoilBlock;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
 import net.minecraft.core.BlockPos;
 
 import brachy.modularui.api.drawable.IDrawable;
@@ -27,7 +27,6 @@ import javax.annotation.ParametersAreNonnullByDefault;
 @MethodsReturnNonnullByDefault
 public class CoilWorkableElectricMultiblockMachine extends WorkableElectricMultiblockMachine {
 
-    @SyncToClient
     @Getter
     private ICoilType coilType = CoilBlock.CoilType.CUPRONICKEL;
     @SyncToClient
@@ -66,7 +65,6 @@ public class CoilWorkableElectricMultiblockMachine extends WorkableElectricMulti
         if (coilType != null) {
             this.coilType = coilType;
             this.coilTier = coilType.getTier();
-            getSyncDataHolder().markClientSyncFieldDirty("coilType");
             getSyncDataHolder().markClientSyncFieldDirty("coilTier");
         }
     }
@@ -76,7 +74,7 @@ public class CoilWorkableElectricMultiblockMachine extends WorkableElectricMulti
     @Override
     public void buildMainUI(ParentWidget<?> mainWidget, PosGuiData guiData, PanelSyncManager syncManager,
                             UISettings settings) {
-        var Texlocation = this.coilType.getTexture();
+        var Texlocation = (CoilBlock.CoilType.values()[coilTier].getTexture());
 
         IDrawable leftTop = new UITexture.Builder()
                 .location(Texlocation)

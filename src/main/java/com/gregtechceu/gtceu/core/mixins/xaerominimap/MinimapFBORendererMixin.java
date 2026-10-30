@@ -5,9 +5,9 @@ import com.gregtechceu.gtceu.integration.map.xaeros.minimap.ore.OreVeinElementRe
 
 import net.minecraft.client.Minecraft;
 
+import com.mojang.blaze3d.vertex.PoseStack;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -27,20 +27,17 @@ public abstract class MinimapFBORendererMixin extends MinimapRenderer {
     @Shadow
     private MinimapElementMapRendererHandler minimapElementMapRendererHandler;
 
-    @Unique
-    private OreVeinElementRenderer gtceu$oreVeinElementRenderer;
-
     public MinimapFBORendererMixin(HudMod modMain, Minecraft mc, WaypointMapRenderer waypointMapRenderer,
-                                   Minimap minimap, CompassRenderer compassRenderer) {
-        super(modMain, mc, waypointMapRenderer, minimap, compassRenderer);
+                                   Minimap minimap, CompassRenderer compassRenderer, PoseStack poseStack) {
+        super(modMain, mc, waypointMapRenderer, minimap, compassRenderer, poseStack);
     }
 
     @Inject(method = "loadFrameBuffer",
             at = @At(value = "INVOKE", target = "Lxaero/common/mods/SupportMods;worldmap()Z"))
     private void gtceu$injectProspectionMarkers(MinimapProcessor minimapProcessor, CallbackInfo ci) {
         if (!ConfigHolder.INSTANCE.compat.minimap.toggle.xaerosMapIntegration) return;
-        this.gtceu$oreVeinElementRenderer = OreVeinElementRenderer.Builder.begin().build();
-        minimapElementMapRendererHandler.add(this.gtceu$oreVeinElementRenderer);
-        this.minimap.getOverMapRendererHandler().add(this.gtceu$oreVeinElementRenderer);
+        OreVeinElementRenderer renderer = OreVeinElementRenderer.Builder.begin().build();
+        minimapElementMapRendererHandler.add(renderer);
+        this.minimap.getOverMapRendererHandler().add(renderer);
     }
 }

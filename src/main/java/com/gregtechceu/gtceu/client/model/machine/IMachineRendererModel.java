@@ -1,23 +1,24 @@
 package com.gregtechceu.gtceu.client.model.machine;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
+import net.minecraft.client.renderer.chunk.ChunkSectionLayer;
+
 import com.gregtechceu.gtceu.api.machine.MachineDefinition;
 import com.gregtechceu.gtceu.api.machine.feature.IMachineFeature;
 
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
-import net.minecraft.client.renderer.block.model.BakedQuad;
+import com.gregtechceu.gtceu.compat.client.render.MultiBufferSource;
+import com.gregtechceu.gtceu.compat.client.model.BakedQuad;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.BlockAndTintGetter;
+import net.minecraft.client.renderer.block.BlockAndTintGetter;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.client.model.data.ModelData;
+import com.gregtechceu.gtceu.compat.client.model.data.ModelData;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import org.jetbrains.annotations.NotNull;
@@ -30,19 +31,19 @@ public interface IMachineRendererModel<T extends IMachineFeature> {
 
     MachineDefinition getDefinition();
 
-    @OnlyIn(Dist.CLIENT)
+    @Environment(EnvType.CLIENT)
     default @NotNull List<BakedQuad> getRenderQuads(@Nullable T machine, @Nullable BlockAndTintGetter level,
                                                     @Nullable BlockPos pos, @Nullable BlockState blockState,
                                                     @Nullable Direction side, RandomSource rand,
-                                                    ModelData modelData, @Nullable RenderType renderType) {
+                                                    ModelData modelData, @Nullable ChunkSectionLayer renderType) {
         return Collections.emptyList();
     }
 
-    @OnlyIn(Dist.CLIENT)
+    @Environment(EnvType.CLIENT)
     void render(T machine, float partialTick, PoseStack poseStack, MultiBufferSource buffer,
                 int packedLight, int packedOverlay);
 
-    @OnlyIn(Dist.CLIENT)
+    @Environment(EnvType.CLIENT)
     default void renderByItem(ItemStack stack, ItemDisplayContext displayContext,
                               PoseStack poseStack, MultiBufferSource buffer, int packedLight, int packedOverlay) {}
 
@@ -60,7 +61,7 @@ public interface IMachineRendererModel<T extends IMachineFeature> {
 
     default AABB getRenderBoundingBox(T machine) {
         BlockPos pos = machine.self().getBlockPos();
-        return new AABB(pos.offset(-1, 0, -1), pos.offset(2, 2, 2));
+        return AABB.encapsulatingFullBlocks(pos.offset(-1, -1, -1), pos.offset(1, 1, 1));
     }
 
     default boolean isBlockEntityRenderer() {

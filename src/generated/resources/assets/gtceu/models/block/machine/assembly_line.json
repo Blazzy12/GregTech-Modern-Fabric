@@ -5,7 +5,7 @@
       "type": "gtceu:assembly_line"
     }
   ],
-  "loader": "gtceu:machine",
+  "fabric:type": "gtceu:machine",
   "machine": "gtceu:assembly_line",
   "texture_overrides": {
     "all": "gtceu:block/casings/solid/machine_casing_solid_steel"

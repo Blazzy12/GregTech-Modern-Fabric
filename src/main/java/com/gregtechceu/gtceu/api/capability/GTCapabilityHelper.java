@@ -2,125 +2,117 @@ package com.gregtechceu.gtceu.api.capability;
 
 import com.gregtechceu.gtceu.api.item.component.ISpoilableItem;
 import com.gregtechceu.gtceu.api.item.module.IModularItem;
+import com.gregtechceu.gtceu.api.machine.trait.recipe.RecipeLogic;
 import com.gregtechceu.gtceu.common.capability.MedicalConditionTracker;
+import com.gregtechceu.gtceu.common.data.GTAttachmentTypes;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.energy.IEnergyStorage;
-import net.minecraftforge.fluids.capability.IFluidHandler;
-import net.minecraftforge.items.IItemHandler;
+import com.gregtechceu.gtceu.compat.capabilities.Capabilities;
+import com.gregtechceu.gtceu.compat.energy.IEnergyStorage;
+import com.gregtechceu.gtceu.compat.fluids.capability.IFluidHandler;
+import com.gregtechceu.gtceu.compat.items.IItemHandler;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-@SuppressWarnings("DataFlowIssue")
 public class GTCapabilityHelper {
 
     @Nullable
     public static IElectricItem getElectricItem(ItemStack itemStack) {
-        return itemStack.getCapability(GTCapability.CAPABILITY_ELECTRIC_ITEM).orElse(null);
+        return itemStack.getCapability(GTCapability.CAPABILITY_ELECTRIC_ITEM);
     }
 
     @Nullable
     public static IEnergyStorage getForgeEnergyItem(ItemStack itemStack) {
-        return itemStack.getCapability(ForgeCapabilities.ENERGY).orElse(null);
+        return itemStack.getCapability(Capabilities.EnergyStorage.ITEM);
     }
 
     @Nullable
     public static IItemHandler getItemHandler(Level level, BlockPos pos, @Nullable Direction side) {
-        return getBlockEntityCapability(ForgeCapabilities.ITEM_HANDLER, level, pos, side);
+        return level.getCapability(Capabilities.ItemHandler.BLOCK, pos, side);
     }
 
     @Nullable
     public static IFluidHandler getFluidHandler(Level level, BlockPos pos, @Nullable Direction side) {
-        return getBlockEntityCapability(ForgeCapabilities.FLUID_HANDLER, level, pos, side);
+        return level.getCapability(Capabilities.FluidHandler.BLOCK, pos, side);
     }
 
     @Nullable
     public static IEnergyContainer getEnergyContainer(Level level, BlockPos pos, @Nullable Direction side) {
-        return getBlockEntityCapability(GTCapability.CAPABILITY_ENERGY_CONTAINER, level, pos, side);
+        return level.getCapability(GTCapability.CAPABILITY_ENERGY_CONTAINER, pos, side);
     }
 
     @Nullable
     public static IEnergyInfoProvider getEnergyInfoProvider(Level level, BlockPos pos, @Nullable Direction side) {
-        return getBlockEntityCapability(GTCapability.CAPABILITY_ENERGY_INFO_PROVIDER, level, pos, side);
+        return level.getCapability(GTCapability.CAPABILITY_ENERGY_INFO_PROVIDER, pos, side);
     }
 
     @Nullable
     public static ICoverable getCoverable(Level level, BlockPos pos, @Nullable Direction side) {
-        return getBlockEntityCapability(GTCapability.CAPABILITY_COVERABLE, level, pos, side);
+        return level.getCapability(GTCapability.CAPABILITY_COVERABLE, pos, side);
+    }
+
+    @Nullable
+    public static RecipeLogic getRecipeLogic(Level level, BlockPos pos, @Nullable Direction side) {
+        return level.getCapability(GTCapability.CAPABILITY_RECIPE_LOGIC, pos, side);
     }
 
     @Nullable
     public static IWorkable getWorkable(Level level, BlockPos pos, @Nullable Direction side) {
-        return getBlockEntityCapability(GTCapability.CAPABILITY_WORKABLE, level, pos, side);
+        return level.getCapability(GTCapability.CAPABILITY_WORKABLE, pos, side);
     }
 
     @Nullable
     public static IControllable getControllable(Level level, BlockPos pos, @Nullable Direction side) {
-        return getBlockEntityCapability(GTCapability.CAPABILITY_CONTROLLABLE, level, pos, side);
+        return level.getCapability(GTCapability.CAPABILITY_CONTROLLABLE, pos, side);
     }
 
     @Nullable
     public static IEnergyStorage getForgeEnergy(Level level, BlockPos pos, @Nullable Direction side) {
-        return getBlockEntityCapability(ForgeCapabilities.ENERGY, level, pos, side);
+        return level.getCapability(Capabilities.EnergyStorage.BLOCK, pos, side);
     }
 
     @Nullable
     public static ILaserContainer getLaser(Level level, BlockPos pos, @Nullable Direction side) {
-        return getBlockEntityCapability(GTCapability.CAPABILITY_LASER, level, pos, side);
+        return level.getCapability(GTCapability.CAPABILITY_LASER, pos, side);
     }
 
     @Nullable
     public static IOpticalComputationProvider getOpticalComputationProvider(Level level, BlockPos pos,
                                                                             @Nullable Direction side) {
-        return getBlockEntityCapability(GTCapability.CAPABILITY_COMPUTATION_PROVIDER, level, pos, side);
+        return level.getCapability(GTCapability.CAPABILITY_COMPUTATION_PROVIDER, pos, side);
     }
 
     @Nullable
     public static IDataAccessHatch getDataAccess(Level level, BlockPos pos, @Nullable Direction side) {
-        return getBlockEntityCapability(GTCapability.CAPABILITY_DATA_ACCESS, level, pos, side);
+        return level.getCapability(GTCapability.CAPABILITY_DATA_ACCESS, pos, side);
     }
 
     @Nullable
     public static IHazardParticleContainer getHazardContainer(Level level, BlockPos pos, @Nullable Direction side) {
-        return getBlockEntityCapability(GTCapability.CAPABILITY_HAZARD_CONTAINER, level, pos, side);
+        return level.getCapability(GTCapability.CAPABILITY_HAZARD_CONTAINER, pos, side);
+    }
+
+    public static MedicalConditionTracker getMedicalConditionTracker(@NotNull Player entity) {
+        return GTAttachmentTypes.getMedicalConditionTracker(entity);
     }
 
     @Nullable
     public static IMonitorComponent getMonitorComponent(Level level, BlockPos pos, @Nullable Direction side) {
-        return getBlockEntityCapability(GTCapability.CAPABILITY_MONITOR_COMPONENT, level, pos, side);
+        return level.getCapability(GTCapability.CAPABILITY_MONITOR_COMPONENT, pos, side);
     }
 
     @Nullable
     public static IModularItem getModularItem(ItemStack stack) {
-        return stack.getCapability(GTCapability.CAPABILITY_MODULAR_ITEM).resolve().orElse(null);
-    }
-
-    @Nullable
-    private static <T> T getBlockEntityCapability(Capability<T> capability, Level level, BlockPos pos,
-                                                  @Nullable Direction side) {
-        if (level.getBlockState(pos).hasBlockEntity()) {
-            var blockEntity = level.getBlockEntity(pos);
-            if (blockEntity != null) {
-                return blockEntity.getCapability(capability, side).orElse(null);
-            }
-        }
-        return null;
-    }
-
-    @Nullable
-    public static MedicalConditionTracker getMedicalConditionTracker(@NotNull Entity entity) {
-        return entity.getCapability(GTCapability.CAPABILITY_MEDICAL_CONDITION_TRACKER, null).orElse(null);
+        return stack.getCapability(GTCapability.CAPABILITY_MODULAR_ITEM);
     }
 
     @Nullable
     public static ISpoilableItem getSpoilable(ItemStack stack) {
-        return stack.getCapability(GTCapability.CAPABILITY_SPOILABLE_ITEM).resolve().orElse(null);
+        return stack.getCapability(GTCapability.CAPABILITY_SPOILABLE_ITEM);
     }
 }

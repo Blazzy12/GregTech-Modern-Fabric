@@ -3,12 +3,8 @@ package com.gregtechceu.gtceu.api.cover.filter;
 import com.gregtechceu.gtceu.api.transfer.fluid.CustomFluidTank;
 import com.gregtechceu.gtceu.common.mui.GTGuiTextures;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.Tag;
-import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.fluids.FluidStack;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.fluids.FluidStack;
 
 import brachy.modularui.factory.GuiData;
 import brachy.modularui.screen.UISettings;
@@ -19,11 +15,13 @@ import brachy.modularui.widgets.ToggleButton;
 import brachy.modularui.widgets.layout.Flow;
 import brachy.modularui.widgets.layout.Grid;
 import brachy.modularui.widgets.slot.FluidSlot;
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
 import lombok.Getter;
-import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Range;
 
 import java.util.Arrays;
+import java.util.List;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 
@@ -31,6 +29,13 @@ import javax.annotation.ParametersAreNonnullByDefault;
 @MethodsReturnNonnullByDefault
 public class SimpleFluidFilter extends Filter<FluidStack> {
 
+    // spotless:off
+    public static final Codec<SimpleFluidFilter> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+            Codec.BOOL.fieldOf("is_blacklist").forGetter(val -> val.isBlackList),
+            Codec.BOOL.fieldOf("ignore_components").forGetter(val -> val.ignoreNbt),
+            FluidStack.OPTIONAL_CODEC.listOf().fieldOf("matches").forGetter(val -> Arrays.stream(val.matches).toList()))
+    .apply(instance, SimpleFluidFilter::new));
+    //spotless:on
     private static final int MAX_STACK_SIZE = 2_048_000_000; // Capacity of quantum tank IX
 
     @Getter
@@ -45,44 +50,30 @@ public class SimpleFluidFilter extends Filter<FluidStack> {
 
     private final CustomFluidTank[] fluidStorageSlots = new CustomFluidTank[9];
 
-    public SimpleFluidFilter(ItemStack stack) {
-        super(stack);
-        var tag = stack.getOrCreateTag();
+    public SimpleFluidFilter() {
+        super();
+        Arrays.fill(matches, FluidStack.EMPTY);
+        initFluidStorageSlots();
+    }
 
+    protected SimpleFluidFilter(boolean isBlackList, boolean ignoreNbt, List<FluidStack> matches) {
+        super();
+        this.isBlackList = isBlackList;
+        this.ignoreNbt = ignoreNbt;
+        this.matches = matches.toArray(FluidStack[]::new);
+        initFluidStorageSlots();
+    }
+
+    private void initFluidStorageSlots() {
         for (int i = 0; i < 9; i++) {
             int finalI = i;
             fluidStorageSlots[i] = new CustomFluidTank(MAX_STACK_SIZE);
+            fluidStorageSlots[i].setFluid(matches[i]);
             fluidStorageSlots[i].setOnContentsChanged(() -> {
                 matches[finalI] = fluidStorageSlots[finalI].getFluid();
                 updateAndSaveFilter();
             });
         }
-        Arrays.fill(matches, FluidStack.EMPTY);
-
-        if (tag.isEmpty()) return;
-
-        isBlackList = tag.getBoolean("isBlackList");
-        ignoreNbt = tag.getBoolean("matchNbt");
-        var list = tag.getList("matches", Tag.TAG_COMPOUND);
-        for (int i = 0; i < list.size(); i++) {
-            matches[i] = FluidStack.loadFluidStackFromNBT((CompoundTag) list.get(i));
-            fluidStorageSlots[i].setFluid(matches[i]);
-        }
-    }
-
-    public @Nullable CompoundTag writeFilterNBT() {
-        if (!isBlackList && !ignoreNbt && Arrays.stream(matches).allMatch(FluidStack::isEmpty)) {
-            return null;
-        }
-        var tag = new CompoundTag();
-        tag.putBoolean("isBlackList", isBlackList);
-        tag.putBoolean("matchNbt", ignoreNbt);
-        var list = new ListTag();
-        for (var match : matches) {
-            list.add(match.writeToNBT(new CompoundTag()));
-        }
-        tag.put("matches", list);
-        return tag;
     }
 
     @Override
@@ -143,15 +134,19 @@ public class SimpleFluidFilter extends Filter<FluidStack> {
         return totalFluidAmount;
     }
 
+    @Override
+    public Filter<FluidStack> createCopy() {
+        return new SimpleFluidFilter(isBlackList, ignoreNbt, Arrays.asList(matches));
+    }
+
     public int getTotalConfiguredFluidAmount(FluidStack fluidStack) {
         int totalAmount = 0;
 
         for (var candidate : matches) {
-            if (ignoreNbt && candidate.getFluid() == fluidStack.getFluid()) {
-                totalAmount += candidate.getAmount();
-            }
-            if (!ignoreNbt && candidate.isFluidEqual(fluidStack)) {
-                totalAmount += candidate.getAmount();
+            if (ignoreNbt) {
+                if (FluidStack.isSameFluid(candidate, fluidStack)) totalAmount += candidate.getAmount();
+            } else {
+                if (FluidStack.isSameFluidSameComponents(candidate, fluidStack)) totalAmount += candidate.getAmount();
             }
         }
 
@@ -169,5 +164,21 @@ public class SimpleFluidFilter extends Filter<FluidStack> {
             if (!match.isEmpty())
                 match.setAmount(Math.min(match.getAmount(), maxStackSize));
         }
+    }
+
+    @Override
+    public final boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof SimpleFluidFilter that)) return false;
+
+        return isBlackList == that.isBlackList && ignoreNbt == that.ignoreNbt && Arrays.equals(matches, that.matches);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = Boolean.hashCode(isBlackList);
+        result = 31 * result + Boolean.hashCode(ignoreNbt);
+        result = 31 * result + Arrays.hashCode(matches);
+        return result;
     }
 }

@@ -11,9 +11,9 @@ import com.gregtechceu.gtceu.api.recipe.GTRecipeType;
 import com.gregtechceu.gtceu.common.data.GTRecipeTypes;
 
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.FluidUtil;
-import net.minecraftforge.fluids.capability.IFluidHandlerItem;
+import com.gregtechceu.gtceu.compat.fluids.FluidStack;
+import com.gregtechceu.gtceu.compat.fluids.FluidUtil;
+import com.gregtechceu.gtceu.compat.fluids.capability.IFluidHandlerItem;
 
 import com.mojang.datafixers.util.Pair;
 import org.jetbrains.annotations.Nullable;
@@ -21,7 +21,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 
-import static net.minecraftforge.fluids.capability.IFluidHandler.*;
+import static com.gregtechceu.gtceu.compat.fluids.capability.IFluidHandler.*;
 
 public enum CannerLogic implements GTRecipeType.ICustomRecipeLogic {
 
@@ -60,7 +60,7 @@ public enum CannerLogic implements GTRecipeType.ICustomRecipeLogic {
             for (var itemStack : itemStacks) {
                 var single = itemStack.copyWithCount(1);
                 var copy = itemStack.copyWithCount(1);
-                var fluidHandler = FluidUtil.getFluidHandler(copy).resolve().orElse(null);
+                var fluidHandler = FluidUtil.getFluidHandler(copy).orElse(null);
                 if (fluidHandler == null) continue;
                 // Try to drain first
                 var fluid = fluidHandler.drain(Integer.MAX_VALUE, FluidAction.EXECUTE);
@@ -72,7 +72,7 @@ public enum CannerLogic implements GTRecipeType.ICustomRecipeLogic {
                             .outputFluids(fluid)
                             .duration(Math.max(16, fluid.getAmount() / 64))
                             .EUt(4)
-                            .buildRawRecipe();
+                            .build();
                 }
 
                 for (var fluidStack : fluidStacks) {
@@ -87,7 +87,7 @@ public enum CannerLogic implements GTRecipeType.ICustomRecipeLogic {
                             .outputItems(fluidHandler.getContainer())
                             .duration(Math.max(16, filled / 64))
                             .EUt(4)
-                            .buildRawRecipe();
+                            .build();
                 }
                 validItems.add(Pair.of(copy, fluidHandler));
             }
@@ -103,7 +103,7 @@ public enum CannerLogic implements GTRecipeType.ICustomRecipeLogic {
         for (var itemStack : itemStacks) {
             var single = itemStack.copyWithCount(1);
             var copy = itemStack.copyWithCount(1);
-            var fluidHandler = FluidUtil.getFluidHandler(copy).resolve().orElse(null);
+            var fluidHandler = FluidUtil.getFluidHandler(copy).orElse(null);
             if (fluidHandler == null) continue;
             // Try to drain first
             var fluid = fluidHandler.drain(Integer.MAX_VALUE, FluidAction.EXECUTE);
@@ -115,7 +115,7 @@ public enum CannerLogic implements GTRecipeType.ICustomRecipeLogic {
                         .outputFluids(fluid)
                         .duration(Math.max(16, fluid.getAmount() / 64))
                         .EUt(4)
-                        .buildRawRecipe();
+                        .build();
             }
 
             for (var fluidStack : fluidStacks) {
@@ -130,7 +130,7 @@ public enum CannerLogic implements GTRecipeType.ICustomRecipeLogic {
                         .outputItems(fluidHandler.getContainer())
                         .duration(Math.max(16, filled / 64))
                         .EUt(4)
-                        .buildRawRecipe();
+                        .build();
             }
         }
 
@@ -155,7 +155,7 @@ public enum CannerLogic implements GTRecipeType.ICustomRecipeLogic {
                         .outputItems(fluidHandler.getContainer())
                         .duration(Math.max(16, filled / 64))
                         .EUt(4)
-                        .buildRawRecipe();
+                        .build();
             }
         }
 

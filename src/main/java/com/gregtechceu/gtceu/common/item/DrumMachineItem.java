@@ -6,38 +6,44 @@ import com.gregtechceu.gtceu.api.data.chemical.material.properties.FluidPipeProp
 import com.gregtechceu.gtceu.api.data.chemical.material.properties.PropertyKey;
 import com.gregtechceu.gtceu.api.item.MetaMachineItem;
 import com.gregtechceu.gtceu.api.misc.forge.ThermalFluidHandlerItemStack;
+import com.gregtechceu.gtceu.common.data.item.GTDataComponents;
 import com.gregtechceu.gtceu.common.data.machines.GTMachineUtils;
 
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.common.capabilities.ICapabilityProvider;
+import com.gregtechceu.gtceu.compat.capabilities.Capabilities;
+import com.gregtechceu.gtceu.compat.capabilities.RegisterCapabilitiesEvent;
+import com.gregtechceu.gtceu.compat.fluids.capability.templates.FluidHandlerItemStack;
 
-import org.jetbrains.annotations.Nullable;
-
-import java.util.Objects;
+import org.jetbrains.annotations.NotNull;
 
 public class DrumMachineItem extends MetaMachineItem {
 
+    @NotNull
     private final Material mat;
 
-    protected DrumMachineItem(MetaMachineBlock block, Properties properties, Material mat) {
+    protected DrumMachineItem(MetaMachineBlock block, Properties properties, @NotNull Material mat) {
         super(block, properties);
-        this.mat = Objects.requireNonNull(mat, "Drum Material cannot be null");
+        this.mat = mat;
     }
 
-    public static DrumMachineItem create(MetaMachineBlock block, Properties properties, Material mat) {
+    public static DrumMachineItem create(MetaMachineBlock block, Properties properties, @NotNull Material mat) {
         return new DrumMachineItem(block, properties, mat);
     }
 
-    @Override
-    public @Nullable ICapabilityProvider initCapabilities(ItemStack stack, @Nullable CompoundTag nbt) {
-        final FluidPipeProperties property = mat.getProperty(PropertyKey.FLUID_PIPE);
-        if (property == null) {
-            return null;
+    public void attachCapabilities(RegisterCapabilitiesEvent event) {
+        if (mat.hasProperty(PropertyKey.FLUID_PIPE)) {
+            FluidPipeProperties property = mat.getProperty(PropertyKey.FLUID_PIPE);
+            event.registerItem(Capabilities.FluidHandler.ITEM,
+                    (stack, ignored) -> new ThermalFluidHandlerItemStack(stack,
+                            GTMachineUtils.DRUM_CAPACITY.getInt(getDefinition()),
+                            property.getMaxFluidTemperature(), property.isGasProof(), property.isAcidProof(),
+                            property.isCryoProof(),
+                            property.isPlasmaProof()),
+                    this);
+        } else {
+            event.registerItem(Capabilities.FluidHandler.ITEM,
+                    (stack, ignored) -> new FluidHandlerItemStack(GTDataComponents.FLUID_CONTENT, stack,
+                            GTMachineUtils.DRUM_CAPACITY.getInt(getDefinition())),
+                    this);
         }
-        return new ThermalFluidHandlerItemStack(stack,
-                GTMachineUtils.DRUM_CAPACITY.getInt(getDefinition()),
-                property.getMaxFluidTemperature(), property.isGasProof(), property.isAcidProof(),
-                property.isCryoProof(), property.isPlasmaProof());
     }
 }

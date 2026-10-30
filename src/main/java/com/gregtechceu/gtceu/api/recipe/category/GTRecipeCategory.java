@@ -7,7 +7,9 @@ import com.gregtechceu.gtceu.api.registry.GTRegistries;
 import com.gregtechceu.gtceu.common.data.GTRecipeTypes;
 import com.gregtechceu.gtceu.integration.recipeviewer.CategoryIcon;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.core.Registry;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
@@ -20,15 +22,9 @@ import org.jetbrains.annotations.Nullable;
 @Accessors(chain = true)
 public class GTRecipeCategory {
 
-    // Placeholder category used if category isn't defined for a recipe for registration
-    public static final GTRecipeCategory DEFAULT = new GTRecipeCategory("default", GTRecipeTypes.DUMMY_RECIPES);
-
-    public final ResourceLocation registryKey;
-    public final String name;
+    public final Identifier id;
     @Getter
     private final GTRecipeType recipeType;
-    @Getter
-    private final String languageKey;
     @Nullable
     @Setter
     private CategoryIcon icon = null;
@@ -36,24 +32,23 @@ public class GTRecipeCategory {
     @Setter
     private boolean isXEIVisible = true;
 
-    public GTRecipeCategory(@NotNull GTRecipeType recipeType) {
+    public GTRecipeCategory(@NotNull Identifier id, @NotNull GTRecipeType recipeType) {
         this.recipeType = recipeType;
-        this.name = recipeType.registryName.getPath();
-        this.registryKey = recipeType.registryName;
-        this.languageKey = recipeType.registryName.toLanguageKey();
-    }
-
-    public GTRecipeCategory(@NotNull String categoryName, @NotNull GTRecipeType recipeType) {
-        this.recipeType = recipeType;
-        this.name = categoryName;
-        this.registryKey = GTCEu.id(categoryName);
-        this.languageKey = "%s.recipe.category.%s".formatted(GTCEu.MOD_ID, categoryName);
+        this.id = id;
     }
 
     public static GTRecipeCategory registerDefault(@NotNull GTRecipeType recipeType) {
-        GTRecipeCategory category = new GTRecipeCategory(recipeType);
-        GTRegistries.RECIPE_CATEGORIES.register(category.registryKey, category);
+        GTRecipeCategory category = new GTRecipeCategory(recipeType.id, recipeType);
+        Registry.register(GTRegistries.RECIPE_CATEGORIES, category.id, category);
         return category;
+    }
+
+    public String getLanguageKey() {
+        return id.toLanguageKey("recipe_category");
+    }
+
+    public Component getName() {
+        return Component.translatable(getLanguageKey());
     }
 
     public CategoryIcon getIcon() {
@@ -80,16 +75,16 @@ public class GTRecipeCategory {
     public boolean equals(Object obj) {
         if (this == obj) return true;
         if (!(obj instanceof GTRecipeCategory that)) return false;
-        return this.registryKey.equals(that.registryKey);
+        return this.id.equals(that.id);
     }
 
     @Override
     public int hashCode() {
-        return registryKey.hashCode();
+        return id.hashCode();
     }
 
     @Override
     public String toString() {
-        return "GTRecipeCategory{%s}".formatted(name);
+        return "GTRecipeCategory{%s}".formatted(this.id);
     }
 }

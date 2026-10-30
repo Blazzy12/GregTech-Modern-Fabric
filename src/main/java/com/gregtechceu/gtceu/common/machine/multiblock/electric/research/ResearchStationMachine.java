@@ -19,7 +19,7 @@ import com.gregtechceu.gtceu.common.machine.multiblock.part.ObjectHolderMachine;
 import com.gregtechceu.gtceu.common.mui.GTMultiblockTextUtil;
 
 import net.minecraft.ChatFormatting;
-import net.minecraft.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 
@@ -63,17 +63,18 @@ public class ResearchStationMachine extends WorkableElectricMultiblockMachine
             if (part instanceof ObjectHolderMachine holder) {
                 if (holder.getFrontFacing() != getFrontFacing().getOpposite()) {
                     pState.setError(new PatternStringError(
-                            Component.translatable("gtceu.predicate_error.object_holder.direction"))
-                            .pos(holder.getBlockPos()));
+                            Component.translatable("gtceu.predicate_error.object_holder.direction")));
                     invalidateStructure(substructureName);
                     return;
                 }
                 this.objectHolder = holder;
             }
 
-            part
-                    .getCapability(GTCapability.CAPABILITY_COMPUTATION_PROVIDER)
-                    .ifPresent(provider -> this.computationProvider = provider);
+            var provider = getLevel().getCapability(GTCapability.CAPABILITY_COMPUTATION_PROVIDER,
+                    part.getBlockPos(), part.getBlockState(), part, null);
+            if (provider != null) {
+                this.computationProvider = provider;
+            }
         }
 
         // should never happen, but would rather do this than have an obscure NPE
@@ -103,8 +104,7 @@ public class ResearchStationMachine extends WorkableElectricMultiblockMachine
         }
         if (objHolder != null && objHolder.getFrontFacing() != getFrontFacing().getOpposite()) {
             patternState.setError(
-                    new PatternStringError(Component.translatable("gtceu.predicate_error.object_holder.direction"))
-                            .pos(objHolder.getBlockPos()));
+                    new PatternStringError(Component.translatable("gtceu.predicate_error.object_holder.direction")));
             invalidateStructure(name);
         }
         return patternState;
@@ -227,7 +227,7 @@ public class ResearchStationMachine extends WorkableElectricMultiblockMachine
             ItemStack outputItem = ItemStack.EMPTY;
             var contents = lastRecipe.getOutputContents(ItemRecipeCapability.CAP);
             if (!contents.isEmpty()) {
-                outputItem = ItemRecipeCapability.CAP.of(contents.get(0).content()).getItems()[0];
+                outputItem = ItemRecipeCapability.CAP.of(contents.getFirst().content()).getItems()[0];
             }
             if (!outputItem.isEmpty()) {
                 holder.setDataItem(outputItem.copy());

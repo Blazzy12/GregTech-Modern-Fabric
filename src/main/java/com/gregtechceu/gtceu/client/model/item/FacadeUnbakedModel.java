@@ -1,15 +1,27 @@
 package com.gregtechceu.gtceu.client.model.item;
 
+import java.util.Collection;
+
+import com.gregtechceu.gtceu.compat.client.model.VanillaUnbakedModel;
+
+import net.minecraft.client.resources.model.ModelBaker;
+
+import net.minecraft.client.renderer.block.dispatch.ModelState;
+
+import net.minecraft.client.resources.model.sprite.Material;
+
+import com.gregtechceu.gtceu.compat.client.model.UnbakedModel;
+
 import com.gregtechceu.gtceu.client.renderer.cover.FacadeCoverRenderer;
 
-import net.minecraft.client.renderer.block.model.BlockModel;
-import net.minecraft.client.renderer.block.model.ItemOverrides;
+import com.gregtechceu.gtceu.compat.client.model.ItemOverrides;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.client.resources.model.*;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.client.model.geometry.IGeometryBakingContext;
-import net.minecraftforge.client.model.geometry.IGeometryLoader;
-import net.minecraftforge.client.model.geometry.IUnbakedGeometry;
+
+import com.gregtechceu.gtceu.compat.client.model.BakedModel;
+import net.minecraft.resources.Identifier;
+import com.gregtechceu.gtceu.compat.client.model.geometry.IGeometryBakingContext;
+import com.gregtechceu.gtceu.compat.client.model.geometry.IGeometryLoader;
+import com.gregtechceu.gtceu.compat.client.model.geometry.IUnbakedGeometry;
 
 import com.google.gson.JsonDeserializationContext;
 import com.google.gson.JsonObject;
@@ -20,24 +32,23 @@ import java.util.function.Function;
 
 public class FacadeUnbakedModel implements IUnbakedGeometry<FacadeUnbakedModel> {
 
-    private final @NotNull BlockModel defaultModel;
+    private final @NotNull VanillaUnbakedModel defaultModel;
 
-    private FacadeUnbakedModel(@NotNull BlockModel defaultModel) {
+    private FacadeUnbakedModel(@NotNull VanillaUnbakedModel defaultModel) {
         this.defaultModel = defaultModel;
     }
 
     @Override
     public BakedModel bake(IGeometryBakingContext context, ModelBaker baker,
                            Function<Material, TextureAtlasSprite> spriteGetter, ModelState modelState,
-                           ItemOverrides overrides, ResourceLocation modelLocation) {
-        BakedModel bakedParent = defaultModel.bake(baker, defaultModel, spriteGetter, modelState, modelLocation, true);
+                           ItemOverrides overrides) {
+        BakedModel bakedParent = defaultModel.bake(baker, spriteGetter, modelState);
         return new FacadeCoverRenderer(bakedParent);
     }
 
     @Override
-    public void resolveParents(Function<ResourceLocation, UnbakedModel> modelGetter,
-                               IGeometryBakingContext context) {
-        defaultModel.resolveParents(modelGetter);
+    public Collection<Identifier> getDependencies() {
+        return defaultModel.getDependencies();
     }
 
     public static class Loader implements IGeometryLoader<FacadeUnbakedModel> {
@@ -48,7 +59,7 @@ public class FacadeUnbakedModel implements IUnbakedGeometry<FacadeUnbakedModel> 
 
         @Override
         public FacadeUnbakedModel read(JsonObject json, JsonDeserializationContext context) throws JsonParseException {
-            return new FacadeUnbakedModel(context.deserialize(json.get("default_model"), BlockModel.class));
+            return new FacadeUnbakedModel(VanillaUnbakedModel.parseInline(json.get("default_model")));
         }
     }
 }

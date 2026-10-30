@@ -20,10 +20,10 @@ import org.jetbrains.annotations.Nullable;
 import java.util.stream.IntStream;
 
 public class ProgrammedCircuitJeiCategory extends
-                                          ModularUIJeiCategory<ProgrammedCircuitJeiCategory.GTProgrammedCircuitWrapper> {
+                                          ModularUIJeiCategory<Object> {
 
-    public final static RecipeType<GTProgrammedCircuitWrapper> RECIPE_TYPE = new RecipeType<>(
-            GTCEu.id("programmed_circuit"), GTProgrammedCircuitWrapper.class);
+    public final static RecipeType<Object> RECIPE_TYPE = new RecipeType<>(
+            GTCEu.id("programmed_circuit"), Object.class);
 
     private final IDrawable icon;
 
@@ -33,7 +33,7 @@ public class ProgrammedCircuitJeiCategory extends
     }
 
     @Override
-    public RecipeType<GTProgrammedCircuitWrapper> getRecipeType() {
+    public RecipeType<Object> getRecipeType() {
         return RECIPE_TYPE;
     }
 
@@ -58,12 +58,11 @@ public class ProgrammedCircuitJeiCategory extends
     }
 
     @Override
-    public void setupRecipeIngredients(IRecipeLayoutBuilder builder, GTProgrammedCircuitWrapper recipe,
+    public void setupRecipeIngredients(IRecipeLayoutBuilder builder, Object recipe,
                                        IFocusGroup focuses) {
         IntStream.range(0, 33)
                 .mapToObj(IntCircuitBehaviour::stack)
-                .forEach(i -> builder.addSlot(RecipeIngredientRole.OUTPUT).addIngredient(VanillaTypes.ITEM_STACK, i));
+                .forEach(i -> builder.addInvisibleIngredients(RecipeIngredientRole.OUTPUT)
+                        .addIngredient(VanillaTypes.ITEM_STACK, i));
     }
-
-    public static class GTProgrammedCircuitWrapper {}
 }

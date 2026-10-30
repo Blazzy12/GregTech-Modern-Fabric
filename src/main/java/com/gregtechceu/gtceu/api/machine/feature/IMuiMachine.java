@@ -1,5 +1,7 @@
 package com.gregtechceu.gtceu.api.machine.feature;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import com.gregtechceu.gtceu.api.machine.mui.MachineUIPanelBuilder;
 import com.gregtechceu.gtceu.api.mui.GTGuiScreen;
 import com.gregtechceu.gtceu.api.mui.factory.MachineUIFactory;
@@ -9,8 +11,6 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.BlockHitResult;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 
 import brachy.modularui.api.IUIHolder;
 import brachy.modularui.factory.PosGuiData;
@@ -26,7 +26,7 @@ public interface IMuiMachine extends IUIHolder<PosGuiData>, IMachineFeature {
     default ModularPanel<?> buildUI(PosGuiData data, PanelSyncManager syncManager, UISettings settings) {
         var panelBuilder = getPanelBuilder(data, syncManager, settings);
         panelBuilder.mainContents(parent -> buildMainUI(parent, data, syncManager, settings));
-        return panelBuilder.build(data, syncManager, settings);
+        return panelBuilder.build(syncManager, settings);
     }
 
     default MachineUIPanelBuilder getPanelBuilder(PosGuiData data, PanelSyncManager syncManager, UISettings settings) {
@@ -41,7 +41,7 @@ public interface IMuiMachine extends IUIHolder<PosGuiData>, IMachineFeature {
     }
 
     @Override
-    @OnlyIn(Dist.CLIENT)
+    @Environment(EnvType.CLIENT)
     default ModularScreen createScreen(PosGuiData data, ModularPanel<?> mainPanel) {
         return new GTGuiScreen(mainPanel);
     }
@@ -51,7 +51,7 @@ public interface IMuiMachine extends IUIHolder<PosGuiData>, IMachineFeature {
             if (player instanceof ServerPlayer serverPlayer) {
                 MachineUIFactory.INSTANCE.open(serverPlayer, this);
             }
-            return InteractionResult.sidedSuccess(player.level().isClientSide);
+            return InteractionResult.SUCCESS;
         } else {
             return InteractionResult.PASS;
         }

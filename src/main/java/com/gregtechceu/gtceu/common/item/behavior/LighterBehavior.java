@@ -1,24 +1,25 @@
 package com.gregtechceu.gtceu.common.item.behavior;
 
+import com.gregtechceu.gtceu.core.fabric.IIgnitableBlock;
+
+import com.gregtechceu.gtceu.api.item.component.IAbilityItem;
 import com.gregtechceu.gtceu.api.item.component.IAddInformation;
 import com.gregtechceu.gtceu.api.item.component.IDurabilityBar;
 import com.gregtechceu.gtceu.api.item.component.IInteractionItem;
-import com.gregtechceu.gtceu.common.block.explosive.GTExplosiveBlock;
-import com.gregtechceu.gtceu.common.block.explosive.IndustrialTNTBlock;
-import com.gregtechceu.gtceu.common.block.explosive.PowderbarrelBlock;
+import com.gregtechceu.gtceu.common.data.item.GTDataComponents;
 import com.gregtechceu.gtceu.utils.GradientUtil;
 
-import net.minecraft.advancements.CriteriaTriggers;
+import net.minecraft.advancements.triggers.CriteriaTriggers;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.nbt.CompoundTag;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.monster.Creeper;
 import net.minecraft.world.entity.player.Player;
@@ -31,27 +32,24 @@ import net.minecraft.world.level.block.*;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.level.material.FluidState;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.capability.IFluidHandler;
+import com.gregtechceu.gtceu.compat.capabilities.Capabilities;
+import com.gregtechceu.gtceu.compat.common.ItemAbilities;
+import com.gregtechceu.gtceu.compat.common.ItemAbility;
+import com.gregtechceu.gtceu.compat.fluids.FluidStack;
+import com.gregtechceu.gtceu.compat.fluids.capability.IFluidHandler;
+import com.gregtechceu.gtceu.compat.fluids.capability.IFluidHandlerItem;
 
 import it.unimi.dsi.fastutil.ints.IntIntPair;
-import it.unimi.dsi.fastutil.objects.Reference2BooleanMap;
-import it.unimi.dsi.fastutil.objects.Reference2BooleanOpenHashMap;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.util.List;
 import java.util.function.Supplier;
 
 import static net.minecraft.world.level.block.AbstractCandleBlock.LIT;
 
-public class LighterBehavior implements IDurabilityBar, IInteractionItem, IAddInformation {
+public class LighterBehavior implements IDurabilityBar, IInteractionItem, IAddInformation, IAbilityItem {
 
-    public static final String LIGHTER_OPEN = "lighterOpen";
-    private static final String USES_LEFT = "usesLeft";
     private static final IntIntPair DURABILITY_BAR_COLORS = GradientUtil.getGradient(0xF07F1D, 10);
     private final boolean usesFluid;
     private final boolean hasMultipleUses;
@@ -74,19 +72,22 @@ public class LighterBehavior implements IDurabilityBar, IInteractionItem, IAddIn
     }
 
     @Override
-    public InteractionResultHolder<ItemStack> use(Item item, Level level, Player player, InteractionHand usedHand) {
-        ItemStack itemStack = player.getItemInHand(usedHand);
-        CompoundTag tag = itemStack.getOrCreateTag();
-        if (canOpen && player.isCrouching()) {
-            tag.putBoolean(LIGHTER_OPEN, !tag.getBoolean(LIGHTER_OPEN));
-            itemStack.setTag(tag);
+    public boolean canPerformAction(ItemStack stack, ItemAbility action) {
+        return ItemAbilities.DEFAULT_FLINT_ACTIONS.contains(action);
+    }
+
+    @Override
+    public InteractionResult use(ItemStack item, Level level, Player player,
+                                                  InteractionHand usedHand) {
+        if (!canOpen || !player.isSecondaryUseActive()) {
+            return IInteractionItem.super.use(item, level, player, usedHand);
         }
-        return IInteractionItem.super.use(item, level, player, usedHand);
+        item.update(GTDataComponents.LIGHTER_OPEN, false, isOpen -> !isOpen);
+        return InteractionResult.SUCCESS.heldItemTransformedTo(item);
     }
 
     @Override
     public InteractionResult onItemUseFirst(ItemStack itemStack, UseOnContext context) {
-        CompoundTag tag = itemStack.getOrCreateTag();
         Level level = context.getLevel();
         Player player = context.getPlayer();
         BlockPos pos = context.getClickedPos();
@@ -94,15 +95,20 @@ public class LighterBehavior implements IDurabilityBar, IInteractionItem, IAddIn
         BlockState state = level.getBlockState(pos);
         Block block = state.getBlock();
 
-        if ((!canOpen || tag.getBoolean(LIGHTER_OPEN)) && (player == null || !player.isShiftKeyDown())) {
+        boolean isOpen = !canOpen || itemStack.getOrDefault(GTDataComponents.LIGHTER_OPEN, false);
+        if (isOpen && (player == null || !player.isSecondaryUseActive())) {
             // check if it's "tnt-like" in that it implements the same method for igniting it
-            if (classImplementsOnCaughtFire(block.getClass())) {
+            if (block instanceof TntBlock || block instanceof IIgnitableBlock) {
                 if (!consumeFuel(player, itemStack)) return InteractionResult.PASS;
 
-                state.onCaughtFire(level, pos, clickedFace, player);
+                if (block instanceof IIgnitableBlock ignitable) {
+                    ignitable.onCaughtFire(state, level, pos, clickedFace, player);
+                } else {
+                    TntBlock.prime(level, pos, player, itemStack);
+                }
                 FluidState fluidState = level.getFluidState(pos);
                 level.setBlock(pos, fluidState.createLegacyBlock(), Block.UPDATE_ALL_IMMEDIATE);
-                return InteractionResult.sidedSuccess(level.isClientSide);
+                return InteractionResult.SUCCESS;
             }
             if ((CampfireBlock.canLight(state) || CandleBlock.canLight(state) || CandleCakeBlock.canLight(state))) {
                 if (!consumeFuel(player, itemStack)) return InteractionResult.PASS;
@@ -111,7 +117,7 @@ public class LighterBehavior implements IDurabilityBar, IInteractionItem, IAddIn
                 level.playSound(player, pos, SoundEvents.FLINTANDSTEEL_USE, SoundSource.BLOCKS,
                         1.0F, level.getRandom().nextFloat() * 0.4F + 0.8F);
                 level.gameEvent(player, GameEvent.BLOCK_CHANGE, pos);
-                return InteractionResult.sidedSuccess(level.isClientSide);
+                return InteractionResult.SUCCESS;
             }
 
             BlockPos offset = pos.relative(clickedFace);
@@ -126,9 +132,13 @@ public class LighterBehavior implements IDurabilityBar, IInteractionItem, IAddIn
 
                 if (player instanceof ServerPlayer serverPlayer) {
                     CriteriaTriggers.PLACED_BLOCK.trigger(serverPlayer, offset, itemStack);
-                    itemStack.hurtAndBreak(1, player, p -> p.broadcastBreakEvent(context.getHand()));
                 }
-                return InteractionResult.sidedSuccess(level.isClientSide);
+                if (player != null) {
+                    itemStack.hurtAndBreak(1, player, context.getHand());
+                } else if (level instanceof ServerLevel serverLevel) {
+                    itemStack.hurtAndBreak(1, serverLevel, null, item -> {});
+                }
+                return InteractionResult.SUCCESS;
             }
         }
         return InteractionResult.PASS;
@@ -137,18 +147,18 @@ public class LighterBehavior implements IDurabilityBar, IInteractionItem, IAddIn
     @Override
     public InteractionResult interactLivingEntity(ItemStack stack, Player player,
                                                   LivingEntity interactionTarget, InteractionHand usedHand) {
-        CompoundTag tag = stack.getOrCreateTag();
         Level level = player.level();
 
-        if ((!canOpen || tag.getBoolean(LIGHTER_OPEN)) && !player.isShiftKeyDown()) {
+        boolean isOpen = !canOpen || stack.getOrDefault(GTDataComponents.LIGHTER_OPEN, false);
+        if (isOpen && !player.isShiftKeyDown()) {
             if (interactionTarget instanceof Creeper creeper) {
                 if (!consumeFuel(player, stack)) return InteractionResult.PASS;
                 level.playSound(player, creeper, SoundEvents.FLINTANDSTEEL_USE, SoundSource.BLOCKS,
                         1.0F, level.getRandom().nextFloat() * 0.4F + 0.8F);
-                if (!level.isClientSide) {
+                if (!level.isClientSide()) {
                     creeper.ignite();
                 }
-                return InteractionResult.sidedSuccess(level.isClientSide);
+                return InteractionResult.SUCCESS;
             }
         }
         return InteractionResult.PASS;
@@ -169,19 +179,13 @@ public class LighterBehavior implements IDurabilityBar, IInteractionItem, IAddIn
 
     private int getUsesLeft(ItemStack stack) {
         if (usesFluid) {
-            var handler = stack.getCapability(ForgeCapabilities.FLUID_HANDLER_ITEM, null).resolve();
-            if (handler.isEmpty()) return 0;
+            IFluidHandlerItem handler = stack.getCapability(Capabilities.FluidHandler.ITEM, null);
+            if (handler == null) return 0;
 
-            FluidStack fluid = handler.get().drain(Integer.MAX_VALUE, IFluidHandler.FluidAction.SIMULATE);
+            FluidStack fluid = handler.drain(Integer.MAX_VALUE, IFluidHandler.FluidAction.SIMULATE);
             return fluid.getAmount();
         } else if (hasMultipleUses) {
-            CompoundTag compound = stack.getOrCreateTag();
-            if (compound.contains(USES_LEFT)) {
-                return compound.getInt(USES_LEFT);
-            }
-            compound.putInt(USES_LEFT, maxUses);
-            // no need to get the value from the tag here when we set it just above
-            return maxUses;
+            return maxUses - stack.getOrDefault(DataComponents.DAMAGE, 0);
         } else {
             return stack.getCount();
         }
@@ -189,21 +193,22 @@ public class LighterBehavior implements IDurabilityBar, IInteractionItem, IAddIn
 
     private void setUsesLeft(Player player, @NotNull ItemStack stack, final int usesLeft) {
         if (usesFluid) {
-            stack.getCapability(ForgeCapabilities.FLUID_HANDLER_ITEM).ifPresent(handler -> {
+            IFluidHandlerItem handler = stack.getCapability(Capabilities.FluidHandler.ITEM, null);
+            if (handler != null) {
                 FluidStack fluid = handler.drain(Integer.MAX_VALUE, IFluidHandler.FluidAction.SIMULATE);
                 if (!fluid.isEmpty()) {
                     handler.drain(fluid.getAmount() - usesLeft, IFluidHandler.FluidAction.EXECUTE);
                 }
-            });
+            } ;
         } else if (hasMultipleUses) {
             if (usesLeft <= 0) {
                 stack.shrink(1);
                 ItemStack brokenStack = this.destroyItem.get();
                 if (!player.addItem(brokenStack)) {
-                    player.drop(brokenStack, true);
+                    player.drop(brokenStack, false, net.minecraft.util.Prediction.SERVER_ONLY);
                 }
             } else {
-                stack.getOrCreateTag().putInt(USES_LEFT, usesLeft);
+                stack.set(DataComponents.DAMAGE, maxUses - usesLeft);
             }
         } else {
             stack.setCount(usesLeft);
@@ -213,11 +218,11 @@ public class LighterBehavior implements IDurabilityBar, IInteractionItem, IAddIn
     @Override
     public float getDurabilityForDisplay(ItemStack stack) {
         if (usesFluid) {
-            var handler = stack.getCapability(ForgeCapabilities.FLUID_HANDLER_ITEM, null).resolve();
-            if (handler.isEmpty()) return 0.0f;
+            IFluidHandlerItem handler = stack.getCapability(Capabilities.FluidHandler.ITEM, null);
+            if (handler == null) return 0.0f;
 
-            FluidStack fluid = handler.get().getFluidInTank(0);
-            return (float) fluid.getAmount() / (float) handler.get().getTankCapacity(0);
+            FluidStack fluid = handler.getFluidInTank(0);
+            return (float) fluid.getAmount() / (float) handler.getTankCapacity(0);
         } else if (hasMultipleUses) {
             return (float) getUsesLeft(stack) / (float) maxUses;
         } else {
@@ -244,7 +249,7 @@ public class LighterBehavior implements IDurabilityBar, IInteractionItem, IAddIn
     }
 
     @Override
-    public void appendHoverText(ItemStack stack, @Nullable Level level,
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context,
                                 List<Component> tooltipComponents, TooltipFlag isAdvanced) {
         tooltipComponents.add(Component
                 .translatable(usesFluid ? "behaviour.lighter.fluid.tooltip" : "behaviour.lighter.tooltip.description"));
@@ -254,65 +259,4 @@ public class LighterBehavior implements IDurabilityBar, IInteractionItem, IAddIn
         }
     }
 
-    private static boolean defaultsCacheInit = false;
-    private static final Reference2BooleanMap<Class<?>> IMPLS_CACHE = new Reference2BooleanOpenHashMap<>();
-
-    /**
-     * This is the simplest way I could figure out to check if a block can "catch fire" like TNT does (i.e. explode.),
-     * whilst still placing a fire block if the block can't do that.
-     * <p>
-     * Most modded TNTs implement this method in one way or another, but don't have tags or extend {@link TntBlock}.
-     * 
-     * @author screret
-     */
-    private static boolean classImplementsOnCaughtFire(Class<? extends Block> clazz) {
-        if (!defaultsCacheInit) {
-            defaultsCacheInit = true;
-            initCacheDefaults();
-        }
-        // first, check if class is cached
-        if (IMPLS_CACHE.containsKey(clazz)) {
-            return IMPLS_CACHE.getBoolean(clazz);
-        } else {
-            // then, cached superclasses
-            for (Class<?> cls = clazz; cls != Block.class; cls = cls.getSuperclass()) {
-                if (IMPLS_CACHE.containsKey(cls)) {
-                    boolean val = IMPLS_CACHE.getBoolean(cls);
-                    IMPLS_CACHE.put(clazz, val);
-                    return val;
-                }
-            }
-        }
-        boolean exists;
-
-        // finally, actually check if the method exists.
-        try {
-            // find the method and check its modifiers.
-            Method onCaughtFire = clazz.getDeclaredMethod("onCaughtFire",
-                    BlockState.class, Level.class, BlockPos.class, Direction.class, LivingEntity.class);
-            int modifiers = onCaughtFire.getModifiers();
-            // the method is implemented if it's: 1. not a default method, 2. public, 3. not static, 4. not abstract
-            exists = !onCaughtFire.getDeclaringClass().isInterface() && Modifier.isPublic(modifiers) &&
-                    !Modifier.isStatic(modifiers) && !Modifier.isAbstract(modifiers);
-
-            IMPLS_CACHE.put(onCaughtFire.getDeclaringClass(), exists);
-        } catch (NoSuchMethodException e) {
-            exists = false;
-        }
-        IMPLS_CACHE.put(clazz, exists);
-        return exists;
-    }
-
-    private static void initCacheDefaults() {
-        // self-test & default caching
-        if (!classImplementsOnCaughtFire(TntBlock.class)) {
-            throw new AssertionError("TntBlock doesn't implement IForgeBlock#onCaughtFire!" +
-                    "Something is seriously wrong!" +
-                    "Maybe check if the method name changed?");
-        }
-        classImplementsOnCaughtFire(GTExplosiveBlock.class);
-        // expected subclasses of GTExplosiveBlock
-        classImplementsOnCaughtFire(IndustrialTNTBlock.class);
-        classImplementsOnCaughtFire(PowderbarrelBlock.class);
-    }
 }

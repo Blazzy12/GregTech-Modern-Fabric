@@ -1,5 +1,6 @@
 package com.gregtechceu.gtceu.integration.jade.provider;
 
+import com.gregtechceu.gtceu.integration.jade.JadeTooltips;
 import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.common.item.behavior.IntCircuitBehaviour;
 import com.gregtechceu.gtceu.common.machine.trait.ProgrammableCircuitSlotTrait;
@@ -15,7 +16,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import snownee.jade.api.BlockAccessor;
 import snownee.jade.api.ITooltip;
 import snownee.jade.api.config.IPluginConfig;
-import snownee.jade.api.ui.IElementHelper;
+import snownee.jade.api.ui.JadeUI;
 
 public class ProgrammableCircuitProvider extends MachineTraitProvider<ProgrammableCircuitSlotTrait, CompoundTag> {
 
@@ -39,15 +40,14 @@ public class ProgrammableCircuitProvider extends MachineTraitProvider<Programmab
     protected void addTooltip(CompoundTag data, ITooltip tooltip, Player player, BlockAccessor block,
                               BlockEntity blockEntity, IPluginConfig config) {
         if (data.contains("Configuration")) {
-            IElementHelper helper = tooltip.getElementHelper();
 
-            int configuration = data.getInt("Configuration");
+            int configuration = data.getIntOr("Configuration", 0);
             ItemStack circuit = IntCircuitBehaviour.stack(configuration);
 
             MutableComponent text = Component.translatable("behaviour.setting.tooltip.circuit_config")
                     .append(Component.literal(Integer.toString(configuration)).withStyle(ChatFormatting.WHITE));
 
-            tooltip.add(helper.smallItem(circuit));
+            JadeTooltips.add(tooltip, JadeUI.smallItem(circuit));
             tooltip.append(text);
         }
     }

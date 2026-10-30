@@ -9,17 +9,19 @@ import net.minecraft.world.level.Level;
 
 import xaero.map.WorldMap;
 import xaero.map.common.config.option.WorldMapProfiledConfigOptions;
-import xaero.map.element.MapElementRenderProvider;
+import xaero.map.element.render.ElementRenderLocation;
+import xaero.map.element.render.ElementRenderProvider;
 
 import java.util.Iterator;
 
-public class OreVeinElementRenderProvider extends MapElementRenderProvider<OreVeinElement, OreVeinElementContext> {
+public class OreVeinElementRenderProvider extends ElementRenderProvider<OreVeinElement, OreVeinElementContext> {
 
     private Iterator<OreVeinElement> iterator;
 
     public OreVeinElementRenderProvider() {}
 
-    public void begin(int location, OreVeinElementContext context) {
+    @Override
+    public void begin(ElementRenderLocation location, OreVeinElementContext context) {
         if (WorldMap.INSTANCE.getConfigs().getClientConfigManager().getEffective(
                 WorldMapProfiledConfigOptions.WAYPOINTS)) {
             ResourceKey<Level> currentDim = Minecraft.getInstance().level.dimension();
@@ -32,13 +34,16 @@ public class OreVeinElementRenderProvider extends MapElementRenderProvider<OreVe
         }
     }
 
-    public boolean hasNext(int location, OreVeinElementContext context) {
+    @Override
+    public boolean hasNext(ElementRenderLocation location, OreVeinElementContext context) {
         return this.iterator != null && this.iterator.hasNext();
     }
 
-    public OreVeinElement getNext(int location, OreVeinElementContext context) {
+    @Override
+    public OreVeinElement getNext(ElementRenderLocation location, OreVeinElementContext context) {
         return this.iterator.next();
     }
 
-    public void end(int location, OreVeinElementContext context) {}
+    @Override
+    public void end(ElementRenderLocation location, OreVeinElementContext context) {}
 }

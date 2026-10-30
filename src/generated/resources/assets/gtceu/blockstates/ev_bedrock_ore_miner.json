@@ -1,7 +1,7 @@
 {
   "variants": {
     "facing=east,upwards_facing=down": {
-      "gtceu:z": 180,
+      "z": 180,
       "model": "gtceu:block/machine/ev_bedrock_ore_miner",
       "y": 90
     },
@@ -9,12 +9,12 @@
       "model": "gtceu:block/machine/ev_bedrock_ore_miner"
     },
     "facing=east,upwards_facing=north": {
-      "gtceu:z": 270,
+      "z": 270,
       "model": "gtceu:block/machine/ev_bedrock_ore_miner",
       "y": 90
     },
     "facing=east,upwards_facing=south": {
-      "gtceu:z": 90,
+      "z": 90,
       "model": "gtceu:block/machine/ev_bedrock_ore_miner",
       "y": 90
     },
@@ -26,11 +26,11 @@
       "model": "gtceu:block/machine/ev_bedrock_ore_miner"
     },
     "facing=north,upwards_facing=down": {
-      "gtceu:z": 180,
+      "z": 180,
       "model": "gtceu:block/machine/ev_bedrock_ore_miner"
     },
     "facing=north,upwards_facing=east": {
-      "gtceu:z": 90,
+      "z": 90,
       "model": "gtceu:block/machine/ev_bedrock_ore_miner"
     },
     "facing=north,upwards_facing=north": {
@@ -43,16 +43,16 @@
       "model": "gtceu:block/machine/ev_bedrock_ore_miner"
     },
     "facing=north,upwards_facing=west": {
-      "gtceu:z": 270,
+      "z": 270,
       "model": "gtceu:block/machine/ev_bedrock_ore_miner"
     },
     "facing=south,upwards_facing=down": {
-      "gtceu:z": 180,
+      "z": 180,
       "model": "gtceu:block/machine/ev_bedrock_ore_miner",
       "y": 180
     },
     "facing=south,upwards_facing=east": {
-      "gtceu:z": 270,
+      "z": 270,
       "model": "gtceu:block/machine/ev_bedrock_ore_miner",
       "y": 180
     },
@@ -67,12 +67,12 @@
       "y": 180
     },
     "facing=south,upwards_facing=west": {
-      "gtceu:z": 90,
+      "z": 90,
       "model": "gtceu:block/machine/ev_bedrock_ore_miner",
       "y": 180
     },
     "facing=west,upwards_facing=down": {
-      "gtceu:z": 180,
+      "z": 180,
       "model": "gtceu:block/machine/ev_bedrock_ore_miner",
       "y": 270
     },
@@ -80,12 +80,12 @@
       "model": "gtceu:block/machine/ev_bedrock_ore_miner"
     },
     "facing=west,upwards_facing=north": {
-      "gtceu:z": 90,
+      "z": 90,
       "model": "gtceu:block/machine/ev_bedrock_ore_miner",
       "y": 270
     },
     "facing=west,upwards_facing=south": {
-      "gtceu:z": 270,
+      "z": 270,
       "model": "gtceu:block/machine/ev_bedrock_ore_miner",
       "y": 270
     },

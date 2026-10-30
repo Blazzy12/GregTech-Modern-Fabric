@@ -1,37 +1,27 @@
 package com.gregtechceu.gtceu.common.data;
 
-import com.gregtechceu.gtceu.api.GTCEuAPI;
-import com.gregtechceu.gtceu.api.addon.AddonFinder;
-import com.gregtechceu.gtceu.api.addon.IGTAddon;
 import com.gregtechceu.gtceu.api.capability.recipe.*;
-import com.gregtechceu.gtceu.api.recipe.ingredient.EnergyStack;
-import com.gregtechceu.gtceu.api.recipe.ingredient.FluidIngredient;
 import com.gregtechceu.gtceu.api.registry.GTRegistries;
 
-import net.minecraft.world.item.crafting.Ingredient;
-import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.fml.ModLoader;
+import com.tterrag.registrate.util.entry.RegistryEntry;
+
+import static com.gregtechceu.gtceu.common.registry.GTRegistration.REGISTRATE;
 
 public class GTRecipeCapabilities {
 
-    public final static RecipeCapability<Ingredient> ITEM = ItemRecipeCapability.CAP;
-    public final static RecipeCapability<FluidIngredient> FLUID = FluidRecipeCapability.CAP;
-    public final static RecipeCapability<BlockState> BLOCK_STATE = BlockStateRecipeCapability.CAP;
-    public final static RecipeCapability<EnergyStack> EU = EURecipeCapability.CAP;
-    public final static RecipeCapability<Integer> CWU = CWURecipeCapability.CAP;
+    // spotless:off
+    public final static RegistryEntry<RecipeCapability<?>, ItemRecipeCapability> ITEM = register(ItemRecipeCapability.CAP, "Item");
+    public final static RegistryEntry<RecipeCapability<?>, FluidRecipeCapability> FLUID = register(FluidRecipeCapability.CAP, "Fluid");
+    public final static RegistryEntry<RecipeCapability<?>, BlockStateRecipeCapability> BLOCK_STATE = register(BlockStateRecipeCapability.CAP, "Block State");
+    public final static RegistryEntry<RecipeCapability<?>, EURecipeCapability> EU = register(EURecipeCapability.CAP, "GTCEu Energy");
+    public final static RegistryEntry<RecipeCapability<?>, CWURecipeCapability> CWU = register(CWURecipeCapability.CAP, "Computation Work Units");
+    //spotless:on
 
-    public static void init() {
-        GTRegistries.RECIPE_CAPABILITIES.unfreeze();
+    public static void init() {}
 
-        GTRegistries.RECIPE_CAPABILITIES.register(ITEM.id, ITEM);
-        GTRegistries.RECIPE_CAPABILITIES.register(FLUID.id, FLUID);
-        GTRegistries.RECIPE_CAPABILITIES.register(BLOCK_STATE.id, BLOCK_STATE);
-        GTRegistries.RECIPE_CAPABILITIES.register(EU.id, EU);
-        GTRegistries.RECIPE_CAPABILITIES.register(CWU.id, CWU);
-
-        AddonFinder.getAddons().forEach(IGTAddon::registerRecipeCapabilities);
-        ModLoader.get().postEvent(new GTCEuAPI.RegisterEvent<>(GTRegistries.RECIPE_CAPABILITIES,
-                (Class<RecipeCapability<?>>) (Class<?>) RecipeCapability.class));
-        GTRegistries.RECIPE_CAPABILITIES.freeze();
+    private static <T extends RecipeCapability<?>> RegistryEntry<RecipeCapability<?>, T> register(T cap, String name) {
+        return REGISTRATE.generic(cap.id.getPath(), GTRegistries.Keys.RECIPE_CAPABILITY, () -> cap)
+                .lang(v -> v.getId().toLanguageKey("recipe_capability"), name)
+                .register();
     }
 }

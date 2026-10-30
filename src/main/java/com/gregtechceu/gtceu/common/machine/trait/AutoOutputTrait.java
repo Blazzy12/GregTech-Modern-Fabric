@@ -13,6 +13,7 @@ import com.gregtechceu.gtceu.api.machine.trait.notifiable.NotifiableItemStackHan
 import com.gregtechceu.gtceu.api.sync_system.annotations.RerenderOnChanged;
 import com.gregtechceu.gtceu.api.sync_system.annotations.SaveField;
 import com.gregtechceu.gtceu.api.sync_system.annotations.SyncToClient;
+import com.gregtechceu.gtceu.common.data.item.GTItemAbilities;
 import com.gregtechceu.gtceu.common.item.tool.behavior.ToolModeSwitchBehavior;
 import com.gregtechceu.gtceu.common.mui.GTGuiTextures;
 import com.gregtechceu.gtceu.common.mui.GTMuiWidgets;
@@ -28,8 +29,8 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.fluids.capability.IFluidHandler;
-import net.minecraftforge.items.IItemHandler;
+import com.gregtechceu.gtceu.compat.fluids.capability.IFluidHandler;
+import com.gregtechceu.gtceu.compat.items.IItemHandler;
 
 import brachy.modularui.drawable.UITexture;
 import brachy.modularui.screen.ModularPanel;
@@ -45,8 +46,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
-
-import static com.gregtechceu.gtceu.api.item.tool.ToolHelper.getBehaviorsTag;
 
 /**
  * A machine trait which handles the auto output behaviour that most singleblock machines use.
@@ -223,7 +222,7 @@ public class AutoOutputTrait extends MachineTrait implements IRenderingTrait, II
                     (getMachine().hasFrontFacing() && getMachine().getFrontFacing() == outputFacing))
                 return;
             this.itemOutputDirection = outputFacing;
-            syncDataHolder.markClientSyncFieldDirty("itemOutputDirection");
+            syncDataHolder.markClientSyncFieldDirty("outputFacingItems");
             updateItemOutputSubscription();
         }
     }
@@ -346,26 +345,22 @@ public class AutoOutputTrait extends MachineTrait implements IRenderingTrait, II
         var itemStack = context.getItemInHand();
         var gridSide = context.getGridSide();
 
-        var tagCompound = getBehaviorsTag(itemStack);
-        ToolModeSwitchBehavior.WrenchModeType type = ToolModeSwitchBehavior.WrenchModeType.VALUES[tagCompound
-                .getByte("Mode")];
-
         boolean hasChanged = false;
-        if (type.isItem()) {
+        if (ToolModeSwitchBehavior.INSTANCE.canPerformAction(itemStack, GTItemAbilities.WRENCH_CONFIGURE_ITEMS)) {
             if ((!getMachine().hasFrontFacing() || gridSide != getMachine().getFrontFacing()) &&
                     itemOutputDirectionValidator.test(gridSide)) {
                 setItemOutputDirection(gridSide);
                 hasChanged = true;
             }
         }
-        if (type.isFluid()) {
+        if (ToolModeSwitchBehavior.INSTANCE.canPerformAction(itemStack, GTItemAbilities.WRENCH_CONFIGURE_FLUIDS)) {
             if ((!getMachine().hasFrontFacing() || gridSide != getMachine().getFrontFacing()) &&
                     fluidOutputDirectionValidator.test(gridSide)) {
                 setFluidOutputDirection(gridSide);
                 hasChanged = true;
             }
         }
-        return hasChanged ? InteractionResult.sidedSuccess(isRemote()) : InteractionResult.PASS;
+        return hasChanged ? InteractionResult.SUCCESS : InteractionResult.PASS;
     }
 
     private InteractionResult onScrewdriverClick(ExtendedUseOnContext context) {
@@ -376,19 +371,19 @@ public class AutoOutputTrait extends MachineTrait implements IRenderingTrait, II
         if (player.isShiftKeyDown()) {
             if (getItemOutputDirection() == gridSide) {
                 setAllowItemInputFromOutputSide(!allowsItemInputFromOutputSide());
-                player.displayClientMessage(Component
+                player.sendOverlayMessage(Component
                         .translatable("gtceu.machine.basic.input_from_output_side." +
                                 (allowsItemInputFromOutputSide() ? "allow" : "disallow"))
-                        .append(Component.translatable("gtceu.creative.chest.item")), true);
+                        .append(Component.translatable("gtceu.creative.chest.item")));
                 hasChanged = true;
             }
 
             if (getFluidOutputDirection() == gridSide) {
                 setAllowFluidInputFromOutputSide(!allowsFluidInputFromOutputSide());
-                player.displayClientMessage(Component
+                player.sendOverlayMessage(Component
                         .translatable("gtceu.machine.basic.input_from_output_side." +
                                 (allowsFluidInputFromOutputSide() ? "allow" : "disallow"))
-                        .append(Component.translatable("gtceu.creative.tank.fluid")), true);
+                        .append(Component.translatable("gtceu.creative.tank.fluid")));
                 hasChanged = true;
             }
 
@@ -402,6 +397,6 @@ public class AutoOutputTrait extends MachineTrait implements IRenderingTrait, II
                 hasChanged = true;
             }
         }
-        return hasChanged ? InteractionResult.sidedSuccess(player.level().isClientSide) : InteractionResult.PASS;
+        return hasChanged ? InteractionResult.SUCCESS : InteractionResult.PASS;
     }
 }

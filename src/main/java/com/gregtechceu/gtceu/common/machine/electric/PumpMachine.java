@@ -15,8 +15,8 @@ import com.gregtechceu.gtceu.common.mui.GTMuiWidgets;
 import com.gregtechceu.gtceu.utils.FormattingUtil;
 
 import net.minecraft.ChatFormatting;
-import net.minecraft.MethodsReturnNonnullByDefault;
-import net.minecraft.Util;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
+import net.minecraft.util.Util;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Vec3i;
@@ -28,10 +28,10 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LiquidBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.FluidState;
-import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.FluidType;
-import net.minecraftforge.fluids.capability.IFluidHandler.FluidAction;
-import net.minecraftforge.fluids.capability.wrappers.BucketPickupHandlerWrapper;
+import com.gregtechceu.gtceu.compat.fluids.FluidStack;
+import com.gregtechceu.gtceu.compat.fluids.FluidType;
+import com.gregtechceu.gtceu.compat.fluids.capability.IFluidHandler.FluidAction;
+import com.gregtechceu.gtceu.compat.fluids.capability.wrappers.BucketPickupHandlerWrapper;
 
 import brachy.modularui.api.drawable.Text;
 import brachy.modularui.api.widget.IWidget;
@@ -191,12 +191,12 @@ public class PumpMachine extends TieredEnergyMachine implements IMuiMachine {
             FluidState fluidState;
 
             // If it's not a fluid of the right type, we stop
-            if ((fluidState = state.getFluidState()).getFluidType() == fluidType &&
+            if ((fluidState = state.getFluidState()).getType().getFluidType() == fluidType &&
                     state.getBlock() instanceof LiquidBlock liquidBlock) {
                 // Remember all the sources we find
                 boolean isSource = fluidState.isSource();
                 if (isSource) {
-                    var fluidHandler = new BucketPickupHandlerWrapper(liquidBlock, level, check);
+                    var fluidHandler = new BucketPickupHandlerWrapper(null, liquidBlock, level, check);
                     FluidStack drainStack = fluidHandler.drain(Integer.MAX_VALUE, FluidAction.SIMULATE);
                     if (!drainStack.isEmpty()) {
                         return new SearchResult(check, true);
@@ -232,12 +232,12 @@ public class PumpMachine extends TieredEnergyMachine implements IMuiMachine {
             return;
         }
 
-        if (fluidType != null && downBlock.getFluidState().getFluidType() != fluidType) {
+        if (fluidType != null && downBlock.getFluidState().getType().getFluidType() != fluidType) {
             pumpQueue = null;
             return;
         }
 
-        pumpQueue = buildPumpQueue(getLevel(), headPos, downBlock.getFluidState().getFluidType(), queueSize(), true);
+        pumpQueue = buildPumpQueue(getLevel(), headPos, downBlock.getFluidState().getType().getFluidType(), queueSize(), true);
     }
 
     /**
@@ -424,7 +424,7 @@ public class PumpMachine extends TieredEnergyMachine implements IMuiMachine {
                 }
                 BlockState state = level.getBlockState(pos);
                 if (state.getBlock() instanceof LiquidBlock liquidBlock &&
-                        (liquidBlock.getFluidState(state)).getFluidType() == pumpQueue.fluidType()) {
+                        state.getFluidState().getType().getFluidType() == pumpQueue.fluidType()) {
                     states.add(new SourceState(state, pos));
                 } else {
                     break;
@@ -439,7 +439,7 @@ public class PumpMachine extends TieredEnergyMachine implements IMuiMachine {
                     states.removeLast();
                     FluidState fluidState = sourceState.state().getFluidState();
                     if (sourceState.state().getBlock() instanceof LiquidBlock liquidBlock && fluidState.isSource()) {
-                        var fluidHandler = new BucketPickupHandlerWrapper(liquidBlock, getLevel(), pos);
+                        var fluidHandler = new BucketPickupHandlerWrapper(null, liquidBlock, getLevel(), pos);
                         FluidStack drainStack = fluidHandler.drain(Integer.MAX_VALUE, FluidAction.SIMULATE);
                         if (!drainStack.isEmpty() &&
                                 cache.fillInternal(drainStack, FluidAction.SIMULATE) == drainStack.getAmount()) {

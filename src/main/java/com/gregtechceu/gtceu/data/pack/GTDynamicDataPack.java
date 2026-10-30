@@ -2,29 +2,31 @@ package com.gregtechceu.gtceu.data.pack;
 
 import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.api.addon.AddonFinder;
-import com.gregtechceu.gtceu.api.addon.IGTAddon;
-import com.gregtechceu.gtceu.common.data.GTRecipes;
 import com.gregtechceu.gtceu.config.ConfigHolder;
 
 import net.minecraft.SharedConstants;
-import net.minecraft.Util;
-import net.minecraft.data.recipes.FinishedRecipe;
+import net.minecraft.advancements.Advancement;
+import net.minecraft.advancements.AdvancementHolder;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.FileToIdConverter;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.packs.PackLocationInfo;
 import net.minecraft.server.packs.PackResources;
 import net.minecraft.server.packs.PackType;
-import net.minecraft.server.packs.metadata.MetadataSectionSerializer;
+import net.minecraft.server.packs.metadata.MetadataSectionType;
+import net.minecraft.util.InclusiveRange;
 import net.minecraft.server.packs.metadata.pack.PackMetadataSection;
 import net.minecraft.server.packs.resources.IoSupplier;
+import net.minecraft.world.item.crafting.Recipe;
+import net.minecraft.world.level.storage.loot.LootTable;
 
 import com.google.common.collect.Sets;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
+import com.google.gson.JsonElement;
+import com.mojang.serialization.JsonOps;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectSet;
 import org.jetbrains.annotations.ApiStatus;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
@@ -34,87 +36,99 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
-import javax.annotation.ParametersAreNonnullByDefault;
-
-@ParametersAreNonnullByDefault
 public class GTDynamicDataPack implements PackResources {
-
-    // change the path to `recipe` on 1.21!!
-    public static final FileToIdConverter RECIPE_ID_CONVERTER = FileToIdConverter.json("recipes");
-    // change the path to `advancement` on 1.21!!
-    public static final FileToIdConverter ADVANCEMENT_ID_CONVERTER = FileToIdConverter.json("advancements");
-    public static final Function<String, FileToIdConverter> TAG_ID_CONVERTER = Util
-            .memoize(registryName -> FileToIdConverter.json("tags/" + registryName));
 
     protected static final ObjectSet<String> SERVER_DOMAINS = new ObjectOpenHashSet<>();
     protected static final GTDynamicPackContents CONTENTS = new GTDynamicPackContents();
 
-    private final String name;
+    private static final FileToIdConverter RECIPE_ID_CONVERTER = FileToIdConverter.json("recipe");
+    private static final FileToIdConverter LOOT_TABLE_ID_CONVERTER = FileToIdConverter.json("loot_table");
+    private static final FileToIdConverter ADVANCEMENT_ID_CONVERTER = FileToIdConverter.json("advancement");
+
+    private final PackLocationInfo info;
 
     static {
-        SERVER_DOMAINS.addAll(Sets.newHashSet(GTCEu.MOD_ID, "minecraft", "forge", "c"));
+        SERVER_DOMAINS.addAll(Sets.newHashSet(GTCEu.MOD_ID, "minecraft", "neoforge", "c", "kubejs"));
     }
 
-    public GTDynamicDataPack(String name) {
-        this(name, AddonFinder.getAddons().stream().map(IGTAddon::addonModId).collect(Collectors.toSet()));
+    public GTDynamicDataPack(PackLocationInfo info) {
+        this(info, AddonFinder.getAddons().keySet());
     }
 
-    public GTDynamicDataPack(String name, Collection<String> domains) {
-        this.name = name;
+    public GTDynamicDataPack(PackLocationInfo info, Collection<String> domains) {
+        this.info = info;
         SERVER_DOMAINS.addAll(domains);
+    }
+
+    public static void addNamespace(String namespace) {
+        SERVER_DOMAINS.add(namespace);
     }
 
     public static void clearServer() {
         CONTENTS.clearData();
     }
 
-    private static void addToData(ResourceLocation location, byte[] bytes) {
-        CONTENTS.addToData(location, bytes);
+    public static void addResource(Identifier location, JsonElement obj) {
+        addResource(location, obj.toString().getBytes(StandardCharsets.UTF_8));
     }
 
-    public static void addRecipe(FinishedRecipe recipe) {
-        JsonObject recipeJson = recipe.serializeRecipe();
-        byte[] recipeBytes = recipeJson.toString().getBytes(StandardCharsets.UTF_8);
-        Path parent = GTCEu.GTCEU_FOLDER.resolve("dumped/data");
-        ResourceLocation recipeId = recipe.getId();
+    public static void addResource(Identifier location, byte[] data) {
         if (ConfigHolder.INSTANCE.dev.dumpRecipes) {
-            writeJson(recipeId, "recipes", parent, recipeBytes);
+            Path parent = GTCEu.GTCEU_FOLDER.resolve("dumped/data");
+            writeJson(location, parent, data);
         }
-        addToData(getRecipeLocation(recipeId), recipeBytes);
+        CONTENTS.addToData(location, data);
+    }
 
-        if (recipe.serializeAdvancement() != null) {
-            JsonObject advancement = recipe.serializeAdvancement();
-            byte[] advancementBytes = advancement.toString().getBytes(StandardCharsets.UTF_8);
-            if (ConfigHolder.INSTANCE.dev.dumpRecipes) {
-                writeJson(recipe.getAdvancementId(), "advancements", parent, advancementBytes);
-            }
-            addToData(getAdvancementLocation(Objects.requireNonNull(recipe.getAdvancementId())),
-                    advancementBytes);
+    public static void addRecipe(Identifier recipeId, Recipe<?> recipe, @Nullable AdvancementHolder advancement,
+                                 HolderLookup.Provider registries) {
+        JsonElement recipeJson = Recipe.DIRECT_CODEC
+                .encodeStart(registries.createSerializationContext(JsonOps.INSTANCE), recipe)
+                .getOrThrow();
+        addResource(RECIPE_ID_CONVERTER.idToFile(recipeId), recipeJson);
+
+        if (advancement != null) {
+            addAdvancement(advancement, registries);
         }
+    }
+
+    public static void addAdvancement(AdvancementHolder advancement, HolderLookup.Provider registries) {
+        addAdvancement(advancement.id(), advancement.value(), registries);
+    }
+
+    public static void addAdvancement(Identifier loc, Advancement advancement, HolderLookup.Provider registries) {
+        JsonElement advancementJson = Advancement.CODEC
+                .encodeStart(KeyOnlyLookups.with(registries)
+                        .createSerializationContext(JsonOps.INSTANCE), advancement)
+                .getOrThrow();
+        addResource(ADVANCEMENT_ID_CONVERTER.idToFile(loc), advancementJson);
+    }
+
+    public static void addLootTable(Identifier lootTableId, LootTable table, HolderLookup.Provider registries) {
+        JsonElement lootTableJson = LootTable.DIRECT_CODEC
+                .encodeStart(KeyOnlyLookups.with(registries).createSerializationContext(JsonOps.INSTANCE), table)
+                .getOrThrow();
+
+        Identifier fileName = LOOT_TABLE_ID_CONVERTER.idToFile(lootTableId);
+        if (CONTENTS.getResource(fileName) != null) {
+            GTCEu.LOGGER.error("duplicate loot table: {}", lootTableId);
+        }
+        addResource(fileName, lootTableJson);
     }
 
     /**
      * if subdir is null, no file ending is appended.
      *
      * @param id     the resource location of the file to be written.
-     * @param subdir a nullable subdirectory for the data.
      * @param parent the parent folder where to write data to.
      * @param json   the json to write.
      */
     @ApiStatus.Internal
-    public static void writeJson(ResourceLocation id, @Nullable String subdir, Path parent, byte[] json) {
+    public static void writeJson(Identifier id, Path parent, byte[] json) {
         try {
-            Path file;
-            if (subdir != null) {
-                // assume JSON
-                file = parent.resolve(id.getNamespace()).resolve(subdir).resolve(id.getPath() + ".json");
-            } else {
-                // assume the file type is also appended if a full path is given.
-                file = parent.resolve(id.getNamespace()).resolve(id.getPath());
-            }
+            Path file = parent.resolve(id.getNamespace()).resolve(id.getPath());
+
             Files.createDirectories(file.getParent());
             try (OutputStream output = Files.newOutputStream(file)) {
                 output.write(json);
@@ -122,11 +136,6 @@ public class GTDynamicDataPack implements PackResources {
         } catch (IOException e) {
             GTCEu.LOGGER.error("Failed to write JSON export for file {}", id, e);
         }
-    }
-
-    public static void addAdvancement(ResourceLocation loc, JsonObject obj) {
-        ResourceLocation l = getAdvancementLocation(loc);
-        addToData(l, obj.toString().getBytes(StandardCharsets.UTF_8));
     }
 
     @Nullable
@@ -138,9 +147,8 @@ public class GTDynamicDataPack implements PackResources {
         return null;
     }
 
-    @Nullable
     @Override
-    public IoSupplier<InputStream> getResource(PackType type, ResourceLocation location) {
+    public @Nullable IoSupplier<InputStream> getResource(PackType type, Identifier location) {
         if (type == PackType.SERVER_DATA) {
             return CONTENTS.getResource(location);
         } else {
@@ -160,50 +168,23 @@ public class GTDynamicDataPack implements PackResources {
         return type == PackType.SERVER_DATA ? SERVER_DOMAINS : Set.of();
     }
 
-    @Nullable
+    @SuppressWarnings("unchecked")
     @Override
-    public <T> T getMetadataSection(MetadataSectionSerializer<T> metaReader) {
-        if (metaReader == PackMetadataSection.TYPE) {
+    public @Nullable <T> T getMetadataSection(MetadataSectionType<T> metaReader) {
+        if (metaReader == PackMetadataSection.forPackType(PackType.SERVER_DATA)) {
             return (T) new PackMetadataSection(Component.literal("GTCEu dynamic data"),
-                    SharedConstants.getCurrentVersion().getPackVersion(PackType.SERVER_DATA));
-        } else if (metaReader.getMetadataSectionName().equals("filter")) {
-            JsonObject filter = new JsonObject();
-            JsonArray block = new JsonArray();
-            GTRecipes.RECIPE_FILTERS.forEach((id) -> { // Collect removed recipes in here, in the pack filter section.
-                JsonObject entry = new JsonObject();
-                entry.addProperty("namespace", "^" + id.getNamespace().replaceAll("[\\W]", "\\\\$0") + "$");
-                entry.addProperty("path", "^recipes/" + id.getPath().replaceAll("[\\W]", "\\\\$0") + "\\.json" + "$");
-                block.add(entry);
-            });
-            filter.add("block", block);
-            return metaReader.fromJson(filter);
+                    new InclusiveRange<>(SharedConstants.getCurrentVersion().packVersion(PackType.SERVER_DATA)));
         }
         return null;
     }
 
     @Override
-    public @NotNull String packId() {
-        return this.name;
-    }
-
-    public boolean isBuiltin() {
-        return true;
+    public PackLocationInfo location() {
+        return info;
     }
 
     @Override
     public void close() {
         // NOOP
-    }
-
-    public static ResourceLocation getRecipeLocation(ResourceLocation recipeId) {
-        return RECIPE_ID_CONVERTER.idToFile(recipeId);
-    }
-
-    public static ResourceLocation getAdvancementLocation(ResourceLocation advancementId) {
-        return ADVANCEMENT_ID_CONVERTER.idToFile(advancementId);
-    }
-
-    public static ResourceLocation getTagLocation(String identifier, ResourceLocation tagId) {
-        return TAG_ID_CONVERTER.apply(identifier).idToFile(tagId);
     }
 }

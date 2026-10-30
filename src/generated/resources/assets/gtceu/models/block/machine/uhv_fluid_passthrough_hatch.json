@@ -1,6 +1,6 @@
 {
   "parent": "minecraft:block/block",
-  "loader": "gtceu:machine",
+  "fabric:type": "gtceu:machine",
   "machine": "gtceu:uhv_fluid_passthrough_hatch",
   "replaceable_textures": [
     "bottom",

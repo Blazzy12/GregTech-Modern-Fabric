@@ -15,6 +15,7 @@ import com.gregtechceu.gtceu.api.recipe.GTRecipeType;
 import com.gregtechceu.gtceu.api.sync_system.annotations.RerenderOnChanged;
 import com.gregtechceu.gtceu.api.sync_system.annotations.SaveField;
 import com.gregtechceu.gtceu.api.sync_system.annotations.SyncToClient;
+import com.gregtechceu.gtceu.common.data.item.GTItemAbilities;
 import com.gregtechceu.gtceu.common.machine.trait.CleanroomReceiverTrait;
 import com.gregtechceu.gtceu.common.mui.GTGuiTextures;
 import com.gregtechceu.gtceu.utils.ExtendedUseOnContext;
@@ -26,7 +27,7 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.fluids.FluidType;
+import com.gregtechceu.gtceu.compat.fluids.FluidType;
 
 import brachy.modularui.drawable.UITexture;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
@@ -156,10 +157,13 @@ public abstract class SteamWorkableMachine extends SteamMachine
     protected InteractionResult onWrenchClick(ExtendedUseOnContext context) {
         var gridSide = context.getGridSide();
         var player = context.getPlayer();
+        if (!context.getItemInHand().canPerformAction(GTItemAbilities.WRENCH_CONFIGURE)) {
+            return super.onWrenchClick(context);
+        }
         if (!player.isShiftKeyDown()) {
             if (hasFrontFacing() && gridSide == getFrontFacing()) return InteractionResult.PASS;
             setOutputFacing(gridSide);
-            return InteractionResult.sidedSuccess(player.level().isClientSide);
+            return InteractionResult.SUCCESS;
         }
         return super.onWrenchClick(context);
     }

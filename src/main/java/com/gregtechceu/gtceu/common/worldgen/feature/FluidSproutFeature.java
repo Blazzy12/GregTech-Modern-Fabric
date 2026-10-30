@@ -1,5 +1,7 @@
 package com.gregtechceu.gtceu.common.worldgen.feature;
 
+import com.mojang.serialization.MapCodec;
+import net.minecraft.world.level.chunk.ChunkGenerator;
 import com.gregtechceu.gtceu.common.worldgen.feature.configurations.FluidSproutConfiguration;
 
 import net.minecraft.core.BlockPos;
@@ -12,7 +14,6 @@ import net.minecraft.world.level.chunk.BulkSectionAccess;
 import net.minecraft.world.level.chunk.LevelChunkSection;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
 import net.minecraft.world.level.levelgen.structure.templatesystem.RuleTest;
 import net.minecraft.world.level.material.Fluids;
 
@@ -20,18 +21,20 @@ import org.apache.commons.lang3.mutable.MutableInt;
 
 import java.util.function.Function;
 
-public class FluidSproutFeature extends Feature<FluidSproutConfiguration> {
+public record FluidSproutFeature(FluidSproutConfiguration config) implements Feature {
 
-    public FluidSproutFeature() {
-        super(FluidSproutConfiguration.CODEC);
+    public static final MapCodec<FluidSproutFeature> CODEC = FluidSproutConfiguration.CODEC.xmap(FluidSproutFeature::new, FluidSproutFeature::config);
+
+
+    @Override
+    public MapCodec<FluidSproutFeature> codec() {
+        return CODEC;
     }
 
     @Override
-    public boolean place(FeaturePlaceContext<FluidSproutConfiguration> context) {
-        RandomSource random = context.random();
+    public boolean place(WorldGenLevel level, ChunkGenerator chunkGenerator, RandomSource random, BlockPos origin) {
+        var context = new GTFeaturePlaceContext<>(level, chunkGenerator, random, origin, config);
         BlockPos blockpos = context.origin();
-        WorldGenLevel level = context.level();
-        FluidSproutConfiguration config = context.config();
 
         MutableInt placedAmount = new MutableInt(0);
         int size = config.size().sample(random);
@@ -126,16 +129,16 @@ public class FluidSproutFeature extends Feature<FluidSproutConfiguration> {
         int sectionZ = SectionPos.sectionRelative(currentZ);
         levelchunksection.setBlockState(sectionX, sectionY, sectionZ,
                 config.fluid().defaultFluidState().createLegacyBlock(), false);
-        level.getChunk(mutablePos).markPosForPostprocessing(mutablePos);
+        level.getChunk(mutablePos).markPosForPostProcessing(mutablePos);
         placedAmount.add(1);
     }
 
     public boolean canPlaceFluid(BlockState state, Function<BlockPos, BlockState> adjacentStateAccessor,
                                  RandomSource random, RuleTest target,
                                  BlockPos.MutableBlockPos mutablePos) {
-        if (!target.test(state, random))
+        if (!target.test(state, mutablePos, random))
             return false;
 
-        return !isAdjacentToAir(adjacentStateAccessor, mutablePos);
+        return !net.minecraft.world.level.levelgen.feature.AbstractOreFeature.isAdjacentToAir(adjacentStateAccessor, mutablePos);
     }
 }

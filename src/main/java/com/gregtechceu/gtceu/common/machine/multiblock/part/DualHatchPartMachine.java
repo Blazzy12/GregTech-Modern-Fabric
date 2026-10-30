@@ -11,10 +11,10 @@ import com.gregtechceu.gtceu.common.mui.GTMuiMachineUtil;
 import com.gregtechceu.gtceu.utils.GTTransferUtils;
 import com.gregtechceu.gtceu.utils.ISubscription;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.fluids.FluidType;
+import com.gregtechceu.gtceu.compat.fluids.FluidType;
 
 import brachy.modularui.factory.PosGuiData;
 import brachy.modularui.screen.UISettings;
@@ -136,9 +136,9 @@ public class DualHatchPartMachine extends ItemBusPartMachine {
         MachineDefinition newDefinition = null;
 
         if (io == IO.IN) {
-            newDefinition = GTMachines.DUAL_EXPORT_HATCH[this.getTier()];
+            newDefinition = GTMachines.DUAL_EXPORT_HATCH[this.getTier()].value();
         } else if (io == IO.OUT) {
-            newDefinition = GTMachines.DUAL_IMPORT_HATCH[this.getTier()];
+            newDefinition = GTMachines.DUAL_IMPORT_HATCH[this.getTier()].value();
         }
         if (newDefinition == null) return false;
 

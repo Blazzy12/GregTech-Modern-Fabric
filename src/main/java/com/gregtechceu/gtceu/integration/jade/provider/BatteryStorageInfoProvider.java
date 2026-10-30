@@ -1,5 +1,6 @@
 package com.gregtechceu.gtceu.integration.jade.provider;
 
+import com.gregtechceu.gtceu.integration.jade.JadeTooltips;
 import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.api.GTValues;
 import com.gregtechceu.gtceu.api.capability.GTCapabilityHelper;
@@ -19,7 +20,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import snownee.jade.api.BlockAccessor;
 import snownee.jade.api.ITooltip;
 import snownee.jade.api.config.IPluginConfig;
-import snownee.jade.api.ui.IElementHelper;
+import snownee.jade.api.ui.JadeUI;
 
 import static com.gregtechceu.gtceu.utils.GTUtil.formatLongNumber;
 import static com.gregtechceu.gtceu.utils.GTUtil.getStringRemainTime;
@@ -34,7 +35,7 @@ public class BatteryStorageInfoProvider extends MachineInfoProvider<BatteryBuffe
     protected CompoundTag write(BatteryBufferMachine machine) {
         CompoundTag tag = new CompoundTag();
         tag.put("energy", getEnergyData(machine.energyContainer));
-        tag.put("storage", machine.getBatteryInventory().serializeNBT());
+        tag.put("storage", machine.getBatteryInventory().serializeNBT(machine.getLevel().registryAccess()));
         return tag;
     }
 
@@ -49,9 +50,9 @@ public class BatteryStorageInfoProvider extends MachineInfoProvider<BatteryBuffe
     @Override
     protected void addTooltip(CompoundTag data, ITooltip tooltip, Player player, BlockAccessor block,
                               BlockEntity blockEntity, IPluginConfig config) {
-        CompoundTag container = data.getCompound("energy");
-        long changed = container.getLong("changed"), stored = container.getLong("stored"),
-                capacity = container.getLong("capacity");
+        CompoundTag container = data.getCompoundOrEmpty("energy");
+        long changed = container.getLongOr("changed", 0L), stored = container.getLongOr("stored", 0L),
+                capacity = container.getLongOr("capacity", 0L);
         tooltip.add(Component.translatable("gtceu.jade.changes_eu_tick",
                 FormattingUtil.formatNumbers(((double) changed) / 20.0)));
         if (changed > 0L) {
@@ -64,12 +65,11 @@ public class BatteryStorageInfoProvider extends MachineInfoProvider<BatteryBuffe
         }
         if (GTUtil.isShiftDown()) {
             CustomItemStackHandler handler = new CustomItemStackHandler();
-            handler.deserializeNBT(data.getCompound("storage"));
-            IElementHelper helper = tooltip.getElementHelper();
+            handler.deserializeNBT(block.getLevel().registryAccess(), data.getCompoundOrEmpty("storage"));
             for (int i = 0; i < handler.getSlots(); i++) {
                 if (handler.getStackInSlot(i).getCount() != 0) {
                     ItemStack stack = handler.getStackInSlot(i);
-                    tooltip.add(helper.smallItem(stack));
+                    JadeTooltips.add(tooltip, JadeUI.smallItem(stack));
                     IElectricItem item = GTCapabilityHelper.getElectricItem(stack);
                     if (item == null) continue;
                     tooltip.append(Component.literal(

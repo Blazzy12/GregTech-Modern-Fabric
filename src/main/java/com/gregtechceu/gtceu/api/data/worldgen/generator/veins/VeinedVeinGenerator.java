@@ -1,5 +1,6 @@
 package com.gregtechceu.gtceu.api.data.worldgen.generator.veins;
 
+import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.api.data.chemical.ChemicalHelper;
 import com.gregtechceu.gtceu.api.data.chemical.material.Material;
 import com.gregtechceu.gtceu.api.data.worldgen.GTOreDefinition;
@@ -8,15 +9,15 @@ import com.gregtechceu.gtceu.api.data.worldgen.ores.OreBlockPlacer;
 import com.gregtechceu.gtceu.api.data.worldgen.ores.OreVeinUtil;
 import com.gregtechceu.gtceu.api.registry.GTRegistries;
 import com.gregtechceu.gtceu.common.data.worldgen.GTDensityFunctions;
+import com.gregtechceu.gtceu.common.data.worldgen.GTVeinGenerators;
 import com.gregtechceu.gtceu.utils.GTUtil;
 import com.gregtechceu.gtceu.utils.WeightedEntry;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.core.SectionPos;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.server.level.WorldGenRegion;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
@@ -25,42 +26,42 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.BulkSectionAccess;
 import net.minecraft.world.level.chunk.LevelChunkSection;
-import net.minecraft.world.level.levelgen.DensityFunction;
+import net.minecraft.world.level.levelgen.densityfunction.DensityFunction;
+import net.minecraft.world.level.levelgen.densityfunction.DensityFunctions;
 import net.minecraft.world.level.levelgen.RandomState;
 import net.minecraft.world.level.levelgen.XoroshiroRandomSource;
-import net.minecraft.world.level.levelgen.blending.Blender;
-import net.minecraft.world.level.levelgen.feature.configurations.OreConfiguration;
-import net.minecraft.world.level.levelgen.feature.configurations.OreConfiguration.TargetBlockState;
+import net.minecraft.world.level.levelgen.densityfunction.DensitySampler;
+import net.minecraft.world.level.levelgen.densityfunction.SamplerContext;
+import net.minecraft.world.level.levelgen.feature.BlockReplacement;
 import net.minecraft.world.level.levelgen.structure.templatesystem.AlwaysTrueTest;
 
 import com.mojang.datafixers.util.Either;
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.Accessors;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import javax.annotation.ParametersAreNonnullByDefault;
-
-@MethodsReturnNonnullByDefault
-@ParametersAreNonnullByDefault
 @AllArgsConstructor
+@NoArgsConstructor
 @Accessors(fluent = true, chain = true)
 public class VeinedVeinGenerator extends VeinGenerator {
 
-    public static final Codec<Either<List<TargetBlockState>, Material>> BLOCK_ENTRY_CODEC = Codec
-            .either(TargetBlockState.CODEC.listOf(), GTRegistries.MATERIALS.codec());
-
-    public static final Codec<VeinedVeinGenerator> CODEC = RecordCodecBuilder.create((instance) -> instance.group(
+    public static final Codec<Either<List<BlockReplacement>, Material>> BLOCK_ENTRY_CODEC = Codec
+            .either(BlockReplacement.CODEC.listOf(), GTRegistries.MATERIALS.byNameCodec());
+    // spotless:off
+    public static final MapCodec<VeinedVeinGenerator> CODEC = RecordCodecBuilder.mapCodec((instance) -> instance.group(
             VeinBlockDefinition.CODEC.listOf().fieldOf("ore_blocks").forGetter(it -> it.oreBlocks),
             VeinBlockDefinition.CODEC.listOf().fieldOf("rare_blocks").forGetter(it -> it.rareBlocks),
-            BlockState.CODEC.fieldOf("filler_block").orElse(Blocks.AIR.defaultBlockState())
-                    .forGetter(it -> it.fillerBlock),
+            BlockState.CODEC.fieldOf("filler_block").orElse(Blocks.AIR.defaultBlockState()).forGetter(it -> it.fillerBlock),
             Codec.INT.fieldOf("min_y").forGetter(it -> it.minYLevel),
             Codec.INT.fieldOf("max_y").forGetter(it -> it.maxYLevel),
             Codec.FLOAT.fieldOf("veininess_threshold").orElse(0.4f).forGetter(it -> it.veininessThreshold),
@@ -69,9 +70,9 @@ public class VeinedVeinGenerator extends VeinGenerator {
             Codec.FLOAT.fieldOf("min_richness").orElse(0.1f).forGetter(it -> it.minRichness),
             Codec.FLOAT.fieldOf("max_richness").orElse(0.3f).forGetter(it -> it.maxRichness),
             Codec.FLOAT.fieldOf("max_richness_threshold").orElse(0.6f).forGetter(it -> it.maxRichnessThreshold),
-            Codec.FLOAT.fieldOf("rare_block_chance").orElse(0.02f).forGetter(it -> it.rareBlockChance)// ,
+            Codec.FLOAT.fieldOf("rare_block_chance").orElse(0.02f).forGetter(it -> it.rareBlockChance)
     ).apply(instance, VeinedVeinGenerator::new));
-
+    // spotless:on
     public List<VeinBlockDefinition> oreBlocks = new ArrayList<>();
     public List<VeinBlockDefinition> rareBlocks = new ArrayList<>();
     @Setter
@@ -95,10 +96,6 @@ public class VeinedVeinGenerator extends VeinGenerator {
     @Setter
     public float rareBlockChance = 0.02f;
 
-    public VeinedVeinGenerator(GTOreDefinition entry) {
-        super(entry);
-    }
-
     @Override
     public List<VeinEntry> getAllEntries() {
         List<VeinEntry> entries = new ArrayList<>(oreBlocks.size() + rareBlocks.size());
@@ -117,21 +114,14 @@ public class VeinedVeinGenerator extends VeinGenerator {
         Map<BlockPos, OreBlockPlacer> generatedBlocks = new Object2ObjectOpenHashMap<>();
 
         Registry<DensityFunction> densityFunctions = level.registryAccess()
-                .registryOrThrow(Registries.DENSITY_FUNCTION);
+                .lookupOrThrow(Registries.DENSITY_FUNCTION);
 
         RandomState randomState = level.getLevel().getChunkSource().randomState();
-        Blender blender;
-        if (level instanceof WorldGenRegion region) {
-            blender = Blender.of(region);
-        } else {
-            blender = Blender.empty();
-        }
-
-        final Blender finalizedBlender = blender;
-        DensityFunction veinToggle = mapToNoise(densityFunctions.get(GTDensityFunctions.NEW_ORE_VEIN_TOGGLE),
-                randomState);
-        DensityFunction veinRidged = mapToNoise(densityFunctions.get(GTDensityFunctions.NEW_ORE_VEIN_RIDGED),
-                randomState);
+        // 26.x compiles density functions to samplers bound to the world's RandomState
+        DensitySampler veinToggle = mapToNoise(densityFunctions.get(GTDensityFunctions.NEW_ORE_VEIN_TOGGLE)
+                .map(Holder::value).orElse(null), randomState);
+        DensitySampler veinRidged = mapToNoise(densityFunctions.get(GTDensityFunctions.NEW_ORE_VEIN_RIDGED)
+                .map(Holder::value).orElse(null), randomState);
 
         int size = entry.clusterSize().sample(random);
 
@@ -149,30 +139,11 @@ public class VeinedVeinGenerator extends VeinGenerator {
             final int y = chunkedPos.getY();
             final int z = chunkedPos.getZ();
 
-            DensityFunction.FunctionContext functionContext = new DensityFunction.FunctionContext() {
+            final int sampleX = x + randOffsetX;
+            final int sampleY = y + randOffsetY;
+            final int sampleZ = z + randOffsetZ;
 
-                @Override
-                public int blockX() {
-                    return x + randOffsetX;
-                }
-
-                @Override
-                public int blockY() {
-                    return y + randOffsetY;
-                }
-
-                @Override
-                public int blockZ() {
-                    return z + randOffsetZ;
-                }
-
-                @Override
-                public Blender getBlender() {
-                    return finalizedBlender;
-                }
-            };
-
-            double toggleNoise = veinToggle.compute(functionContext);
+            double toggleNoise = veinToggle.sampleValue(SamplerContext.EMPTY_UNCACHED, sampleX, sampleY, sampleZ);
             int blockY = origin.getY();
             double absToggleNoise = Math.abs(toggleNoise);
             int minY = blockY - this.minYLevel;
@@ -188,7 +159,7 @@ public class VeinedVeinGenerator extends VeinGenerator {
             if (random.nextFloat() > entry.density()) {
                 continue;
             }
-            if (veinRidged.compute(functionContext) >= 0.0) {
+            if (veinRidged.sampleValue(SamplerContext.EMPTY_UNCACHED, sampleX, sampleY, sampleZ) >= 0.0) {
                 continue;
             }
             double chance = Mth.clampedMap(absToggleNoise, veininessThreshold, maxRichnessThreshold, minRichness,
@@ -204,7 +175,8 @@ public class VeinedVeinGenerator extends VeinGenerator {
         return generatedBlocks;
     }
 
-    private void placeBlock(BulkSectionAccess access, LevelChunkSection section, long randomSeed, GTOreDefinition entry,
+    private void placeBlock(BulkSectionAccess access, LevelChunkSection section, long randomSeed,
+                            GTOreDefinition entry,
                             double chance, List<VeinBlockDefinition> rareEntries,
                             BlockPos.MutableBlockPos pos,
                             List<VeinBlockDefinition> commonEntries) {
@@ -235,7 +207,7 @@ public class VeinedVeinGenerator extends VeinGenerator {
         }
     }
 
-    protected static void placeOre(Either<List<TargetBlockState>, Material> block, BlockState current,
+    protected static void placeOre(Either<List<BlockReplacement>, Material> block, BlockState current,
                                    BulkSectionAccess level, LevelChunkSection section, RandomSource random,
                                    BlockPos.MutableBlockPos pos, GTOreDefinition entry) {
         int x = SectionPos.sectionRelative(pos.getX());
@@ -243,12 +215,12 @@ public class VeinedVeinGenerator extends VeinGenerator {
         int z = SectionPos.sectionRelative(pos.getZ());
 
         block.ifLeft(blockStates -> {
-            for (TargetBlockState targetState : blockStates) {
+            for (BlockReplacement targetState : blockStates) {
                 if (!OreVeinUtil.canPlaceOre(current, level::getBlockState, random, entry, targetState, pos))
                     continue;
-                if (targetState.state.isAir())
+                if (targetState.state().isAir())
                     continue;
-                section.setBlockState(x, y, z, targetState.state, false);
+                section.setBlockState(x, y, z, targetState.state(), false);
                 break;
             }
         }).ifRight(material -> {
@@ -278,8 +250,8 @@ public class VeinedVeinGenerator extends VeinGenerator {
     }
 
     @Override
-    public Codec<? extends VeinGenerator> codec() {
-        return CODEC;
+    public VeinGeneratorType<?> type() {
+        return GTVeinGenerators.VEINED.value();
     }
 
     public VeinedVeinGenerator oreBlock(Material block, int weight) {
@@ -287,7 +259,7 @@ public class VeinedVeinGenerator extends VeinGenerator {
     }
 
     public VeinedVeinGenerator oreBlock(BlockState blockState, int weight) {
-        TargetBlockState target = OreConfiguration.target(AlwaysTrueTest.INSTANCE, blockState);
+        BlockReplacement target = BlockReplacement.replace(AlwaysTrueTest.INSTANCE, blockState);
         return this.oreBlock(new VeinBlockDefinition(List.of(target), weight));
     }
 
@@ -301,7 +273,7 @@ public class VeinedVeinGenerator extends VeinGenerator {
     }
 
     public VeinedVeinGenerator rareBlock(BlockState blockState, int weight) {
-        TargetBlockState target = OreConfiguration.target(AlwaysTrueTest.INSTANCE, blockState);
+        BlockReplacement target = BlockReplacement.replace(AlwaysTrueTest.INSTANCE, blockState);
         return this.rareBlock(new VeinBlockDefinition(List.of(target), weight));
     }
 
@@ -310,36 +282,33 @@ public class VeinedVeinGenerator extends VeinGenerator {
         return this;
     }
 
-    public record VeinBlockDefinition(Either<List<TargetBlockState>, Material> block, int weight)
+    public record VeinBlockDefinition(Either<List<BlockReplacement>, Material> block, int weight)
             implements WeightedEntry {
 
         public static final Codec<VeinBlockDefinition> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 BLOCK_ENTRY_CODEC.fieldOf("block").forGetter(x -> x.block),
-                Codec.INT.fieldOf("weight").forGetter(x -> x.weight)).apply(instance, VeinBlockDefinition::new));
+                Codec.INT.fieldOf("weight").forGetter(x -> x.weight))
+                .apply(instance, VeinBlockDefinition::new));
 
         public VeinBlockDefinition(Material block, int weight) {
             this(Either.right(block), weight);
         }
 
-        public VeinBlockDefinition(List<TargetBlockState> block, int weight) {
+        public VeinBlockDefinition(Holder<Material> block, int weight) {
+            this(Either.right(block.value()), weight);
+        }
+
+        public VeinBlockDefinition(List<BlockReplacement> block, int weight) {
             this(Either.left(block), weight);
         }
     }
 
-    private static DensityFunction mapToNoise(DensityFunction function, RandomState randomState) {
-        return function.mapAll(new DensityFunction.Visitor() {
-
-            @Override
-            public DensityFunction apply(DensityFunction densityFunction) {
-                return densityFunction;
-            }
-
-            @Override
-            public DensityFunction.NoiseHolder visitNoise(DensityFunction.NoiseHolder noiseHolder) {
-                var holder = noiseHolder.noiseData();
-                var noise = randomState.getOrCreateNoise(holder.unwrapKey().orElseThrow());
-                return new DensityFunction.NoiseHolder(holder, noise);
-            }
-        });
+    private static DensitySampler mapToNoise(@Nullable DensityFunction function, RandomState randomState) {
+        if (function == null) {
+            // if the function is somehow missing, default to 0 and print an error.
+            GTCEu.LOGGER.error("Failed to generate veined vein, missing required density (3D noise) functions!");
+            return randomState.getSampler(DensityFunctions.zero());
+        }
+        return randomState.getSampler(function);
     }
 }

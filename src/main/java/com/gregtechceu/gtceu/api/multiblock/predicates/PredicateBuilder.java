@@ -6,15 +6,13 @@ import com.gregtechceu.gtceu.api.multiblock.error.PatternError;
 import com.gregtechceu.gtceu.api.multiblock.error.SimplePatternError;
 import com.gregtechceu.gtceu.api.multiblock.util.BlockInfo;
 
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.FluidState;
-import net.minecraftforge.registries.ForgeRegistries;
 
-import dev.latvian.mods.rhino.util.HideFromJS;
-import dev.latvian.mods.rhino.util.RemapForJS;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import org.apache.commons.lang3.Validate;
@@ -55,14 +53,12 @@ public class PredicateBuilder {
         return this;
     }
 
-    @RemapForJS("candidate")
-    public PredicateBuilder candidates(BlockInfo candidate) {
+        public PredicateBuilder candidates(BlockInfo candidate) {
         this.candidates.add(candidate);
         return this;
     }
 
-    @HideFromJS
-    public PredicateBuilder candidates(Stream<BlockInfo> candidateStream) {
+        public PredicateBuilder candidates(Stream<BlockInfo> candidateStream) {
         return candidates(candidateStream.toList());
     }
 
@@ -71,14 +67,12 @@ public class PredicateBuilder {
         return this;
     }
 
-    @RemapForJS("block")
-    public PredicateBuilder blocks(Block candidate) {
+        public PredicateBuilder blocks(Block candidate) {
         this.candidates.add(BlockInfo.fromBlock(candidate));
         return this;
     }
 
-    @HideFromJS
-    public PredicateBuilder blocks(Collection<Block> candidates) {
+        public PredicateBuilder blocks(Collection<Block> candidates) {
         candidates.forEach(this::blocks);
         return this;
     }
@@ -90,14 +84,12 @@ public class PredicateBuilder {
         return this;
     }
 
-    @RemapForJS("state")
-    public PredicateBuilder states(BlockState candidate) {
+        public PredicateBuilder states(BlockState candidate) {
         this.candidates.add(BlockInfo.fromBlockState(candidate));
         return this;
     }
 
-    @HideFromJS
-    public PredicateBuilder states(Collection<BlockState> candidates) {
+        public PredicateBuilder states(Collection<BlockState> candidates) {
         candidates.forEach(this::states);
         return this;
     }
@@ -109,14 +101,12 @@ public class PredicateBuilder {
         return this;
     }
 
-    @RemapForJS("fluidState")
-    public PredicateBuilder fluidStates(FluidState candidate) {
+        public PredicateBuilder fluidStates(FluidState candidate) {
         this.candidates.add(BlockInfo.fromFluidState(candidate));
         return this;
     }
 
-    @HideFromJS
-    public PredicateBuilder fluidStates(Collection<FluidState> candidates) {
+        public PredicateBuilder fluidStates(Collection<FluidState> candidates) {
         candidates.forEach(this::fluidStates);
         return this;
     }
@@ -128,14 +118,12 @@ public class PredicateBuilder {
         return this;
     }
 
-    @RemapForJS("fluid")
-    public PredicateBuilder fluids(Fluid candidate) {
+        public PredicateBuilder fluids(Fluid candidate) {
         this.candidates.add(BlockInfo.fromFluid(candidate));
         return this;
     }
 
-    @HideFromJS
-    public PredicateBuilder fluids(Collection<Fluid> candidates) {
+        public PredicateBuilder fluids(Collection<Fluid> candidates) {
         candidates.forEach(this::fluids);
         return this;
     }
@@ -149,15 +137,13 @@ public class PredicateBuilder {
 
     /// fills candidates with this block tag
     public PredicateBuilder blockTag(TagKey<Block> tag) {
-        Objects.requireNonNull(ForgeRegistries.BLOCKS.tags())
-                .getTag(tag).forEach(this::blocks);
+        BuiltInRegistries.BLOCK.get(tag).orElseThrow().forEach((block) -> this.blocks(block.value()));
         return this;
     }
 
     /// fills candidates with this fluid tag
     public PredicateBuilder fluidTag(TagKey<Fluid> tag) {
-        Objects.requireNonNull(ForgeRegistries.FLUIDS.tags())
-                .getTag(tag).forEach(this::fluids);
+        BuiltInRegistries.FLUID.get(tag).orElseThrow().forEach((fluid) -> this.fluids(fluid.value()));
         return this;
     }
 

@@ -6,6 +6,7 @@ import com.gregtechceu.gtceu.api.data.worldgen.GTOreDefinition;
 import com.gregtechceu.gtceu.api.data.worldgen.generator.VeinGenerator;
 import com.gregtechceu.gtceu.api.data.worldgen.ores.OreBlockPlacer;
 import com.gregtechceu.gtceu.api.data.worldgen.ores.OreVeinUtil;
+import com.gregtechceu.gtceu.common.data.worldgen.GTVeinGenerators;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
@@ -17,14 +18,16 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.BulkSectionAccess;
 import net.minecraft.world.level.chunk.LevelChunkSection;
 import net.minecraft.world.level.levelgen.XoroshiroRandomSource;
-import net.minecraft.world.level.levelgen.feature.configurations.OreConfiguration;
+import net.minecraft.world.level.levelgen.feature.BlockReplacement;
 import net.minecraft.world.level.levelgen.structure.templatesystem.AlwaysTrueTest;
 
 import com.google.common.base.Preconditions;
 import com.mojang.datafixers.util.Either;
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import org.jetbrains.annotations.NotNull;
@@ -36,9 +39,10 @@ import java.util.function.Consumer;
 
 @SuppressWarnings({ "UnusedReturnValue", "BooleanMethodIsAlwaysInverted" })
 @Accessors(fluent = true, chain = true)
+@NoArgsConstructor
 public class CuboidVeinGenerator extends VeinGenerator {
 
-    public static final Codec<CuboidVeinGenerator> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+    public static final MapCodec<CuboidVeinGenerator> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
             ClassicVeinGenerator.Layer.CODEC.fieldOf("top").forGetter(val -> val.top),
             ClassicVeinGenerator.Layer.CODEC.fieldOf("middle").forGetter(val -> val.middle),
             ClassicVeinGenerator.Layer.CODEC.fieldOf("bottom").forGetter(val -> val.bottom),
@@ -60,10 +64,6 @@ public class CuboidVeinGenerator extends VeinGenerator {
     private int middleLayer1;
     private int middleLayer2;
     private int topLayer;
-
-    public CuboidVeinGenerator(GTOreDefinition entry) {
-        super(entry);
-    }
 
     public CuboidVeinGenerator(ClassicVeinGenerator.Layer top, ClassicVeinGenerator.Layer middle,
                                ClassicVeinGenerator.Layer bottom, ClassicVeinGenerator.Layer spread,
@@ -234,7 +234,7 @@ public class CuboidVeinGenerator extends VeinGenerator {
     }
 
     public void placeOre(BulkSectionAccess access, LevelChunkSection section, BlockPos pos, long randomSeed,
-                         Either<List<OreConfiguration.TargetBlockState>, Material> ore, GTOreDefinition entry) {
+                         Either<List<BlockReplacement>, Material> ore, GTOreDefinition entry) {
         RandomSource random = new XoroshiroRandomSource(randomSeed);
         int x = SectionPos.sectionRelative(pos.getX());
         int y = SectionPos.sectionRelative(pos.getY());
@@ -243,12 +243,12 @@ public class CuboidVeinGenerator extends VeinGenerator {
         BlockState existing = section.getBlockState(x, y, z);
 
         ore.ifLeft(blockStates -> {
-            for (OreConfiguration.TargetBlockState targetState : blockStates) {
+            for (BlockReplacement targetState : blockStates) {
                 if (!OreVeinUtil.canPlaceOre(existing, access::getBlockState, random, entry, targetState, pos))
                     continue;
-                if (targetState.state.isAir())
+                if (targetState.state().isAir())
                     continue;
-                section.setBlockState(x, y, z, targetState.state, false);
+                section.setBlockState(x, y, z, targetState.state(), false);
                 break;
             }
         }).ifRight(material -> {
@@ -289,8 +289,8 @@ public class CuboidVeinGenerator extends VeinGenerator {
     }
 
     @Override
-    public Codec<? extends VeinGenerator> codec() {
-        return CODEC;
+    public VeinGeneratorType<?> type() {
+        return GTVeinGenerators.CUBOID.value();
     }
 
     public CuboidVeinGenerator top(Consumer<ClassicVeinGenerator.Layer.Builder> builder) {

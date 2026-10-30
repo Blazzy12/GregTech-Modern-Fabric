@@ -1,11 +1,14 @@
 package com.gregtechceu.gtceu.utils;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.fluids.FluidStack;
+import com.gregtechceu.gtceu.compat.fluids.FluidStack;
+
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -34,6 +37,7 @@ public class TagExprFilter {
 
         public static class Token {
 
+            @Nullable
             public String lexeme;
             public TokenType type;
 
@@ -54,10 +58,11 @@ public class TagExprFilter {
 
         private static class BinExpr extends MatchExpr {
 
+            @Nullable
             MatchExpr left, right;
             Token op;
 
-            public BinExpr(Token op, MatchExpr left, MatchExpr right) {
+            public BinExpr(Token op, @Nullable MatchExpr left, @Nullable MatchExpr right) {
                 this.op = op;
                 this.left = left;
                 this.right = right;
@@ -80,9 +85,10 @@ public class TagExprFilter {
         private static class UnaryExpr extends MatchExpr {
 
             Token token;
+            @Nullable
             MatchExpr expr;
 
-            public UnaryExpr(Token token, MatchExpr expr) {
+            public UnaryExpr(Token token, @Nullable MatchExpr expr) {
                 this.token = token;
                 this.expr = expr;
             }
@@ -99,9 +105,10 @@ public class TagExprFilter {
 
         private static class StringExpr extends MatchExpr {
 
+            @Nullable
             String value;
 
-            public StringExpr(String value) {
+            public StringExpr(@Nullable String value) {
                 this.value = value;
             }
 
@@ -110,7 +117,7 @@ public class TagExprFilter {
                 if (value == null || value.isEmpty()) return false;
                 if (value.equals("$") && input.isEmpty()) return true;
                 if (!value.contains(":") && !value.startsWith("*")) {
-                    value = "forge:" + value;
+                    value = "c:" + value;
                 }
 
                 String val = quote(value);
@@ -133,9 +140,10 @@ public class TagExprFilter {
 
         private static class GroupingExpr extends MatchExpr {
 
+            @Nullable
             MatchExpr inner;
 
-            public GroupingExpr(MatchExpr inner) {
+            public GroupingExpr(@Nullable MatchExpr inner) {
                 this.inner = inner;
             }
 
@@ -145,10 +153,12 @@ public class TagExprFilter {
             }
         }
 
-        List<Token> tokens;
+        List<Token> tokens = Collections.emptyList();
         int idx = 0;
+        @Nullable
         Token prev = null;
 
+        @Nullable
         public MatchExpr parse(String expr) {
             tokens = tokenize(expr);
 
@@ -169,16 +179,19 @@ public class TagExprFilter {
             return false;
         }
 
+        @Nullable
         private MatchExpr expression() {
             return term();
         }
 
+        @Nullable
         private MatchExpr term() {
             MatchExpr lhs = unary();
 
             BinExpr result = null;
             while (match(TokenType.And) || match(TokenType.Or) || match(TokenType.Xor)) {
                 if (result == null) {
+                    // noinspection DataFlowIssue can't.
                     result = new BinExpr(prev, lhs, unary());
                 } else {
                     result = new BinExpr(prev, result, unary());
@@ -192,14 +205,17 @@ public class TagExprFilter {
             return lhs;
         }
 
+        @Nullable
         private MatchExpr unary() {
             if (match(TokenType.Not)) {
+                // noinspection DataFlowIssue it gets set in match()
                 return new UnaryExpr(prev, id());
             }
 
             return id();
         }
 
+        @Nullable
         private MatchExpr id() {
             if (match(TokenType.LParen)) {
                 MatchExpr inner = expression();
@@ -209,6 +225,7 @@ public class TagExprFilter {
             }
 
             if (match(TokenType.String)) {
+                // noinspection DataFlowIssue it gets set in match()
                 return new StringExpr(prev.lexeme);
             }
 
@@ -271,6 +288,7 @@ public class TagExprFilter {
      * @param expression expr to parse
      * @return The parsed expression tree
      */
+    @Nullable
     public static TagExprParser.MatchExpr parseExpression(String expression) {
         return new TagExprParser().parse(expression);
     }
@@ -280,21 +298,21 @@ public class TagExprFilter {
      *
      * @param expr  to check against
      * @param stack item to check
-     * @return if any of the items oreDicts matches the rules
+     * @return if any of the item's tags matches the rules
      */
-    public static boolean tagsMatch(TagExprParser.MatchExpr expr, ItemStack stack) {
+    public static boolean tagsMatch(@Nullable TagExprParser.MatchExpr expr, ItemStack stack) {
         Set<String> tags = stack.getTags()
                 .map(TagKey::location)
-                .map(ResourceLocation::toString)
+                .map(Identifier::toString)
                 .collect(Collectors.toSet());
 
         return expr != null && expr.matches(tags);
     }
 
-    public static boolean tagsMatch(TagExprParser.MatchExpr expr, FluidStack stack) {
-        Set<String> tags = stack.getFluid().defaultFluidState().getTags()
+    public static boolean tagsMatch(@Nullable TagExprParser.MatchExpr expr, FluidStack stack) {
+        Set<String> tags = stack.getFluid().builtInRegistryHolder().tags()
                 .map(TagKey::location)
-                .map(ResourceLocation::toString)
+                .map(Identifier::toString)
                 .collect(Collectors.toSet());
 
         return expr != null && expr.matches(tags);

@@ -1,28 +1,27 @@
 package com.gregtechceu.gtceu.data.recipe.misc;
 
-import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.api.GTValues;
 import com.gregtechceu.gtceu.api.data.chemical.ChemicalHelper;
-import com.gregtechceu.gtceu.api.data.chemical.material.Material;
 import com.gregtechceu.gtceu.api.data.chemical.material.properties.PropertyKey;
 import com.gregtechceu.gtceu.api.data.chemical.material.stack.MaterialEntry;
 import com.gregtechceu.gtceu.api.data.chemical.material.stack.MaterialStack;
 import com.gregtechceu.gtceu.api.machine.MachineDefinition;
 import com.gregtechceu.gtceu.api.machine.multiblock.CleanroomType;
+import com.gregtechceu.gtceu.api.registry.registrate.entry.MachineEntry;
+import com.gregtechceu.gtceu.api.registry.registrate.entry.MaterialRegistryEntry;
 import com.gregtechceu.gtceu.common.block.LampBlock;
 import com.gregtechceu.gtceu.common.block.StoneBlockType;
 import com.gregtechceu.gtceu.common.data.GTBlocks;
 import com.gregtechceu.gtceu.common.data.GTItems;
 import com.gregtechceu.gtceu.common.data.GTMachines;
-import com.gregtechceu.gtceu.common.data.machines.GTAEMachines;
 import com.gregtechceu.gtceu.common.data.machines.GTMachineUtils;
 import com.gregtechceu.gtceu.config.ConfigHolder;
 import com.gregtechceu.gtceu.data.recipe.CustomTags;
 import com.gregtechceu.gtceu.data.recipe.VanillaRecipeHelper;
 
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.data.recipes.FinishedRecipe;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.data.recipes.RecipeOutput;
+import net.minecraft.resources.Identifier;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.DyeColor;
@@ -30,12 +29,12 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraftforge.common.Tags;
+import com.gregtechceu.gtceu.compat.common.Tags;
 
 import com.tterrag.registrate.util.entry.ItemEntry;
 
 import java.util.List;
-import java.util.function.Consumer;
+import java.util.Locale;
 
 import static com.gregtechceu.gtceu.api.GTValues.*;
 import static com.gregtechceu.gtceu.api.data.tag.TagPrefix.*;
@@ -49,7 +48,7 @@ public class MachineRecipeLoader {
 
     private MachineRecipeLoader() {}
 
-    public static void init(Consumer<FinishedRecipe> provider) {
+    public static void init(RecipeOutput provider) {
         ComputerRecipes.init(provider);
 
         registerDecompositionRecipes(provider);
@@ -67,7 +66,7 @@ public class MachineRecipeLoader {
         registerHatchConversion(provider);
     }
 
-    private static void registerBendingCompressingRecipes(Consumer<FinishedRecipe> provider) {
+    private static void registerBendingCompressingRecipes(RecipeOutput provider) {
         COMPRESSOR_RECIPES.recipeBuilder("compressed_fireclay")
                 .inputItems(dust, Fireclay)
                 .outputItems(COMPRESSED_FIRECLAY)
@@ -75,7 +74,7 @@ public class MachineRecipeLoader {
                 .save(provider);
 
         for (ItemEntry<Item> shapeMold : SHAPE_MOLDS) {
-            FORMING_PRESS_RECIPES.recipeBuilder("copy_mold_" + shapeMold.get())
+            FORMING_PRESS_RECIPES.recipeBuilder(shapeMold.getId().withPrefix("copy_mold_"))
                     .duration(120).EUt(22)
                     .notConsumable(shapeMold)
                     .inputItems(SHAPE_EMPTY)
@@ -85,7 +84,7 @@ public class MachineRecipeLoader {
 
         for (ItemEntry<Item> shapeExtruder : SHAPE_EXTRUDERS) {
             if (shapeExtruder == null) continue;
-            FORMING_PRESS_RECIPES.recipeBuilder("copy_shape_" + shapeExtruder.get())
+            FORMING_PRESS_RECIPES.recipeBuilder(shapeExtruder.getId().withPrefix("copy_shape_"))
                     .duration(120).EUt(22)
                     .notConsumable(shapeExtruder)
                     .inputItems(SHAPE_EMPTY)
@@ -186,7 +185,7 @@ public class MachineRecipeLoader {
                 .duration(300).EUt(2).save(provider);
     }
 
-    private static void registerPrimitiveBlastFurnaceRecipes(Consumer<FinishedRecipe> provider) {
+    private static void registerPrimitiveBlastFurnaceRecipes(RecipeOutput provider) {
         PRIMITIVE_BLAST_FURNACE_RECIPES.recipeBuilder("steel_from_coal_gem").inputItems(ingot, Iron)
                 .inputItems(gem, Coal, 2).outputItems(ingot, Steel).outputItems(dustTiny, DarkAsh, 2).duration(1800)
                 .save(provider);
@@ -247,7 +246,7 @@ public class MachineRecipeLoader {
                 .inputItems(block, Coke).outputItems(block, Steel).outputItems(dust, Ash).duration(5400).save(provider);
     }
 
-    private static void registerCokeOvenRecipes(Consumer<FinishedRecipe> provider) {
+    private static void registerCokeOvenRecipes(RecipeOutput provider) {
         COKE_OVEN_RECIPES.recipeBuilder("log_to_charcoal").inputItems(ItemTags.LOGS_THAT_BURN)
                 .outputItems(gem, Charcoal)
                 .outputFluids(Creosote.getFluid(250)).duration(900).save(provider);
@@ -257,7 +256,7 @@ public class MachineRecipeLoader {
                 .outputFluids(Creosote.getFluid(4500)).duration(8100).save(provider);
     }
 
-    private static void registerStoneBricksRecipes(Consumer<FinishedRecipe> provider) {
+    private static void registerStoneBricksRecipes(RecipeOutput provider) {
         // normal variant -> cobble variant
         List<ItemStack> cobbles = GTBlocks.STONE_BLOCKS.row(StoneBlockType.COBBLE).values().stream().map(ItemStack::new)
                 .toList();
@@ -304,7 +303,7 @@ public class MachineRecipeLoader {
         registerBricksRecipe(provider, polisheds, smallBricks, CustomTags.PINK_LENS);
 
         for (int i = 0; i < stones.size(); i++) {
-            ResourceLocation bricksId = BuiltInRegistries.ITEM.getKey(bricks.get(i).getItem());
+            Identifier bricksId = BuiltInRegistries.ITEM.getKey(bricks.get(i).getItem());
             EXTRUDER_RECIPES.recipeBuilder("extrude_" + bricksId.getPath())
                     .inputItems(stones.get(i))
                     .notConsumable(SHAPE_EXTRUDER_INGOT)
@@ -313,7 +312,7 @@ public class MachineRecipeLoader {
         }
     }
 
-    private static void registerMixingCrystallizationRecipes(Consumer<FinishedRecipe> provider) {
+    private static void registerMixingCrystallizationRecipes(RecipeOutput provider) {
         AUTOCLAVE_RECIPES.recipeBuilder("silicon_dioxide_to_quartzite_gem")
                 .inputItems(dust, SiliconDioxide)
                 .inputFluids(DistilledWater.getFluid(250))
@@ -374,7 +373,7 @@ public class MachineRecipeLoader {
             { new MaterialStack(Magnesium, 1), new MaterialStack(Aluminium, 2L), new MaterialStack(Magnalium, 3L) },
             { new MaterialStack(Silver, 1), new MaterialStack(Electrotine, 4), new MaterialStack(BlueAlloy, 1) } };
 
-    private static void registerAlloyRecipes(Consumer<FinishedRecipe> provider) {
+    private static void registerAlloyRecipes(RecipeOutput provider) {
         for (MaterialStack[] stack : alloySmelterList) {
             String recipeNape = stack[0].material().getName() + "_%s_and_" + stack[1].material().getName() +
                     "_%s_into_" + stack[2].material().getName();
@@ -422,13 +421,13 @@ public class MachineRecipeLoader {
                 .inputItems(dust, RawRubber, 3).outputItems(ingot, Rubber).save(provider);
 
         ALLOY_SMELTER_RECIPES.recipeBuilder("coke_oven_brick").duration(150).EUt(VA[ULV])
-                .inputItems(Tags.Items.SAND)
+                .inputItems(Tags.Items.SANDS)
                 .inputItems(new ItemStack(Items.CLAY_BALL))
                 .outputItems(COKE_OVEN_BRICK, 2)
                 .save(provider);
     }
 
-    private static void registerAssemblerRecipes(Consumer<FinishedRecipe> provider) {
+    private static void registerAssemblerRecipes(RecipeOutput provider) {
         for (DyeColor color : DyeColor.values()) {
 
             CANNER_RECIPES.recipeBuilder("spray_can_" + color.getName())
@@ -647,7 +646,7 @@ public class MachineRecipeLoader {
                 .save(provider);
 
         ASSEMBLER_RECIPES.recipeBuilder("cover_storage")
-                .inputItems(Tags.Blocks.CHESTS_WOODEN)
+                .inputItems(Tags.Items.CHESTS_WOODEN)
                 .inputItems(ELECTRIC_PISTON_LV)
                 .inputItems(plate, Iron)
                 .inputFluids(SolderingAlloy, L / 2)
@@ -762,7 +761,7 @@ public class MachineRecipeLoader {
                 .outputItems(GTBlocks.CASING_TITANIUM_STABLE.asStack(ConfigHolder.INSTANCE.recipes.casingsPerCraft))
                 .duration(50).addMaterialInfo(true).save(provider);
         WELDER_RECIPES.recipeBuilder("casing_hsse_sturdy").EUt(16).inputItems(plate, HSSE, 6)
-                .inputItems(frameGt, Europium).circuitMeta(6)
+                .inputItems(frameGt, Tungsten).circuitMeta(6)
                 .outputItems(GTBlocks.CASING_HSSE_STURDY.asStack(ConfigHolder.INSTANCE.recipes.casingsPerCraft))
                 .duration(50).addMaterialInfo(true).save(provider);
         WELDER_RECIPES.recipeBuilder("casing_palladium_substation").EUt(16).inputItems(plate, Palladium, 6)
@@ -1133,7 +1132,7 @@ public class MachineRecipeLoader {
                 .addMaterialInfo(true).save(provider);
     }
 
-    private static void registerBlastFurnaceRecipes(Consumer<FinishedRecipe> provider) {
+    private static void registerBlastFurnaceRecipes(RecipeOutput provider) {
         BLAST_RECIPES.recipeBuilder("aluminium_from_ruby_dust").duration(400).EUt(100).inputItems(dust, Ruby)
                 .outputItems(nugget, Aluminium, 3).chancedOutput(dust, Ash, "1/9").blastFurnaceTemp(1200)
                 .save(provider);
@@ -1167,7 +1166,7 @@ public class MachineRecipeLoader {
         registerBlastFurnaceMetallurgyRecipes(provider);
     }
 
-    private static void registerBlastFurnaceMetallurgyRecipes(Consumer<FinishedRecipe> provider) {
+    private static void registerBlastFurnaceMetallurgyRecipes(RecipeOutput provider) {
         createSulfurDioxideRecipe(provider, Stibnite, AntimonyTrioxide, 1500);
         createSulfurDioxideRecipe(provider, Sphalerite, Zincite, 1000);
         createSulfurDioxideRecipe(provider, Pyrite, Hematite, 2000);
@@ -1215,8 +1214,8 @@ public class MachineRecipeLoader {
                 .save(provider);
     }
 
-    private static void createSulfurDioxideRecipe(Consumer<FinishedRecipe> provider, Material inputMaterial,
-                                                  Material outputMaterial, int sulfurDioxideAmount) {
+    private static void createSulfurDioxideRecipe(RecipeOutput provider, MaterialRegistryEntry inputMaterial,
+                                                  MaterialRegistryEntry outputMaterial, int sulfurDioxideAmount) {
         BLAST_RECIPES.recipeBuilder(inputMaterial.getName() + "_metallurgy").duration(120).EUt(VA[MV])
                 .blastFurnaceTemp(1200)
                 .inputItems(dust, inputMaterial)
@@ -1227,7 +1226,7 @@ public class MachineRecipeLoader {
                 .save(provider);
     }
 
-    private static void registerDecompositionRecipes(Consumer<FinishedRecipe> provider) {
+    private static void registerDecompositionRecipes(RecipeOutput provider) {
         EXTRACTOR_RECIPES.recipeBuilder("raw_rubber_from_resin")
                 .inputItems(STICKY_RESIN)
                 .outputItems(dust, RawRubber, 3)
@@ -1292,7 +1291,7 @@ public class MachineRecipeLoader {
                 .inputItems(new ItemStack(Items.HORN_CORAL, 8)).outputItems(PLANT_BALL).save(provider);
     }
 
-    private static void registerRecyclingRecipes(Consumer<FinishedRecipe> provider) {
+    private static void registerRecyclingRecipes(RecipeOutput provider) {
         MACERATOR_RECIPES.recipeBuilder("macerate_end_stone")
                 .inputItems(new ItemStack(Blocks.END_STONE))
                 .outputItems(dust, Endstone)
@@ -1352,8 +1351,8 @@ public class MachineRecipeLoader {
                 .save(provider);
 
         MACERATOR_RECIPES.recipeBuilder("macerate_red_granite")
-                .inputItems(rock, GraniteRed)
-                .outputItems(dust, GraniteRed)
+                .inputItems(rock, RedGranite)
+                .outputItems(dust, RedGranite)
                 .chancedOutput(dust, Uranium238, 25)
                 .duration(150).EUt(2)
                 .save(provider);
@@ -1440,7 +1439,7 @@ public class MachineRecipeLoader {
                 .duration(102).EUt(2).save(provider);
     }
 
-    private static void registerFluidRecipes(Consumer<FinishedRecipe> provider) {
+    private static void registerFluidRecipes(RecipeOutput provider) {
         FLUID_HEATER_RECIPES.recipeBuilder("heat_ice_to_water").duration(32).EUt(4)
                 .inputFluids(Ice.getFluid(L))
                 .circuitMeta(1)
@@ -1467,10 +1466,10 @@ public class MachineRecipeLoader {
                 .save(provider);
     }
 
-    private static void registerSmoothRecipe(Consumer<FinishedRecipe> provider, List<ItemStack> roughStack,
+    private static void registerSmoothRecipe(RecipeOutput provider, List<ItemStack> roughStack,
                                              List<ItemStack> stoneStack) {
         for (int i = 0; i < roughStack.size(); i++) {
-            ResourceLocation stoneId = BuiltInRegistries.ITEM.getKey(stoneStack.get(i).getItem());
+            Identifier stoneId = BuiltInRegistries.ITEM.getKey(stoneStack.get(i).getItem());
             VanillaRecipeHelper.addSmeltingRecipe(provider, "smelt_" + stoneId.getPath(), roughStack.get(i),
                     stoneStack.get(i), 0.1f);
 
@@ -1482,10 +1481,10 @@ public class MachineRecipeLoader {
         }
     }
 
-    private static void registerCobbleRecipe(Consumer<FinishedRecipe> provider, List<ItemStack> stoneStack,
+    private static void registerCobbleRecipe(RecipeOutput provider, List<ItemStack> stoneStack,
                                              List<ItemStack> cobbleStack) {
         for (int i = 0; i < stoneStack.size(); i++) {
-            ResourceLocation cobbleId = BuiltInRegistries.ITEM.getKey(cobbleStack.get(i).getItem());
+            Identifier cobbleId = BuiltInRegistries.ITEM.getKey(cobbleStack.get(i).getItem());
             FORGE_HAMMER_RECIPES.recipeBuilder("hammer_" + cobbleId.getPath())
                     .inputItems(stoneStack.get(i))
                     .outputItems(cobbleStack.get(i))
@@ -1493,10 +1492,10 @@ public class MachineRecipeLoader {
         }
     }
 
-    private static void registerBricksRecipe(Consumer<FinishedRecipe> provider, List<ItemStack> polishedStack,
+    private static void registerBricksRecipe(RecipeOutput provider, List<ItemStack> polishedStack,
                                              List<ItemStack> brickStack, TagKey<Item> lensTag) {
         for (int i = 0; i < polishedStack.size(); i++) {
-            ResourceLocation brickId = BuiltInRegistries.ITEM.getKey(brickStack.get(i).getItem());
+            Identifier brickId = BuiltInRegistries.ITEM.getKey(brickStack.get(i).getItem());
             LASER_ENGRAVER_RECIPES.recipeBuilder("engrave_" + brickId.getPath())
                     .inputItems(polishedStack.get(i))
                     .notConsumable(lensTag)
@@ -1505,10 +1504,10 @@ public class MachineRecipeLoader {
         }
     }
 
-    private static void registerMossRecipe(Consumer<FinishedRecipe> provider, List<ItemStack> regularStack,
+    private static void registerMossRecipe(RecipeOutput provider, List<ItemStack> regularStack,
                                            List<ItemStack> mossStack) {
         for (int i = 0; i < regularStack.size(); i++) {
-            ResourceLocation mossId = BuiltInRegistries.ITEM.getKey(mossStack.get(i).getItem());
+            Identifier mossId = BuiltInRegistries.ITEM.getKey(mossStack.get(i).getItem());
             MIXER_RECIPES.recipeBuilder(mossId.getPath() + "_from_moss_block")
                     .inputItems(regularStack.get(i))
                     .inputItems(new ItemStack(Blocks.MOSS_BLOCK))
@@ -1525,29 +1524,29 @@ public class MachineRecipeLoader {
         }
     }
 
-    private static void registerNBTRemoval(Consumer<FinishedRecipe> provider) {
-        for (MachineDefinition chest : GTMachines.SUPER_CHEST) {
+    private static void registerNBTRemoval(RecipeOutput provider) {
+        for (MachineEntry<MachineDefinition> chest : GTMachines.SUPER_CHEST) {
             if (chest != null) {
                 VanillaRecipeHelper.addShapelessNBTClearingRecipe(provider, "super_chest_nbt_" + chest.getTier(),
                         chest.asStack(), chest.asStack());
             }
         }
 
-        for (MachineDefinition tank : GTMachines.SUPER_TANK) {
+        for (MachineEntry<MachineDefinition> tank : GTMachines.SUPER_TANK) {
             if (tank != null) {
                 VanillaRecipeHelper.addShapelessNBTClearingRecipe(provider, "super_tank_nbt_" + tank.getTier(),
                         tank.asStack(), tank.asStack());
             }
         }
 
-        for (MachineDefinition chest : GTMachines.QUANTUM_CHEST) {
+        for (MachineEntry<MachineDefinition> chest : GTMachines.QUANTUM_CHEST) {
             if (chest != null) {
                 VanillaRecipeHelper.addShapelessNBTClearingRecipe(provider, "quantum_chest_nbt_" + chest.getTier(),
                         chest.asStack(), chest.asStack());
             }
         }
 
-        for (MachineDefinition tank : GTMachines.QUANTUM_TANK) {
+        for (MachineEntry<MachineDefinition> tank : GTMachines.QUANTUM_TANK) {
             if (tank != null) {
                 VanillaRecipeHelper.addShapelessNBTClearingRecipe(provider, "quantum_tank_nbt_" + tank.getTier(),
                         tank.asStack(), tank.asStack());
@@ -1597,8 +1596,6 @@ public class MachineRecipeLoader {
                 TOOL_DATA_ORB.asStack());
         VanillaRecipeHelper.addShapelessNBTClearingRecipe(provider, "data_module_nbt", TOOL_DATA_MODULE.asStack(),
                 TOOL_DATA_MODULE.asStack());
-        VanillaRecipeHelper.addShapelessNBTClearingRecipe(provider, "terminal_nbt", TERMINAL.asStack(),
-                TERMINAL.asStack());
 
         // Jetpacks
 
@@ -1618,7 +1615,7 @@ public class MachineRecipeLoader {
                 COMPOSITE_FLUID_FILTER.asStack());
     }
 
-    private static void registerHatchConversion(Consumer<FinishedRecipe> provider) {
+    private static void registerHatchConversion(RecipeOutput provider) {
         for (int i = 0; i < FLUID_IMPORT_HATCH.length; i++) {
             if (FLUID_IMPORT_HATCH[i] != null && FLUID_EXPORT_HATCH[i] != null) {
 
@@ -1645,7 +1642,7 @@ public class MachineRecipeLoader {
         }
 
         for (int tier : GTMachineUtils.MULTI_HATCH_TIERS) {
-            var tierName = VNL[tier];
+            var tierName = VN[tier].toLowerCase(Locale.ROOT);
 
             var importHatch4x = FLUID_IMPORT_HATCH_4X[tier];
             var exportHatch4x = FLUID_EXPORT_HATCH_4X[tier];
@@ -1672,7 +1669,7 @@ public class MachineRecipeLoader {
         }
 
         for (int tier : GTMachineUtils.DUAL_HATCH_TIERS) {
-            var tierName = VNL[tier];
+            var tierName = VN[tier].toLowerCase(Locale.ROOT);
 
             var inputBuffer = DUAL_IMPORT_HATCH[tier];
             var outputBuffer = DUAL_EXPORT_HATCH[tier];
@@ -1701,19 +1698,5 @@ public class MachineRecipeLoader {
         VanillaRecipeHelper.addShapedRecipe(provider, "steam_bus_input_to_output", STEAM_IMPORT_BUS.asStack(),
                 "d", "B", 'B', STEAM_EXPORT_BUS.asStack());
 
-        if (GTCEu.Mods.isAE2Loaded()) {
-            VanillaRecipeHelper.addShapedRecipe(provider, "me_fluid_hatch_output_to_input",
-                    GTAEMachines.FLUID_IMPORT_HATCH_ME.asStack(), "d", "B", 'B',
-                    GTAEMachines.FLUID_EXPORT_HATCH_ME.asStack());
-            VanillaRecipeHelper.addShapedRecipe(provider, "me_fluid_hatch_input_to_output",
-                    GTAEMachines.FLUID_EXPORT_HATCH_ME.asStack(), "d", "B", 'B',
-                    GTAEMachines.FLUID_IMPORT_HATCH_ME.asStack());
-            VanillaRecipeHelper.addShapedRecipe(provider, "me_item_bus_output_to_input",
-                    GTAEMachines.ITEM_IMPORT_BUS_ME.asStack(), "d", "B", 'B',
-                    GTAEMachines.ITEM_EXPORT_BUS_ME.asStack());
-            VanillaRecipeHelper.addShapedRecipe(provider, "me_item_bus_input_to_output",
-                    GTAEMachines.ITEM_EXPORT_BUS_ME.asStack(), "d", "B", 'B',
-                    GTAEMachines.ITEM_IMPORT_BUS_ME.asStack());
-        }
     }
 }

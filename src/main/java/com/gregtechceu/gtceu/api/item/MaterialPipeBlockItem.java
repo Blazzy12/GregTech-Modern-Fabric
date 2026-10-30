@@ -1,20 +1,15 @@
 package com.gregtechceu.gtceu.api.item;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import com.gregtechceu.gtceu.api.block.MaterialPipeBlock;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
-import net.minecraft.client.color.item.ItemColor;
+import com.gregtechceu.gtceu.compat.client.color.ItemColor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 
 import org.jetbrains.annotations.NotNull;
 
-import javax.annotation.ParametersAreNonnullByDefault;
-
-@MethodsReturnNonnullByDefault
-@ParametersAreNonnullByDefault
 public class MaterialPipeBlockItem extends PipeBlockItem {
 
     public MaterialPipeBlockItem(MaterialPipeBlock block, Properties properties) {
@@ -27,7 +22,7 @@ public class MaterialPipeBlockItem extends PipeBlockItem {
         return (MaterialPipeBlock) super.getBlock();
     }
 
-    @OnlyIn(Dist.CLIENT)
+    @Environment(EnvType.CLIENT)
     public static ItemColor tintColor() {
         return (itemStack, index) -> {
             if (itemStack.getItem() instanceof MaterialPipeBlockItem materialBlockItem) {
@@ -38,8 +33,7 @@ public class MaterialPipeBlockItem extends PipeBlockItem {
         };
     }
 
-    @Override
-    public Component getDescription() {
+        public Component getDescription() {
         return this.getBlock().getName();
     }
 

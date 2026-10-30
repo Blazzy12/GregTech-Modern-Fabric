@@ -1,6 +1,7 @@
 package com.gregtechceu.gtceu.api.item.capability;
 
 import com.gregtechceu.gtceu.api.item.module.*;
+import com.gregtechceu.gtceu.common.data.item.GTDataComponents;
 
 import net.minecraft.world.item.ItemStack;
 
@@ -18,17 +19,18 @@ public class ModularItemStack implements IModularItem {
 
     public ModularItemStack(ItemStack stack, Function<ItemStack, List<ItemModuleSlot>> slotsGetter) {
         this.stack = stack;
+
         slots = slotsGetter.apply(stack);
     }
 
     @Override
     public void setData(ModularItemData data) {
-        IModularItem.setModularItemData(stack, data);
+        stack.set(GTDataComponents.MODULAR_ITEM_DATA, data);
     }
 
     @Override
     public ModularItemData getData() {
-        return IModularItem.getModularItemData(stack);
+        return stack.getOrDefault(GTDataComponents.MODULAR_ITEM_DATA, new ModularItemData(List.of()));
     }
 
     @Override

@@ -4,19 +4,16 @@ import com.gregtechceu.gtceu.api.data.chemical.ChemicalHelper;
 import com.gregtechceu.gtceu.api.data.chemical.material.Material;
 import com.gregtechceu.gtceu.api.data.chemical.material.properties.PropertyKey;
 import com.gregtechceu.gtceu.api.data.chemical.material.stack.MaterialEntry;
-import com.gregtechceu.gtceu.api.data.tag.TagPrefix;
+import com.gregtechceu.gtceu.api.registry.registrate.entry.TagPrefixEntry;
 import com.gregtechceu.gtceu.common.data.GTBlocks;
 import com.gregtechceu.gtceu.common.data.GTItems;
 import com.gregtechceu.gtceu.common.pipelike.duct.DuctPipeType;
 import com.gregtechceu.gtceu.data.recipe.VanillaRecipeHelper;
-import com.gregtechceu.gtceu.utils.FormattingUtil;
 
-import net.minecraft.data.recipes.FinishedRecipe;
+import net.minecraft.data.recipes.RecipeOutput;
 import net.minecraft.world.item.ItemStack;
 
 import org.jetbrains.annotations.NotNull;
-
-import java.util.function.Consumer;
 
 import static com.gregtechceu.gtceu.api.GTValues.*;
 import static com.gregtechceu.gtceu.api.data.chemical.material.info.MaterialFlags.NO_SMASHING;
@@ -28,7 +25,7 @@ public final class PipeRecipeHandler {
 
     private PipeRecipeHandler() {}
 
-    public static void run(@NotNull Consumer<FinishedRecipe> provider, @NotNull Material material) {
+    public static void run(@NotNull RecipeOutput provider, @NotNull Material material) {
         processPipeTiny(provider, PropertyKey.FLUID_PIPE, pipeTinyFluid, material);
         processPipeSmall(provider, PropertyKey.FLUID_PIPE, pipeSmallFluid, material);
         processPipeNormal(provider, PropertyKey.FLUID_PIPE, pipeNormalFluid, material);
@@ -46,14 +43,14 @@ public final class PipeRecipeHandler {
         processRestrictivePipe(provider, PropertyKey.ITEM_PIPE, pipeLargeRestrictive, pipeLargeItem, material);
         processRestrictivePipe(provider, PropertyKey.ITEM_PIPE, pipeHugeRestrictive, pipeHugeItem, material);
 
-        addDuctRecipes(provider, Steel, 2);
-        addDuctRecipes(provider, StainlessSteel, 4);
-        addDuctRecipes(provider, TungstenSteel, 8);
+        addDuctRecipes(provider, Steel.value(), 2);
+        addDuctRecipes(provider, StainlessSteel.value(), 4);
+        addDuctRecipes(provider, TungstenSteel.value(), 8);
     }
 
-    private static void processRestrictivePipe(@NotNull Consumer<FinishedRecipe> provider,
+    private static void processRestrictivePipe(@NotNull RecipeOutput provider,
                                                @NotNull PropertyKey<?> propertyKey,
-                                               @NotNull TagPrefix prefix, @NotNull TagPrefix unrestrictive,
+                                               @NotNull TagPrefixEntry prefix, @NotNull TagPrefixEntry unrestrictive,
                                                @NotNull Material material) {
         if (!material.shouldGenerateRecipesFor(prefix) || !material.hasProperty(propertyKey)) {
             return;
@@ -68,13 +65,13 @@ public final class PipeRecipeHandler {
                 .save(provider);
 
         VanillaRecipeHelper.addShapedRecipe(provider,
-                FormattingUtil.toLowerCaseUnderscore(prefix + "_" + material.getName()),
+                prefix + "_" + material.getName(),
                 ChemicalHelper.get(prefix, material), "PR", "Rh",
                 'P', new MaterialEntry(unrestrictive, material), 'R', ChemicalHelper.get(ring, Iron));
     }
 
-    private static void processPipeTiny(@NotNull Consumer<FinishedRecipe> provider, @NotNull PropertyKey<?> propertyKey,
-                                        @NotNull TagPrefix prefix, @NotNull Material material) {
+    private static void processPipeTiny(@NotNull RecipeOutput provider, @NotNull PropertyKey<?> propertyKey,
+                                        @NotNull TagPrefixEntry prefix, @NotNull Material material) {
         if (!material.shouldGenerateRecipesFor(prefix) || !material.hasProperty(propertyKey)) {
             return;
         }
@@ -114,9 +111,9 @@ public final class PipeRecipeHandler {
         }
     }
 
-    private static void processPipeSmall(@NotNull Consumer<FinishedRecipe> provider,
+    private static void processPipeSmall(@NotNull RecipeOutput provider,
                                          @NotNull PropertyKey<?> propertyKey,
-                                         @NotNull TagPrefix prefix, @NotNull Material material) {
+                                         @NotNull TagPrefixEntry prefix, @NotNull Material material) {
         if (!material.shouldGenerateRecipesFor(prefix) || !material.hasProperty(propertyKey)) {
             return;
         }
@@ -156,9 +153,9 @@ public final class PipeRecipeHandler {
         }
     }
 
-    private static void processPipeNormal(@NotNull Consumer<FinishedRecipe> provider,
+    private static void processPipeNormal(@NotNull RecipeOutput provider,
                                           @NotNull PropertyKey<?> propertyKey,
-                                          @NotNull TagPrefix prefix, @NotNull Material material) {
+                                          @NotNull TagPrefixEntry prefix, @NotNull Material material) {
         if (!material.shouldGenerateRecipesFor(prefix) || !material.hasProperty(propertyKey)) {
             return;
         }
@@ -198,9 +195,9 @@ public final class PipeRecipeHandler {
         }
     }
 
-    private static void processPipeLarge(@NotNull Consumer<FinishedRecipe> provider,
+    private static void processPipeLarge(@NotNull RecipeOutput provider,
                                          @NotNull PropertyKey<?> propertyKey,
-                                         @NotNull TagPrefix prefix, @NotNull Material material) {
+                                         @NotNull TagPrefixEntry prefix, @NotNull Material material) {
         if (!material.shouldGenerateRecipesFor(prefix) || !material.hasProperty(propertyKey)) {
             return;
         }
@@ -240,8 +237,8 @@ public final class PipeRecipeHandler {
         }
     }
 
-    private static void processPipeHuge(@NotNull Consumer<FinishedRecipe> provider, @NotNull PropertyKey<?> propertyKey,
-                                        @NotNull TagPrefix prefix, @NotNull Material material) {
+    private static void processPipeHuge(@NotNull RecipeOutput provider, @NotNull PropertyKey<?> propertyKey,
+                                        @NotNull TagPrefixEntry prefix, @NotNull Material material) {
         if (!material.shouldGenerateRecipesFor(prefix) || !material.hasProperty(propertyKey)) {
             return;
         }
@@ -281,9 +278,9 @@ public final class PipeRecipeHandler {
         }
     }
 
-    private static void processPipeQuadruple(@NotNull Consumer<FinishedRecipe> provider,
+    private static void processPipeQuadruple(@NotNull RecipeOutput provider,
                                              @NotNull PropertyKey<?> propertyKey,
-                                             @NotNull TagPrefix prefix, @NotNull Material material) {
+                                             @NotNull TagPrefixEntry prefix, @NotNull Material material) {
         if (!material.shouldGenerateRecipesFor(prefix) || !material.hasProperty(propertyKey)) {
             return;
         }
@@ -304,9 +301,9 @@ public final class PipeRecipeHandler {
                 .save(provider);
     }
 
-    private static void processPipeNonuple(@NotNull Consumer<FinishedRecipe> provider,
+    private static void processPipeNonuple(@NotNull RecipeOutput provider,
                                            @NotNull PropertyKey<?> propertyKey,
-                                           @NotNull TagPrefix prefix, @NotNull Material material) {
+                                           @NotNull TagPrefixEntry prefix, @NotNull Material material) {
         if (!material.shouldGenerateRecipesFor(prefix) || !material.hasProperty(propertyKey)) {
             return;
         }
@@ -327,7 +324,7 @@ public final class PipeRecipeHandler {
                 .save(provider);
     }
 
-    private static void addDuctRecipes(Consumer<FinishedRecipe> provider, Material material, int outputAmount) {
+    private static void addDuctRecipes(RecipeOutput provider, Material material, int outputAmount) {
         if (plate.doGenerateItem(material)) {
             VanillaRecipeHelper.addShapedRecipe(provider, "small_duct_%s".formatted(material.getName()),
                     GTBlocks.DUCT_PIPES[DuctPipeType.SMALL.ordinal()].asStack(outputAmount * 2), "w", "X", "h",
@@ -347,7 +344,6 @@ public final class PipeRecipeHandler {
     }
 
     private static int getVoltageMultiplier(Material material) {
-        if (material.hasProperty(PropertyKey.POLYMER)) return 4;
         return material.getBlastTemperature() >= 2800 ? VA[LV] : VA[ULV];
     }
 }

@@ -1,0 +1,42 @@
+package com.gregtechceu.gtceu.data.recipe;
+
+import com.gregtechceu.gtceu.GTCEu;
+import com.gregtechceu.gtceu.api.recipe.ingredient.*;
+
+import com.gregtechceu.gtceu.compat.bus.IEventBus;
+import com.gregtechceu.gtceu.compat.common.crafting.IngredientType;
+import com.gregtechceu.gtceu.compat.fluids.crafting.FluidIngredientType;
+import com.gregtechceu.gtceu.compat.registries.DeferredHolder;
+import com.gregtechceu.gtceu.compat.registries.DeferredRegister;
+import com.gregtechceu.gtceu.compat.registries.NeoForgeRegistries;
+
+public class GTIngredientTypes {
+
+    private static final DeferredRegister<IngredientType<?>> ITEM_INGREDIENT_TYPES = DeferredRegister
+            .create(NeoForgeRegistries.INGREDIENT_TYPES, GTCEu.MOD_ID);
+    private static final DeferredRegister<FluidIngredientType<?>> FLUID_INGREDIENT_TYPES = DeferredRegister
+            .create(NeoForgeRegistries.FLUID_INGREDIENT_TYPES, GTCEu.MOD_ID);
+
+    public static final DeferredHolder<IngredientType<?>, IngredientType<IntCircuitIngredient>> INT_CIRCUIT_INGREDIENT = ITEM_INGREDIENT_TYPES
+            .register("circuit", () -> new IngredientType<>(IntCircuitIngredient.CODEC));
+
+    public static final DeferredHolder<IngredientType<?>, IngredientType<IntProviderIngredient>> INT_PROVIDER_INGREDIENT = ITEM_INGREDIENT_TYPES
+            .register("int_provider", () -> new IngredientType<>(IntProviderIngredient.CODEC));
+
+    public static final DeferredHolder<IngredientType<?>, IngredientType<FluidContainerIngredient>> FLUID_CONTAINER_INGREDIENT = ITEM_INGREDIENT_TYPES
+            .register("fluid_container", () -> new IngredientType<>(FluidContainerIngredient.CODEC));
+
+    public static final DeferredHolder<IngredientType<?>, IngredientType<ExDataComponentIngredient>> DATA_COMPONENT_INGREDIENT = ITEM_INGREDIENT_TYPES
+            .register("components", () -> new IngredientType<>(ExDataComponentIngredient.CODEC));
+
+    public static final DeferredHolder<FluidIngredientType<?>, FluidIngredientType<ExDataComponentFluidIngredient>> DATA_COMPONENT_FLUID_INGREDIENT = FLUID_INGREDIENT_TYPES
+            .register("components", () -> new FluidIngredientType<>(ExDataComponentFluidIngredient.CODEC));
+
+    public static final DeferredHolder<FluidIngredientType<?>, FluidIngredientType<IntProviderFluidIngredient>> INT_PROVIDER_FLUID_INGREDIENT = FLUID_INGREDIENT_TYPES
+            .register("int_provider", () -> new FluidIngredientType<>(IntProviderFluidIngredient.CODEC));
+
+    public static void init(IEventBus modBus) {
+        ITEM_INGREDIENT_TYPES.register(modBus);
+        FLUID_INGREDIENT_TYPES.register(modBus);
+    }
+}

@@ -8,15 +8,17 @@ import com.gregtechceu.gtceu.api.item.IComponentItem;
 import com.gregtechceu.gtceu.api.item.component.IItemComponent;
 import com.gregtechceu.gtceu.api.item.component.IMonitorModuleItem;
 import com.gregtechceu.gtceu.api.transfer.item.CustomItemStackHandler;
+import com.gregtechceu.gtceu.common.data.item.GTDataComponents;
+import com.gregtechceu.gtceu.utils.GlobalPosWithRot;
+import com.gregtechceu.gtceu.utils.codec.StreamCodecUtils;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.Vec3i;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 
@@ -36,15 +38,25 @@ public class MonitorGroup {
     // spotless:off
     public static final Codec<MonitorGroup> CODEC = RecordCodecBuilder
             .create(instance -> instance.group(
-                    BlockPos.CODEC.listOf().fieldOf("monitorPositions").forGetter(g -> g.monitorPositions.stream().toList()),
-                    Codec.STRING.fieldOf("name").forGetter(MonitorGroup::getName),
-                    ItemStack.CODEC.listOf().fieldOf("items").forGetter(g -> g.getItemStackHandler().toList()),
-                    ItemStack.CODEC.listOf().fieldOf("placeholderItems").forGetter(g -> g.getPlaceholderSlotsHandler().toList()),
-                    BlockPos.CODEC.optionalFieldOf("targetPos").forGetter(g -> Optional.ofNullable(g.getTargetRaw())),
-                    Direction.CODEC.optionalFieldOf("targetSide").forGetter(g -> Optional.ofNullable(g.getTargetCoverSide())),
-                    Codec.INT.fieldOf("dataSlot").forGetter(MonitorGroup::getDataSlot))
+                            BlockPos.CODEC.listOf().fieldOf("monitorPositions").forGetter(g -> g.monitorPositions.stream().toList()),
+                            Codec.STRING.fieldOf("name").forGetter(MonitorGroup::getName),
+                            ItemStack.OPTIONAL_CODEC.listOf().fieldOf("items").forGetter(g -> g.getItemStackHandler().toList()),
+                            ItemStack.OPTIONAL_CODEC.listOf().fieldOf("placeholderItems").forGetter(g -> g.getPlaceholderSlotsHandler().toList()),
+                            BlockPos.CODEC.optionalFieldOf("targetPos").forGetter(g -> Optional.ofNullable(g.getTargetRaw())),
+                            Direction.CODEC.optionalFieldOf("targetSide").forGetter(g -> Optional.ofNullable(g.getTargetCoverSide())),
+                            Codec.INT.fieldOf("dataSlot").forGetter(MonitorGroup::getDataSlot))
                     .apply(instance, MonitorGroup::new));
     // spotless:on
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, MonitorGroup> STREAM_CODEC = StreamCodecUtils.composite(
+            BlockPos.STREAM_CODEC.apply(ByteBufCodecs.list()), (MonitorGroup m) -> m.monitorPositions.stream().toList(),
+            ByteBufCodecs.STRING_UTF8, MonitorGroup::getName,
+            ItemStack.OPTIONAL_LIST_STREAM_CODEC, (m) -> m.getItemStackHandler().toList(),
+            ItemStack.OPTIONAL_LIST_STREAM_CODEC, (m) -> m.getPlaceholderSlotsHandler().toList(),
+            ByteBufCodecs.optional(BlockPos.STREAM_CODEC), (m) -> Optional.ofNullable(m.getTargetRaw()),
+            ByteBufCodecs.optional(Direction.STREAM_CODEC), (m) -> Optional.ofNullable(m.getTargetCoverSide()),
+            ByteBufCodecs.INT, MonitorGroup::getDataSlot,
+            MonitorGroup::new);
 
     @Getter
     private final Set<BlockPos> monitorPositions = new HashSet<>();
@@ -156,19 +168,13 @@ public class MonitorGroup {
         IMonitorComponent component = GTCapabilityHelper.getMonitorComponent(level, target, null);
         if (component != null && component.getDataItems() != null) {
             ItemStack stack = component.getDataItems().getStackInSlot(dataSlot);
-            CompoundTag tag = stack.getTag();
-            if (tag == null) {
+            GlobalPosWithRot pos = stack.get(GTDataComponents.MONITOR_TARGET);
+            if (pos == null) {
                 return null;
             }
-            int x = tag.getInt("targetX");
-            int y = tag.getInt("targetY");
-            int z = tag.getInt("targetZ");
-            Direction face = Direction.byName(tag.getString("face"));
-            if (face == null) {
-                return null;
-            }
+            Direction face = pos.side();
             setTargetCoverSide(face);
-            return new BlockPos(x, y, z);
+            return pos.pos();
         }
         return target;
     }
@@ -179,13 +185,10 @@ public class MonitorGroup {
         IMonitorComponent component = GTCapabilityHelper.getMonitorComponent(level, target, null);
         if (component != null && component.getDataItems() != null) {
             ItemStack stack = component.getDataItems().getStackInSlot(dataSlot);
-            CompoundTag tag = stack.getTag();
-            if (tag == null || !tag.contains("dim")) {
-                return level;
-            }
+            GlobalPosWithRot pos = stack.get(GTDataComponents.MONITOR_TARGET);
+            if (pos == null) return level;
             if (level.getServer() == null) return level;
-            return level.getServer()
-                    .getLevel(ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(tag.getString("dim"))));
+            return level.getServer().getLevel(pos.dimension());
         }
         return level;
     }

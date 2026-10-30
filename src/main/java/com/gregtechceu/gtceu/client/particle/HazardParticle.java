@@ -1,28 +1,25 @@
 package com.gregtechceu.gtceu.client.particle;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
+import net.minecraft.client.particle.SingleQuadParticle;
+
 import com.gregtechceu.gtceu.common.particle.HazardParticleOptions;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.particle.*;
-import net.minecraft.util.FastColor;
+import net.minecraft.util.ARGB;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 
-import javax.annotation.ParametersAreNonnullByDefault;
-
-@ParametersAreNonnullByDefault
-@MethodsReturnNonnullByDefault
-@OnlyIn(Dist.CLIENT)
-public class HazardParticle extends TextureSheetParticle {
+@Environment(EnvType.CLIENT)
+public class HazardParticle extends SingleQuadParticle {
 
     private final SpriteSet sprites;
 
     protected HazardParticle(ClientLevel level, double x, double y, double z, double xSpeed, double ySpeed,
                              double zSpeed, HazardParticleOptions options, SpriteSet sprites) {
-        super(level, x, y, z, xSpeed, ySpeed, zSpeed);
+        super(level, x, y, z, xSpeed, ySpeed, zSpeed, sprites.first());
         this.friction = 0.96F;
         this.gravity = 0.0125F;
         this.speedUpWhenYMotionIsBlocked = true;
@@ -31,11 +28,11 @@ public class HazardParticle extends TextureSheetParticle {
         this.yd *= 0.1F;
         this.zd *= 0.1F;
         float colorMultiplier = this.random.nextFloat() * 0.4F + 0.6F;
-        this.rCol = this.randomizeColor(FastColor.ARGB32.red(options.color()) / 255f, colorMultiplier);
-        this.gCol = this.randomizeColor(FastColor.ARGB32.green(options.color()) / 255f, colorMultiplier);
-        this.bCol = this.randomizeColor(FastColor.ARGB32.blue(options.color()) / 255f, colorMultiplier);
+        this.rCol = this.randomizeColor(ARGB.red(options.color()) / 255f, colorMultiplier);
+        this.gCol = this.randomizeColor(ARGB.green(options.color()) / 255f, colorMultiplier);
+        this.bCol = this.randomizeColor(ARGB.blue(options.color()) / 255f, colorMultiplier);
         this.quadSize *= 0.75F * options.scale();
-        this.lifetime = (int) (lifetime / (level.random.nextFloat() * 0.8 + 0.2) * 2);
+        this.lifetime = (int) (lifetime / (level.getRandom().nextFloat() * 0.8 + 0.2) * 2);
         this.setSpriteFromAge(sprites);
         this.hasPhysics = false;
     }
@@ -45,8 +42,8 @@ public class HazardParticle extends TextureSheetParticle {
     }
 
     @Override
-    public ParticleRenderType getRenderType() {
-        return ParticleRenderType.PARTICLE_SHEET_OPAQUE;
+    protected SingleQuadParticle.Layer getLayer() {
+        return SingleQuadParticle.Layer.OPAQUE;
     }
 
     @Override
@@ -60,7 +57,7 @@ public class HazardParticle extends TextureSheetParticle {
         this.setSpriteFromAge(this.sprites);
     }
 
-    @OnlyIn(Dist.CLIENT)
+    @Environment(EnvType.CLIENT)
     public static class Provider implements ParticleProvider<HazardParticleOptions> {
 
         private final SpriteSet sprites;
@@ -69,9 +66,9 @@ public class HazardParticle extends TextureSheetParticle {
             this.sprites = sprites;
         }
 
+        @Override
         public Particle createParticle(HazardParticleOptions options, ClientLevel level, double x, double y, double z,
-                                       double xSpeed, double ySpeed, double zSpeed) {
-            RandomSource randomSource = level.random;
+                                       double xSpeed, double ySpeed, double zSpeed, RandomSource randomSource) {
             xSpeed += (double) randomSource.nextFloat() * -1.9 * (double) randomSource.nextFloat() * 0.1;
             ySpeed += (double) randomSource.nextFloat() * -0.5 * (double) randomSource.nextFloat() * 0.1 * 5.0;
             zSpeed += (double) randomSource.nextFloat() * -1.9 * (double) randomSource.nextFloat() * 0.1;

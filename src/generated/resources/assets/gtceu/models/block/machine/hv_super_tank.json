@@ -5,7 +5,7 @@
       "type": "gtceu:quantum_tank_fluid"
     }
   ],
-  "loader": "gtceu:machine",
+  "fabric:type": "gtceu:machine",
   "machine": "gtceu:hv_super_tank",
   "variants": {
     "": {

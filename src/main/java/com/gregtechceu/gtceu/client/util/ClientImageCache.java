@@ -1,17 +1,17 @@
 package com.gregtechceu.gtceu.client.util;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.api.misc.ImageCache;
-import com.gregtechceu.gtceu.common.network.GTNetwork;
 import com.gregtechceu.gtceu.common.network.packets.CPacketImageRequest;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.client.renderer.texture.SimpleTexture;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
+import net.minecraft.resources.Identifier;
+import com.gregtechceu.gtceu.compat.network.PacketDistributor;
 
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
@@ -29,7 +29,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
-@OnlyIn(Dist.CLIENT)
+@Environment(EnvType.CLIENT)
 public class ClientImageCache {
 
     private static final Map<String, byte[][]> imageParts = new HashMap<>();
@@ -45,16 +45,16 @@ public class ClientImageCache {
                 if (!downloading) {
                     downloading = true;
                     GTCEu.LOGGER.debug("Requesting image {}", url);
-                    GTNetwork.sendToServer(new CPacketImageRequest(url));
+                    PacketDistributor.sendToServer(new CPacketImageRequest(url));
                 }
                 return LOADING_TEXTURE_MARKER;
             }));
 
-    private static @NotNull ResourceLocation getUrlTextureId(String url) {
+    private static @NotNull Identifier getUrlTextureId(String url) {
         return GTCEu.id("textures/central_monitor/image_" + url.hashCode());
     }
 
-    public static @Nullable ResourceLocation getOrLoadTexture(String url) {
+    public static @Nullable Identifier getOrLoadTexture(String url) {
         AbstractTexture texture = null;
 
         try {
@@ -96,7 +96,7 @@ public class ClientImageCache {
     private static void saveTexture(String url, byte[] imageBytes) throws IOException {
         ByteBuffer buffer = ByteBuffer.allocateDirect(imageBytes.length);
         buffer.put(imageBytes).flip();
-        DynamicTexture texture = new DynamicTexture(NativeImage.read(buffer));
+        DynamicTexture texture = new DynamicTexture(() -> "gtceu image " + url, NativeImage.read(buffer));
 
         Minecraft.getInstance().getTextureManager().register(getUrlTextureId(url), texture);
 

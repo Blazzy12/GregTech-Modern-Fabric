@@ -2,8 +2,8 @@ package com.gregtechceu.gtceu.client.model.quad.transform;
 
 import com.gregtechceu.gtceu.client.model.quad.MutableQuadView;
 
-import net.minecraft.client.renderer.block.model.BakedQuad;
-import net.minecraftforge.client.model.IQuadTransformer;
+import com.gregtechceu.gtceu.compat.client.model.BakedQuad;
+import com.gregtechceu.gtceu.compat.client.model.IQuadTransformer;
 
 @FunctionalInterface
 public interface QuadTransform extends IQuadTransformer {

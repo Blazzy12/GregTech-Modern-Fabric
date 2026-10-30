@@ -2,7 +2,7 @@ package com.gregtechceu.gtceu.api.sync_system.data_transformers;
 
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -22,7 +22,7 @@ public class EnumTransformer<E extends Enum<E>> implements ValueTransformer<E> {
 
     @Override
     public E deserializeNBT(Tag tag, ValueTransformer.TransformerContext<E> context) {
-        var enumString = ValueTransformer.assertTagType(StringTag.class, tag, context).getAsString();
+        var enumString = ValueTransformer.assertTagType(StringTag.class, tag, context).value();
         E value = null;
         try {
             value = Enum.valueOf(enumClass, enumString);
@@ -39,12 +39,12 @@ public class EnumTransformer<E extends Enum<E>> implements ValueTransformer<E> {
     }
 
     @Override
-    public void writeToPacket(FriendlyByteBuf buf, E value, TransformerContext<E> context) {
+    public void writeToPacket(RegistryFriendlyByteBuf buf, E value, TransformerContext<E> context) {
         buf.writeEnum(value);
     }
 
     @Override
-    public @Nullable E readFromPacket(FriendlyByteBuf buf, TransformerContext<E> context) {
+    public @Nullable E readFromPacket(RegistryFriendlyByteBuf buf, TransformerContext<E> context) {
         return buf.readEnum(enumClass);
     }
 }

@@ -1,6 +1,6 @@
 {
   "parent": "minecraft:block/block",
-  "loader": "gtceu:machine",
+  "fabric:type": "gtceu:machine",
   "machine": "gtceu:zpm_energy_output_hatch_4a",
   "replaceable_textures": [
     "bottom",

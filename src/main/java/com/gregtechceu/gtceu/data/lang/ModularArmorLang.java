@@ -20,7 +20,6 @@ public class ModularArmorLang {
 
         provider.add("item.gtceu.netherite_plated", "Netherite-Plated %s");
         provider.add("tooltip.gtceu.netherite_plated", "Netherite Plating: +2 Module Slots");
-
         provider.add("tooltip.gtceu.configure_modular_armor", "Press [%s] to configure equipped armor");
 
         provider.add("gui.gtceu.equipment_foundry.applied_to", "Applied to:");

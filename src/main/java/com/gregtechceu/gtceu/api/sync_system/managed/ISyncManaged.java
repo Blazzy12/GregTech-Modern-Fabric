@@ -3,7 +3,7 @@ package com.gregtechceu.gtceu.api.sync_system.managed;
 import com.gregtechceu.gtceu.api.sync_system.SyncDataHolder;
 import com.gregtechceu.gtceu.api.sync_system.data_transformers.ValueTransformer;
 
-import net.minecraftforge.common.util.INBTSerializable;
+import com.gregtechceu.gtceu.compat.common.util.INBTSerializable;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -26,7 +26,7 @@ public interface ISyncManaged {
 
     /**
      * Gets the parent sync object of this sync object
-     * 
+     *
      * @return The parent sync object, can only return null if this object does not have a parent sync object and both
      *         {@link #scheduleRenderUpdate()} and {@link #markAsChanged()} are overriden
      */

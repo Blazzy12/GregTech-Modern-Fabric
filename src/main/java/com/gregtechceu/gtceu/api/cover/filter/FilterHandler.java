@@ -7,9 +7,7 @@ import com.gregtechceu.gtceu.api.sync_system.annotations.SyncToClient;
 import com.gregtechceu.gtceu.api.sync_system.managed.ISyncManaged;
 import com.gregtechceu.gtceu.api.transfer.item.CustomItemStackHandler;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.Tag;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
 import net.minecraft.world.item.ItemStack;
 
 import lombok.Getter;
@@ -21,7 +19,7 @@ import javax.annotation.ParametersAreNonnullByDefault;
 
 /**
  * A filter handler represents a slot that can hold filters for a specific type of stack/object.
- * 
+ *
  * @param <T> The stack/object type this filter handler holds filters for.
  */
 @ParametersAreNonnullByDefault
@@ -59,17 +57,6 @@ public class FilterHandler<T> implements ISyncManaged {
             @Override
             public int getSlotLimit(int slot) {
                 return 1;
-            }
-
-            @Override
-            public void deserializeNBT(CompoundTag nbt) {
-                if (!nbt.contains("Items", Tag.TAG_LIST) && nbt.contains("id", Tag.TAG_STRING)) {
-                    setStackInSlot(0, ItemStack.of(nbt));
-                    return;
-                }
-
-                super.deserializeNBT(nbt);
-                updateFilter();
             }
         };
 

@@ -1,0 +1,33 @@
+classTweaker	v1	official
+inject-interface	net/minecraft/world/level/material/Fluid	com/gregtechceu/gtceu/core/fabric/FluidTypeHolder
+inject-interface	net/minecraft/world/level/Level	com/gregtechceu/gtceu/core/fabric/LevelCapabilityExt
+inject-interface	net/minecraft/world/entity/Entity	com/gregtechceu/gtceu/core/fabric/EntityCapabilityExt
+inject-interface	net/minecraft/world/item/ItemStack	com/gregtechceu/gtceu/core/fabric/ItemStackExt
+inject-interface	net/minecraft/world/item/Item	com/gregtechceu/gtceu/core/fabric/ItemExt
+inject-interface	net/minecraft/world/item/crafting/Ingredient	com/gregtechceu/gtceu/core/fabric/IngredientExt
+inject-interface	net/minecraft/world/entity/Entity	com/gregtechceu/gtceu/core/IFireImmuneEntity
+inject-interface	net/minecraft/world/entity/Entity	com/gregtechceu/gtceu/core/IBreathingEntity
+inject-interface	net/minecraft/world/item/ItemStack	com/gregtechceu/gtceu/api/item/ISpoilableItemStackExtension
+extendable	class	net/minecraft/network/chat/MutableComponent
+extendable	method	net/minecraft/network/chat/MutableComponent	<init>	(Lnet/minecraft/network/chat/ComponentContents;Ljava/util/List;Lnet/minecraft/network/chat/Style;)V
+accessible	method	net/minecraft/world/item/context/UseOnContext	getHitResult	()Lnet/minecraft/world/phys/BlockHitResult;
+accessible	method	net/minecraft/commands/arguments/ResourceKeyArgument	resolveKey	(Lcom/mojang/brigadier/context/CommandContext;Ljava/lang/String;Lnet/minecraft/resources/ResourceKey;Lcom/mojang/brigadier/exceptions/DynamicCommandExceptionType;)Lnet/minecraft/core/Holder$Reference;
+accessible	method	net/minecraft/core/cauldron/CauldronInteraction$Dispatcher	put	(Lnet/minecraft/world/item/Item;Lnet/minecraft/core/cauldron/CauldronInteraction;)V
+accessible	field	net/minecraft/world/level/Level	DEFAULT_EXPLOSION_BLOCK_PARTICLES	Lnet/minecraft/util/random/WeightedList;
+accessible	class	net/minecraft/client/gui/Hud$HeartType
+accessible	method	net/minecraft/core/HolderSet$Named	bind	(Ljava/util/List;)V
+accessible	field	net/minecraft/world/item/crafting/Ingredient	values	Lnet/minecraft/core/HolderSet;
+accessible	field	net/minecraft/world/item/BucketItem	content	Lnet/minecraft/world/level/material/Fluid;
+accessible	field	net/minecraft/world/level/levelgen/heightproviders/UniformHeight	minInclusive	Lnet/minecraft/world/level/levelgen/VerticalAnchor;
+accessible	field	net/minecraft/world/level/levelgen/heightproviders/UniformHeight	maxInclusive	Lnet/minecraft/world/level/levelgen/VerticalAnchor;
+accessible	field	net/minecraft/core/MappedRegistry	frozen	Z
+accessible	field	net/minecraft/world/entity/item/ItemEntity	pickupDelay	I
+accessible	field	net/minecraft/server/network/ServerGamePacketListenerImpl	aboveGroundTickCount	I
+accessible	field	net/minecraft/world/item/crafting/RecipeManager	recipes	Lnet/minecraft/world/item/crafting/RecipeMap;
+accessible	field	net/minecraft/data/DataGenerator	vanillaPackOutput	Lnet/minecraft/data/PackOutput;
+inject-interface	net/minecraft/network/chat/Component	brachy/modularui/drawable/text/ToModularComponent
+inject-interface	net/minecraft/network/RegistryFriendlyByteBuf	brachy/modularui/core/extensions/IRegistryFriendlyByteBufExtension
+accessible	class	net/minecraft/core/component/DataComponentInitializers$InitializerEntry
+accessible	method	net/minecraft/core/HolderSet$Named	<init>	(Lnet/minecraft/core/HolderOwner;Lnet/minecraft/tags/TagKey;)V
+accessible	method	net/minecraft/core/HolderSet$Named	bind	(Ljava/util/List;)V
+accessible	field	net/minecraft/client/renderer/texture/SpriteContents	originalImage	Lcom/mojang/blaze3d/platform/NativeImage;

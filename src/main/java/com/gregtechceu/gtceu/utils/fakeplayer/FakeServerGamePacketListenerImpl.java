@@ -1,7 +1,6 @@
 package com.gregtechceu.gtceu.utils.fakeplayer;
 
 import net.minecraft.network.Connection;
-import net.minecraft.network.PacketSendListener;
 import net.minecraft.network.chat.ChatType;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.PlayerChatMessage;
@@ -10,12 +9,14 @@ import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.protocol.game.*;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
-import net.minecraft.world.entity.RelativeMovement;
 
+import com.mojang.authlib.GameProfile;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Set;
+import java.util.UUID;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 
@@ -25,7 +26,8 @@ public class FakeServerGamePacketListenerImpl extends ServerGamePacketListenerIm
     private static final Connection DUMMY_CONNECTION = new Connection(PacketFlow.CLIENTBOUND);
 
     public FakeServerGamePacketListenerImpl(MinecraftServer server, ServerPlayer player) {
-        super(server, DUMMY_CONNECTION, player);
+        super(server, DUMMY_CONNECTION, player,
+                CommonListenerCookie.createInitial(new GameProfile(UUID.randomUUID(), "dummy"), false));
     }
 
     @Override
@@ -65,7 +67,10 @@ public class FakeServerGamePacketListenerImpl extends ServerGamePacketListenerIm
     public void handleSetCommandMinecart(ServerboundSetCommandMinecartPacket packet) {}
 
     @Override
-    public void handlePickItem(ServerboundPickItemPacket packet) {}
+    public void handlePickItemFromBlock(ServerboundPickItemFromBlockPacket packet) {}
+
+    @Override
+    public void handlePickItemFromEntity(ServerboundPickItemFromEntityPacket packet) {}
 
     @Override
     public void handleRenameItem(ServerboundRenameItemPacket packet) {}
@@ -89,12 +94,6 @@ public class FakeServerGamePacketListenerImpl extends ServerGamePacketListenerIm
     public void handleEditBook(ServerboundEditBookPacket packet) {}
 
     @Override
-    public void handleEntityTagQuery(ServerboundEntityTagQuery packet) {}
-
-    @Override
-    public void handleBlockEntityTagQuery(ServerboundBlockEntityTagQuery packet) {}
-
-    @Override
     public void handleMovePlayer(ServerboundMovePlayerPacket packet) {}
 
     @Override
@@ -113,19 +112,13 @@ public class FakeServerGamePacketListenerImpl extends ServerGamePacketListenerIm
     public void handleTeleportToEntityPacket(ServerboundTeleportToEntityPacket packet) {}
 
     @Override
-    public void handleResourcePackResponse(ServerboundResourcePackPacket packet) {}
-
-    @Override
     public void handlePaddleBoat(ServerboundPaddleBoatPacket packet) {}
-
-    @Override
-    public void onDisconnect(Component message) {}
 
     @Override
     public void send(Packet<?> packet) {}
 
     @Override
-    public void send(Packet<?> packet, @Nullable PacketSendListener sendListener) {}
+    public void send(Packet<?> packet, @Nullable io.netty.channel.ChannelFutureListener sendListener) {}
 
     @Override
     public void handleSetCarriedItem(ServerboundSetCarriedItemPacket packet) {}
@@ -134,7 +127,7 @@ public class FakeServerGamePacketListenerImpl extends ServerGamePacketListenerIm
     public void handleChat(ServerboundChatPacket packet) {}
 
     @Override
-    public void handleAnimate(ServerboundSwingPacket packet) {}
+    public void handlePunch(ServerboundPunchPacket packet) {}
 
     @Override
     public void handlePlayerCommand(ServerboundPlayerCommandPacket packet) {}
@@ -164,16 +157,7 @@ public class FakeServerGamePacketListenerImpl extends ServerGamePacketListenerIm
     public void handleSignUpdate(ServerboundSignUpdatePacket packet) {}
 
     @Override
-    public void handleKeepAlive(ServerboundKeepAlivePacket packet) {}
-
-    @Override
     public void handlePlayerAbilities(ServerboundPlayerAbilitiesPacket packet) {}
-
-    @Override
-    public void handleClientInformation(ServerboundClientInformationPacket packet) {}
-
-    @Override
-    public void handleCustomPayload(ServerboundCustomPayloadPacket packet) {}
 
     @Override
     public void handleChangeDifficulty(ServerboundChangeDifficultyPacket packet) {}
@@ -182,7 +166,8 @@ public class FakeServerGamePacketListenerImpl extends ServerGamePacketListenerIm
     public void handleLockDifficulty(ServerboundLockDifficultyPacket packet) {}
 
     @Override
-    public void teleport(double x, double y, double z, float yaw, float pitch, Set<RelativeMovement> relativeSet) {}
+    public void teleport(net.minecraft.world.entity.PositionMoveRotation destination,
+                         Set<net.minecraft.world.entity.Relative> relativeSet) {}
 
     @Override
     public void ackBlockChangesUpTo(int sequence) {}
@@ -192,9 +177,6 @@ public class FakeServerGamePacketListenerImpl extends ServerGamePacketListenerIm
 
     @Override
     public void handleChatAck(ServerboundChatAckPacket packet) {}
-
-    @Override
-    public void addPendingMessage(PlayerChatMessage message) {}
 
     @Override
     public void sendPlayerChatMessage(PlayerChatMessage message, ChatType.Bound boundChatType) {}

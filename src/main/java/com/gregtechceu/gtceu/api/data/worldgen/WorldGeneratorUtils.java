@@ -1,7 +1,6 @@
 package com.gregtechceu.gtceu.api.data.worldgen;
 
-import com.gregtechceu.gtceu.api.data.worldgen.generator.IndicatorGenerator;
-import com.gregtechceu.gtceu.api.data.worldgen.generator.VeinGenerator;
+import com.gregtechceu.gtceu.api.data.worldgen.generator.veins.NoopVeinGenerator;
 import com.gregtechceu.gtceu.api.registry.GTRegistries;
 import com.gregtechceu.gtceu.data.recipe.CustomTags;
 import com.gregtechceu.gtceu.utils.WeightedEntry;
@@ -9,25 +8,20 @@ import com.gregtechceu.gtceu.utils.WeightedEntry;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.biome.Biome;
-import net.minecraft.world.level.chunk.ChunkStatus;
+import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.structure.templatesystem.RuleTest;
 import net.minecraft.world.level.levelgen.structure.templatesystem.TagMatchTest;
 
-import com.google.common.collect.HashBiMap;
-import com.mojang.serialization.Codec;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
 import java.util.*;
-import java.util.Map.Entry;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -37,37 +31,26 @@ public class WorldGeneratorUtils {
 
     private static final Map<ServerLevel, WorldOreVeinCache> oreVeinCache = new WeakHashMap<>();
 
-    public static final HashBiMap<ResourceLocation, Codec<? extends VeinGenerator>> VEIN_GENERATORS = HashBiMap
-            .create();
-    public static final HashBiMap<ResourceLocation, Function<GTOreDefinition, ? extends VeinGenerator>> VEIN_GENERATOR_FUNCTIONS = HashBiMap
-            .create();
-
-    public static final HashBiMap<ResourceLocation, Codec<? extends IndicatorGenerator>> INDICATOR_GENERATORS = HashBiMap
-            .create();
-    public static final HashBiMap<ResourceLocation, Function<GTOreDefinition, ? extends IndicatorGenerator>> INDICATOR_GENERATOR_FUNCTIONS = HashBiMap
-            .create();
-
-    public record WeightedVein(GTOreDefinition vein, int weight) implements WeightedEntry {}
+    public record WeightedVein(Holder<GTOreDefinition> vein, int weight) implements WeightedEntry {}
 
     private static class WorldOreVeinCache {
 
-        private final List<GTOreDefinition> worldVeins;
+        private final List<Holder<GTOreDefinition>> worldVeins;
         private final Map<Holder<Biome>, List<WeightedVein>> biomeVeins = new Object2ObjectOpenHashMap<>();
 
         public WorldOreVeinCache(ServerLevel level) {
-            this.worldVeins = GTRegistries.ORE_VEINS.entries().stream()
-                    .filter(entry -> entry.getValue().dimensionFilter().stream()
+            this.worldVeins = level.registryAccess().lookupOrThrow(GTRegistries.Keys.ORE_VEIN).listElements()
+                    .filter(vein -> !(vein.value().veinGenerator() instanceof NoopVeinGenerator))
+                    .filter(entry -> entry.value().dimensionFilter().stream()
                             .anyMatch(dim -> WorldGeneratorUtils.isSameDimension(dim, level.dimension())))
-                    .sorted(Entry.comparingByKey())
-                    .map(Entry::getValue)
                     .collect(Collectors.toList());
         }
 
         private List<WeightedVein> getEntry(Holder<Biome> biome) {
             if (biomeVeins.containsKey(biome)) return biomeVeins.get(biome);
             var biomeVeins = worldVeins.stream()
-                    .filter(vein -> vein.isForBiome(biome))
-                    .map(vein -> new WeightedVein(vein, vein.weightForBiome(biome)))
+                    .filter(vein -> vein.value().isForBiome(biome))
+                    .map(vein -> new WeightedVein(vein, vein.value().weightForBiome(biome)))
                     .filter(vein -> vein.weight > 0)
                     .toList();
             this.biomeVeins.put(biome, biomeVeins);
@@ -85,18 +68,18 @@ public class WorldGeneratorUtils {
 
     public static <T> Map<ChunkPos, Map<BlockPos, T>> groupByChunks(Map<BlockPos, T> input) {
         return input.entrySet().stream().collect(Collectors.groupingBy(
-                entry -> new ChunkPos(entry.getKey()),
+                entry -> ChunkPos.containing(entry.getKey()),
                 Object2ObjectOpenHashMap::new,
                 Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (a, b) -> a, Object2ObjectOpenHashMap::new)));
     }
 
     public static Map<ChunkPos, List<BlockPos>> groupByChunks(Collection<BlockPos> positions) {
-        return positions.stream().collect(Collectors.groupingBy(ChunkPos::new));
+        return positions.stream().collect(Collectors.groupingBy(ChunkPos::containing));
     }
 
     public static Collection<ChunkPos> getChunks(Collection<BlockPos> positions) {
         return positions.stream()
-                .collect(Collectors.groupingBy(ChunkPos::new))
+                .collect(Collectors.groupingBy(ChunkPos::containing))
                 .keySet();
     }
 
@@ -105,17 +88,17 @@ public class WorldGeneratorUtils {
         var chunkSource = level.getChunkSource();
 
         for (ChunkPos chunkPos : chunks) {
-            var chunk = chunkSource.getChunk(chunkPos.x, chunkPos.z, false);
+            var chunk = chunkSource.getChunk(chunkPos.x(), chunkPos.z(), false);
 
             if (chunk == null) {
                 previouslyUnloadedChunks.add(chunkPos);
             }
 
-            chunkSource.getChunk(chunkPos.x, chunkPos.z, requiredStatus, true);
+            chunkSource.getChunk(chunkPos.x(), chunkPos.z(), requiredStatus, true);
         }
 
         if (level instanceof ServerLevel serverLevel) {
-            previouslyUnloadedChunks.forEach(chunk -> serverLevel.unload(serverLevel.getChunk(chunk.x, chunk.z)));
+            previouslyUnloadedChunks.forEach(chunk -> serverLevel.unload(serverLevel.getChunk(chunk.x(), chunk.z())));
         }
     }
 

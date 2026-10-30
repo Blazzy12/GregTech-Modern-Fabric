@@ -6,9 +6,11 @@ import com.gregtechceu.gtceu.api.sync_system.data_transformers.ValueTransformers
 import com.gregtechceu.gtceu.api.sync_system.managed.ISyncManaged;
 
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.RegistryAccess;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import com.gregtechceu.gtceu.compat.network.connection.ConnectionType;
 
 import io.netty.buffer.Unpooled;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
@@ -45,9 +47,6 @@ public class SyncDataHolder {
      * @param fieldName The field that has changed.
      */
     public void markClientSyncFieldDirty(String fieldName) {
-        if (!syncData.getClientSyncFields().containsKey(fieldName)) {
-            GTCEu.LOGGER.warn("Sync: Unknown client sync field: {}", fieldName);
-        }
         dirtySyncFields.add(fieldName);
         holder.markAsChanged();
     }
@@ -88,7 +87,7 @@ public class SyncDataHolder {
         for (var field : syncData.getServerSaveFields().values()) {
             Tag newValue = tag.get(field.nbtSaveKey);
             if (newValue == null || newValue instanceof CompoundTag compound &&
-                    (compound.isEmpty() || (compound.size() == 1 && compound.getBoolean("null"))))
+                    (compound.isEmpty() || (compound.size() == 1 && compound.getBooleanOr("null", false))))
                 continue;
 
             if (!confirmTransformerPresent(field, holder)) continue;
@@ -110,11 +109,11 @@ public class SyncDataHolder {
     }
 
     @SuppressWarnings("unchecked")
-    public void writeClientPacket(HolderLookup.Provider lookup, FriendlyByteBuf buf) {
+    public void writeClientPacket(HolderLookup.Provider lookup, RegistryFriendlyByteBuf buf) {
         Set<FieldSyncData> fieldsToSerialize = syncData.getClientSyncFields().values().stream()
                 .filter(this::shouldSyncFieldToClient).collect(Collectors.toSet());
 
-        var fieldData = new FriendlyByteBuf(Unpooled.buffer());
+        var fieldData = new RegistryFriendlyByteBuf(Unpooled.buffer(), (RegistryAccess) lookup);
         boolean hadErrorWritingData = false;
 
         for (var field : fieldsToSerialize) {
@@ -139,10 +138,6 @@ public class SyncDataHolder {
             }
         }
 
-        resyncAll = false;
-        dirtySyncFields.clear();
-        hasDirtyChildSyncObject = false;
-
         if (hadErrorWritingData) {
             buf.writeVarInt(0);
             return;
@@ -150,10 +145,14 @@ public class SyncDataHolder {
 
         buf.writeVarInt(fieldsToSerialize.size());
         buf.writeBytes(fieldData);
+
+        resyncAll = false;
+        dirtySyncFields.clear();
+        hasDirtyChildSyncObject = false;
     }
 
     @SuppressWarnings("unchecked")
-    public void readClientPacket(HolderLookup.Provider lookup, FriendlyByteBuf buf) {
+    public void readClientPacket(HolderLookup.Provider lookup, RegistryFriendlyByteBuf buf) {
         int fieldsToRead = buf.readVarInt();
 
         for (int fieldIndex = 0; fieldIndex < fieldsToRead; fieldIndex++) {
@@ -268,13 +267,15 @@ public class SyncDataHolder {
         }
 
         @Override
-        public void writeToPacket(FriendlyByteBuf buf, ISyncManaged value, TransformerContext<ISyncManaged> context) {
+        public void writeToPacket(RegistryFriendlyByteBuf buf, ISyncManaged value,
+                                  TransformerContext<ISyncManaged> context) {
             if (context.isClientFullSyncUpdate()) value.getSyncDataHolder().resyncAllFields();
             value.getSyncDataHolder().writeClientPacket(context.lookup(), buf);
         }
 
         @Override
-        public @Nullable ISyncManaged readFromPacket(FriendlyByteBuf buf, TransformerContext<ISyncManaged> context) {
+        public @Nullable ISyncManaged readFromPacket(RegistryFriendlyByteBuf buf,
+                                                     TransformerContext<ISyncManaged> context) {
             ISyncManaged syncManaged = context.currentValue();
             var clazz = context.type().getClassValue();
 
@@ -289,6 +290,7 @@ public class SyncDataHolder {
                 return null;
             }
 
+            if (context.isClientFullSyncUpdate()) syncManaged.getSyncDataHolder().resyncAllFields();
             syncManaged.getSyncDataHolder().readClientPacket(context.lookup(), buf);
             return syncManaged;
         }

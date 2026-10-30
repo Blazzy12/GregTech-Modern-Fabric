@@ -3,40 +3,24 @@ package com.gregtechceu.gtceu.api.sync_system.data_transformers.gtceu;
 import com.gregtechceu.gtceu.api.recipe.GTRecipe;
 import com.gregtechceu.gtceu.api.recipe.GTRecipeSerializer;
 import com.gregtechceu.gtceu.api.sync_system.data_transformers.ValueTransformer;
-import com.gregtechceu.gtceu.common.data.GTRecipeTypes;
 
-import net.minecraft.client.Minecraft;
 import net.minecraft.nbt.*;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.world.item.crafting.RecipeManager;
-import net.minecraft.world.item.crafting.SmeltingRecipe;
-import net.minecraftforge.server.ServerLifecycleHooks;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.resources.Identifier;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Objects;
 
 public class GTRecipeTransformer implements ValueTransformer<GTRecipe> {
 
-    private static RecipeManager getRecipeManager() {
-        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
-        if (server != null && Thread.currentThread() == server.getRunningThread()) {
-            return server.getRecipeManager();
-        } else {
-            return Objects.requireNonNull(Minecraft.getInstance().getConnection()).getRecipeManager();
-        }
-    }
-
     @Override
     public Tag serializeNBT(GTRecipe value, ValueTransformer.TransformerContext<GTRecipe> context) {
         CompoundTag tag = new CompoundTag();
         tag.putString("id", value.id.toString());
         tag.put("recipe",
-                GTRecipeSerializer.CODEC.encodeStart(context.nbtOps(), value).result().orElse(new CompoundTag()));
+                GTRecipeSerializer.CODEC.encode(value, context.nbtOps(), context.nbtOps().mapBuilder())
+                        .build(new CompoundTag()).getOrThrow());
         tag.putInt("ocLevel", value.ocLevel);
         return tag;
     }
@@ -44,38 +28,27 @@ public class GTRecipeTransformer implements ValueTransformer<GTRecipe> {
     @Override
     public @Nullable GTRecipe deserializeNBT(Tag tag, ValueTransformer.TransformerContext<GTRecipe> context) {
         if (tag instanceof CompoundTag comp && comp.isEmpty()) return null;
-        RecipeManager recipeManager = getRecipeManager();
         GTRecipe result = null;
         if (tag instanceof CompoundTag compoundTag) {
-            result = GTRecipeSerializer.CODEC.parse(context.nbtOps(), compoundTag.get("recipe")).result().orElse(null);
+            var recipeTag = compoundTag.get("recipe");
+            result = GTRecipeSerializer.CODEC
+                    .decode(context.nbtOps(), context.nbtOps().getMap(Objects.requireNonNull(recipeTag)).getOrThrow())
+                    .result().orElse(null);
             if (result != null) {
-                result.id = ResourceLocation.parse(compoundTag.getString("id"));
-                result.ocLevel = compoundTag.getInt("ocLevel");
+                result.id = Identifier.parse(compoundTag.getStringOr("id", ""));
+                result.ocLevel = compoundTag.getIntOr("ocLevel", 0);
             }
-        } else if (tag instanceof StringTag stringTag) { // Backwards Compatibility
-            var recipe = recipeManager.byKey(ResourceLocation.parse(stringTag.getAsString())).orElse(null);
-            if (recipe instanceof GTRecipe gtRecipe) {
-                result = gtRecipe;
-            } else if (recipe instanceof SmeltingRecipe smeltingRecipe) {
-                result = GTRecipeTypes.FURNACE_RECIPES.toGTrecipe(ResourceLocation.parse(stringTag.getAsString()),
-                        smeltingRecipe);
-            }
-        } else if (tag instanceof ByteArrayTag byteArray) { // Backwards Compatibility
-            ByteBuf copiedDataBuffer = Unpooled.copiedBuffer(byteArray.getAsByteArray());
-            FriendlyByteBuf buf = new FriendlyByteBuf(copiedDataBuffer);
-            result = (GTRecipe) recipeManager.byKey(buf.readResourceLocation()).orElse(null);
-            buf.release();
         }
         return result;
     }
 
     @Override
-    public void writeToPacket(FriendlyByteBuf buf, GTRecipe value, TransformerContext<GTRecipe> context) {
-        GTRecipeSerializer.SERIALIZER.toNetwork(buf, value);
+    public void writeToPacket(RegistryFriendlyByteBuf buf, GTRecipe value, TransformerContext<GTRecipe> context) {
+        GTRecipeSerializer.STREAM_CODEC.encode(buf, value);
     }
 
     @Override
-    public @Nullable GTRecipe readFromPacket(FriendlyByteBuf buf, TransformerContext<GTRecipe> context) {
-        return GTRecipeSerializer.fromNetworkWithoutDatapackSync(buf);
+    public @Nullable GTRecipe readFromPacket(RegistryFriendlyByteBuf buf, TransformerContext<GTRecipe> context) {
+        return GTRecipeSerializer.STREAM_CODEC.decode(buf);
     }
 }

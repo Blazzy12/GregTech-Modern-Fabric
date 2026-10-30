@@ -2,11 +2,12 @@ package com.gregtechceu.gtceu.api.transfer.fluid;
 
 import com.gregtechceu.gtceu.GTCEu;
 
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
-import net.minecraftforge.common.util.INBTSerializable;
-import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.capability.IFluidHandler;
+import com.gregtechceu.gtceu.compat.common.util.INBTSerializable;
+import com.gregtechceu.gtceu.compat.fluids.FluidStack;
+import com.gregtechceu.gtceu.compat.fluids.capability.IFluidHandler;
 
 import lombok.Setter;
 import org.jetbrains.annotations.NotNull;
@@ -134,27 +135,28 @@ public class FluidHandlerList implements IFluidHandlerModifiable, INBTSerializab
     }
 
     @Override
-    public CompoundTag serializeNBT() {
+    public CompoundTag serializeNBT(HolderLookup.Provider provider) {
         var tag = new CompoundTag();
         var list = new ListTag();
         for (IFluidHandler handler : handlers) {
             if (handler instanceof INBTSerializable<?> serializable) {
-                list.add(serializable.serializeNBT());
+                list.add(serializable.serializeNBT(provider));
             } else {
                 GTCEu.LOGGER.warn("[FluidHandlerList] internal tank doesn't support serialization");
             }
         }
         tag.put("tanks", list);
-        tag.putByte("type", list.getElementType());
+        // 26.x list tags are not typed, so no element type is stored
         return tag;
     }
 
+    @SuppressWarnings({ "rawtypes", "unchecked" })
     @Override
-    public void deserializeNBT(CompoundTag nbt) {
-        var list = nbt.getList("tanks", nbt.getByte("type"));
+    public void deserializeNBT(HolderLookup.Provider provider, CompoundTag nbt) {
+        var list = nbt.getListOrEmpty("tanks");
         for (int i = 0; i < list.size(); i++) {
             if (handlers[i] instanceof INBTSerializable serializable) {
-                serializable.deserializeNBT(list.get(i));
+                serializable.deserializeNBT(provider, list.get(i));
             } else {
                 GTCEu.LOGGER.warn("[FluidHandlerList] internal tank doesn't support serialization");
             }

@@ -11,17 +11,12 @@ import com.gregtechceu.gtceu.common.machine.trait.ItemHandlerProxyTrait;
 import com.gregtechceu.gtceu.utils.GTTransferUtils;
 import com.gregtechceu.gtceu.utils.ISubscription;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.Block;
 
 import org.jetbrains.annotations.Nullable;
 
-import javax.annotation.ParametersAreNonnullByDefault;
-
-@ParametersAreNonnullByDefault
-@MethodsReturnNonnullByDefault
 public class CokeOvenHatch extends MultiblockPartMachine {
 
     public final ItemHandlerProxyTrait inputInventory, outputInventory;
@@ -102,7 +97,7 @@ public class CokeOvenHatch extends MultiblockPartMachine {
     //////////////////////////////////////
 
     @Override
-    public void onNeighborChanged(Block block, BlockPos fromPos, boolean isMoving) {
+    public void onNeighborChanged(net.minecraft.world.level.block.Block block, BlockPos fromPos, boolean isMoving) {
         super.onNeighborChanged(block, fromPos, isMoving);
         updateAutoIOSubscription();
     }

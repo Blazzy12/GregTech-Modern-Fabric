@@ -15,6 +15,7 @@ import com.gregtechceu.gtceu.common.mui.drawable.BorderDrawable;
 import com.gregtechceu.gtceu.common.mui.widgets.SimpleDialog;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 
@@ -55,11 +56,11 @@ public class CentralMonitorUIFactory implements PanelFactory {
                                            MetaMachine metaMachine) {
         if (!(metaMachine instanceof CentralMonitorMachine machine)) return new ModularPanel<>("main");
         // avoid .allowC2S() here since that will allow unchecked item stack modifying from client-side
-        GenericListSyncHandler<MonitorGroup> groupSync = new GenericListSyncHandler<>(machine::getMonitorGroups,
+        GenericListSyncHandler<FriendlyByteBuf, MonitorGroup> groupSync = new GenericListSyncHandler<>(
+                machine::getMonitorGroups,
                 machine::setMonitorGroups, MONITOR_GROUPS, MONITOR_GROUPS,
                 MONITOR_GROUPS, null);
         syncManager.syncValue("monitor_groups_sync", groupSync);
-        List<MonitorGroup> groups = new ArrayList<>(machine.getMonitorGroups());
         IPanelHandler helpPanel = syncManager.syncedPanel(
                 "help_panel", true,
                 (syncManager1, panelHandler1) -> createHelpPanel());
@@ -89,8 +90,11 @@ public class CentralMonitorUIFactory implements PanelFactory {
                                     () -> new ItemSlotSyncHandler(new ModularSlot(group.getItemStackHandler(), 0)
                                             .changeListener((newItem, onlyAmountChanged, client, init) -> {
                                                 if (!init) {
-                                                    groups.set(index, group);
-                                                    groupSync.setValue(groups, true, false);
+                                                    List<MonitorGroup> current = new ArrayList<>(groupSync.getValue());
+                                                    if (index >= 0 && index < current.size()) {
+                                                        current.set(index, group);
+                                                        groupSync.setValue(current, true, false);
+                                                    }
                                                 }
                                             })))))
                     .child(new ButtonWidget<>()
@@ -104,8 +108,11 @@ public class CentralMonitorUIFactory implements PanelFactory {
                             .syncHandler(syncManager.getOrCreateSyncHandler("delete_group", index,
                                     InteractionSyncHandler.class, () -> new InteractionSyncHandler()
                                             .setOnMousePressed(mouseData -> {
-                                                groups.remove(index);
-                                                groupSync.setValue(groups, true, false);
+                                                List<MonitorGroup> current = new ArrayList<>(groupSync.getValue());
+                                                if (index >= 0 && index < current.size()) {
+                                                    current.remove(index);
+                                                    groupSync.setValue(current, true, false);
+                                                }
                                             }))))
                     .childIf(moduleEditor != null, () -> new ButtonWidget<>()
                             .right(36)
@@ -121,7 +128,7 @@ public class CentralMonitorUIFactory implements PanelFactory {
                                 return true;
                             }));
         };
-        DynamicLinkedSyncHandler<GenericListSyncHandler<MonitorGroup>> listHandler = new DynamicLinkedSyncHandler<>(
+        DynamicLinkedSyncHandler<FriendlyByteBuf, GenericListSyncHandler<FriendlyByteBuf, MonitorGroup>> listHandler = new DynamicLinkedSyncHandler<>(
                 groupSync)
                 .widgetProvider((psm, list) -> new ListWidget<>()
                         .children(list.getValue().stream()
@@ -134,7 +141,7 @@ public class CentralMonitorUIFactory implements PanelFactory {
                 .draggable(true)
                 .padding(5)
                 .excludeAreaInRecipeViewer()
-                .child(GTMuiWidgets.createTitleBar(GTMultiMachines.CENTRAL_MONITOR, 176))
+                .child(GTMuiWidgets.createTitleBar(GTMultiMachines.CENTRAL_MONITOR.value(), 176))
                 .child(new Flow(GuiAxis.Y)
                         .heightRel(1)
                         .widthRel(1)
@@ -161,9 +168,9 @@ public class CentralMonitorUIFactory implements PanelFactory {
                                         .right(36)
                                         .syncHandler(new InteractionSyncHandler()
                                                 .setOnMousePressed(mouseData -> {
-                                                    MonitorGroup group = new MonitorGroup(getNewGroupName(groupSync));
-                                                    groups.add(group);
-                                                    groupSync.setValue(groups, true, false);
+                                                    List<MonitorGroup> current = new ArrayList<>(groupSync.getValue());
+                                                    current.add(new MonitorGroup(getNewGroupName(groupSync)));
+                                                    groupSync.setValue(current, true, false);
                                                 })))
                                 .widthRel(1).height(20))
                         .child(new DynamicWidget<>()
@@ -183,7 +190,7 @@ public class CentralMonitorUIFactory implements PanelFactory {
     }
 
     private ModularPanel<?> createGroupEditorPanel(PanelSyncManager syncManager,
-                                                   GenericListSyncHandler<MonitorGroup> groupSync,
+                                                   GenericListSyncHandler<FriendlyByteBuf, MonitorGroup> groupSync,
                                                    int groupIndex,
                                                    CentralMonitorMachine machine,
                                                    IPanelHandler moduleEditor) {

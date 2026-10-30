@@ -1,39 +1,40 @@
 package com.gregtechceu.gtceu.common.loot.function;
 
+import net.minecraft.core.Holder;
+import java.util.Optional;
+
 import com.gregtechceu.gtceu.api.capability.GTCapabilityHelper;
 import com.gregtechceu.gtceu.api.capability.IElectricItem;
-import com.gregtechceu.gtceu.common.data.loot.GTLootFunctions;
 import com.gregtechceu.gtceu.utils.codec.GTCodecUtils;
 
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.storage.loot.LootContext;
 import net.minecraft.world.level.storage.loot.functions.*;
 import net.minecraft.world.level.storage.loot.predicates.LootItemCondition;
-import net.minecraftforge.common.loot.LootModifier;
 
 import com.google.gson.*;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
+
 public class SetEUChargeFunction extends LootItemConditionalFunction {
 
     // spotless:off
-    public static final MapCodec<SetEUChargeFunction> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
-             LootModifier.LOOT_CONDITIONS_CODEC.fieldOf("conditions").forGetter(fn -> fn.predicates),
-             GTCodecUtils.NON_NEGATIVE_LONG.fieldOf("charge").forGetter(fn -> fn.charge)
+    public static final MapCodec<SetEUChargeFunction> CODEC = RecordCodecBuilder.mapCodec(instance -> commonFields(instance).and(
+            GTCodecUtils.NON_NEGATIVE_LONG.fieldOf("charge").forGetter((SetEUChargeFunction fn) -> fn.charge)
     ).apply(instance, SetEUChargeFunction::new));
     // spotless:on
 
     protected final long charge;
 
-    protected SetEUChargeFunction(LootItemCondition[] conditions, long charge) {
-        super(conditions);
+    protected SetEUChargeFunction(Optional<Holder<LootItemCondition>> predicates, long charge) {
+        super(predicates);
         this.charge = charge;
     }
 
     @Override
-    public LootItemFunctionType getType() {
-        return GTLootFunctions.SET_EU_CHARGE.get();
+    public MapCodec<SetEUChargeFunction> codec() {
+        return CODEC;
     }
 
     @Override

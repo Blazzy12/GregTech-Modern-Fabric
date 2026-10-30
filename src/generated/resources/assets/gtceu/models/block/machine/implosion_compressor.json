@@ -1,6 +1,6 @@
 {
   "parent": "minecraft:block/block",
-  "loader": "gtceu:machine",
+  "fabric:type": "gtceu:machine",
   "machine": "gtceu:implosion_compressor",
   "texture_overrides": {
     "all": "gtceu:block/casings/solid/machine_casing_solid_steel"

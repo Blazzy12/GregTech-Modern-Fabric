@@ -2,20 +2,25 @@ package com.gregtechceu.gtceu.common.machine.storage;
 
 import com.gregtechceu.gtceu.api.GTValues;
 import com.gregtechceu.gtceu.api.blockentity.BlockEntityCreationInfo;
+import com.gregtechceu.gtceu.api.item.datacomponents.CreativeMachineInfo;
 import com.gregtechceu.gtceu.api.machine.mui.MachineUIPanel;
 import com.gregtechceu.gtceu.api.machine.mui.MachineUIPanelBuilder;
 import com.gregtechceu.gtceu.api.sync_system.annotations.SaveField;
 import com.gregtechceu.gtceu.api.transfer.fluid.CustomFluidTank;
+import com.gregtechceu.gtceu.common.data.item.GTDataComponents;
 import com.gregtechceu.gtceu.common.mui.GTGuiTextures;
 import com.gregtechceu.gtceu.common.mui.GTMuiWidgets;
 import com.gregtechceu.gtceu.utils.ExtendedUseOnContext;
 
-import net.minecraft.nbt.CompoundTag;
+import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.FluidUtil;
-import net.minecraftforge.items.ItemHandlerHelper;
+import com.gregtechceu.gtceu.compat.fluids.FluidStack;
+import com.gregtechceu.gtceu.compat.fluids.FluidType;
+import com.gregtechceu.gtceu.compat.fluids.FluidUtil;
+import com.gregtechceu.gtceu.compat.fluids.IFluidTank;
+import com.gregtechceu.gtceu.compat.fluids.capability.IFluidHandler;
+import com.gregtechceu.gtceu.compat.items.ItemHandlerHelper;
 
 import brachy.modularui.api.drawable.Text;
 import brachy.modularui.api.widget.IWidget;
@@ -23,9 +28,9 @@ import brachy.modularui.drawable.Rectangle;
 import brachy.modularui.factory.PosGuiData;
 import brachy.modularui.screen.UISettings;
 import brachy.modularui.utils.Alignment;
+import brachy.modularui.value.sync.FluidSlotSyncHandler;
 import brachy.modularui.value.sync.IntSyncValue;
 import brachy.modularui.value.sync.PanelSyncManager;
-import brachy.modularui.value.sync.SyncHandlers;
 import brachy.modularui.widget.ParentWidget;
 import brachy.modularui.widgets.layout.Flow;
 import brachy.modularui.widgets.slot.FluidSlot;
@@ -61,7 +66,7 @@ public class CreativeTankMachine extends QuantumTankMachine {
     }
 
     private InteractionResult updateStored(FluidStack fluid) {
-        stored = new FluidStack(fluid, 1000);
+        stored = fluid.copyWithAmount(FluidType.BUCKET_VOLUME);
         onFluidChanged();
         return InteractionResult.SUCCESS;
     }
@@ -75,18 +80,6 @@ public class CreativeTankMachine extends QuantumTankMachine {
     private void setmBPerCycle(int value) {
         mBPerCycle = value;
         onFluidChanged();
-    }
-
-    @Override
-    public void saveToItem(CompoundTag tag, boolean clone) {
-        tag.putInt("mBPerCycle", mBPerCycle);
-        tag.putInt("ticksPerCycle", ticksPerCycle);
-    }
-
-    @Override
-    public void loadFromItem(CompoundTag tag) {
-        mBPerCycle = tag.getInt("mBPerCycle");
-        ticksPerCycle = tag.getInt("ticksPerCycle");
     }
 
     @Override
@@ -105,7 +98,7 @@ public class CreativeTankMachine extends QuantumTankMachine {
             }
 
             // Need to make a fake source to fully fill held-item since our cache only allows mbPerTick extraction
-            CustomFluidTank source = new CustomFluidTank(new FluidStack(stored, Integer.MAX_VALUE));
+            CustomFluidTank source = new CustomFluidTank(stored.copyWithAmount(Integer.MAX_VALUE));
             ItemStack result = FluidUtil.tryFillContainer(heldItem, source, Integer.MAX_VALUE, player, true)
                     .getResult();
             if (!result.isEmpty() && heldItem.getCount() > 1) {
@@ -163,7 +156,7 @@ public class CreativeTankMachine extends QuantumTankMachine {
                                 .child(Text.lang("gtceu.creative.tank.fluid").asWidget()
                                         .marginRight(4)
                                         .verticalCenter())
-                                .child(createFluidSlot(syncManager)))
+                                .child(createPhantomStoredFluidSlot(syncManager)))
                         .child(new Rectangle().color(0xFF555555).asWidget()
                                 .height(1).widthRel(0.95f).marginBottom(4).marginTop(4))
                         .child(Flow.row()
@@ -190,18 +183,73 @@ public class CreativeTankMachine extends QuantumTankMachine {
                                         .value(ticksPerCycle))));
     }
 
-    @Override
-    protected IWidget createFluidSlot(PanelSyncManager syncManager) {
-        FluidCacheTankWrapper fluidTank = new FluidCacheTankWrapper(((InfiniteCache) cache).getInternal());
-        syncManager.syncValue("fluid_slot", SyncHandlers.fluidSlot(fluidTank)
-                .controlsAmount(false).phantom(true));
+    private IWidget createPhantomStoredFluidSlot(PanelSyncManager syncManager) {
+        syncManager.syncValue("fluid_slot",
+                new FluidSlotSyncHandler(new StoredFluidTank()).controlsAmount(false).phantom(true));
         return new FluidSlot().syncHandler("fluid_slot", 0).background(GTGuiTextures.FLUID_SLOT);
     }
 
-    private class InfiniteCache extends FluidCache {
+    private class StoredFluidTank implements IFluidTank {
 
-        @Getter
-        private final FluidCache internal = new FluidCache();
+        @Override
+        public FluidStack getFluid() {
+            return stored;
+        }
+
+        @Override
+        public int getFluidAmount() {
+            return stored.getAmount();
+        }
+
+        @Override
+        public int getCapacity() {
+            return FluidType.BUCKET_VOLUME;
+        }
+
+        @Override
+        public boolean isFluidValid(FluidStack stack) {
+            return true;
+        }
+
+        @Override
+        public int fill(FluidStack resource, IFluidHandler.FluidAction action) {
+            if (resource.isEmpty()) return 0;
+            if (action.execute()) updateStored(resource);
+            return resource.getAmount();
+        }
+
+        @Override
+        public FluidStack drain(int maxDrain, IFluidHandler.FluidAction action) {
+            if (stored.isEmpty() || maxDrain <= 0) return FluidStack.EMPTY;
+            FluidStack drained = stored.copyWithAmount(Math.min(maxDrain, stored.getAmount()));
+            if (action.execute()) updateStored(FluidStack.EMPTY);
+            return drained;
+        }
+
+        @Override
+        public FluidStack drain(FluidStack resource, IFluidHandler.FluidAction action) {
+            if (stored.isEmpty() || !FluidStack.isSameFluidSameComponents(resource, stored)) return FluidStack.EMPTY;
+            return drain(resource.getAmount(), action);
+        }
+    }
+
+    @Override
+    protected void applyImplicitComponents(net.minecraft.core.component.DataComponentGetter componentInput) {
+        super.applyImplicitComponents(componentInput);
+        CreativeMachineInfo info = componentInput.get(GTDataComponents.CREATIVE_MACHINE_INFO.get());
+        if (info != null) {
+            mBPerCycle = info.outputPerCycle();
+            ticksPerCycle = info.ticksPerCycle();
+        }
+    }
+
+    @Override
+    public void collectImplicitComponents(DataComponentMap.Builder components) {
+        super.collectImplicitComponents(components);
+        components.set(GTDataComponents.CREATIVE_MACHINE_INFO.get(), new CreativeMachineInfo(mBPerCycle, ticksPerCycle));
+    }
+
+    private class InfiniteCache extends FluidCache {
 
         public InfiniteCache() {
             super();
@@ -214,19 +262,21 @@ public class CreativeTankMachine extends QuantumTankMachine {
 
         @Override
         public int fill(FluidStack resource, FluidAction action) {
-            if (!stored.isEmpty() && stored.isFluidEqual(resource)) return resource.getAmount();
+            if (!stored.isEmpty() && FluidStack.isSameFluidSameComponents(stored, resource))
+                return resource.getAmount();
             return 0;
         }
 
         @Override
         public FluidStack drain(int maxDrain, FluidAction action) {
-            if (!stored.isEmpty()) return new FluidStack(stored, mBPerCycle);
+            if (!stored.isEmpty()) return stored.copyWithAmount(mBPerCycle);
             return FluidStack.EMPTY;
         }
 
         @Override
         public FluidStack drain(FluidStack resource, FluidAction action) {
-            if (!stored.isEmpty() && stored.isFluidEqual(resource)) return new FluidStack(resource, mBPerCycle);
+            if (!stored.isEmpty() && FluidStack.isSameFluidSameComponents(stored, resource))
+                return resource.copyWithAmount(mBPerCycle);
             return FluidStack.EMPTY;
         }
 

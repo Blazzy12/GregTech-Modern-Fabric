@@ -1,5 +1,7 @@
 package com.gregtechceu.gtceu.api.recipe.gui;
 
+import brachy.modularui.utils.MouseButtons;
+
 import com.gregtechceu.gtceu.api.GTValues;
 import com.gregtechceu.gtceu.api.capability.recipe.IO;
 import com.gregtechceu.gtceu.api.capability.recipe.RecipeCapability;
@@ -15,7 +17,7 @@ import com.gregtechceu.gtceu.utils.FormattingUtil;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
-import net.minecraftforge.fml.loading.FMLLoader;
+import com.gregtechceu.gtceu.compat.fml.loading.FMLLoader;
 
 import brachy.modularui.api.drawable.IDrawable;
 import brachy.modularui.api.drawable.Text;
@@ -27,7 +29,6 @@ import brachy.modularui.widget.ParentWidget;
 import brachy.modularui.widget.WidgetTree;
 import brachy.modularui.widgets.ButtonWidget;
 import brachy.modularui.widgets.layout.Flow;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.HashSet;
 import java.util.List;
@@ -74,7 +75,7 @@ public class GTRecipeViewerWidget extends ParentWidget<GTRecipeViewerWidget> {
         Flow mainColumn = Flow.col().widthRel(1f).coverChildrenHeight();
 
         child(mainColumn);
-        margin(3);
+        padding(3);
         coverChildrenWidth(150);
         coverChildrenHeight(60);
 
@@ -83,7 +84,7 @@ public class GTRecipeViewerWidget extends ParentWidget<GTRecipeViewerWidget> {
                 .dynamic(() -> Component.translatable("gtceu.recipe.duration",
                         FormattingUtil.formatNumbers((double) modifiedRecipe.duration / 20)))
                 .asWidget()
-                .setEnabledIf(v -> !modifiedRecipe.data.getBoolean("hide_duration")));
+                .setEnabledIf(v -> !modifiedRecipe.data.getBooleanOr("hide_duration", false)));
 
         recipeContentRow = uiLayout.getCustomUIBuilder() == null ? buildDefaultLayout() :
                 uiLayout.getCustomUIBuilder().apply(recipe);
@@ -106,7 +107,7 @@ public class GTRecipeViewerWidget extends ParentWidget<GTRecipeViewerWidget> {
                 .horizontalCenter()
                 .coverChildrenHeight()
                 .widthRel(1.f)
-                .childPadding((recipeType.getUiLayout().getProgressBar().progressSize() / 3) + 2)
+                .childPadding((recipeType.getUiLayout().getProgressBar().progressSize() / 2) + 2)
                 .child(inputColumn)
                 .child(uiLayout.getProgressWidgetSupplier()
                         .get(uiLayout, DoubleValue.simulateProgress(2000), null))
@@ -209,13 +210,13 @@ public class GTRecipeViewerWidget extends ParentWidget<GTRecipeViewerWidget> {
                 .onMousePressed((ctx, b) -> {
                     var mouse = MouseData.create(b);
 
-                    if (b == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
+                    if (b == MouseButtons.LEFT) {
                         if (tier == GTValues.MAX) return true;
                         tier++;
-                    } else if (b == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
+                    } else if (b == MouseButtons.RIGHT) {
                         if (tier == minTier) return true;
                         tier--;
-                    } else if (b == GLFW.GLFW_MOUSE_BUTTON_MIDDLE) {
+                    } else if (b == MouseButtons.MIDDLE) {
                         tier = minTier;
                     }
 
@@ -229,7 +230,7 @@ public class GTRecipeViewerWidget extends ParentWidget<GTRecipeViewerWidget> {
         if (data.shift()) oc = OverclockingLogic.PERFECT_OVERCLOCK;
 
         // TODO more contextual oc values based on recipe type or machine
-        if (modifiedRecipe.recipeType == GTRecipeTypes.FUSION_RECIPES) {
+        if (modifiedRecipe.recipeType == GTRecipeTypes.FUSION_RECIPES.value()) {
             oc = FusionReactorMachine.FUSION_OC;
         }
 

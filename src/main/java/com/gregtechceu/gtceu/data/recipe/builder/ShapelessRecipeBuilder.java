@@ -1,55 +1,47 @@
 package com.gregtechceu.gtceu.data.recipe.builder;
 
-import com.gregtechceu.gtceu.GTCEu;
-import com.gregtechceu.gtceu.utils.data.NBTToJsonConverter;
-
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.data.recipes.FinishedRecipe;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.core.NonNullList;
+import net.minecraft.data.recipes.RecipeOutput;
+import net.minecraft.resources.Identifier;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.CraftingBookCategory;
 import net.minecraft.world.item.crafting.Ingredient;
-import net.minecraft.world.item.crafting.RecipeSerializer;
+import net.minecraft.world.item.crafting.ShapelessRecipe;
 import net.minecraft.world.level.ItemLike;
-import net.minecraftforge.common.crafting.StrictNBTIngredient;
+import com.gregtechceu.gtceu.compat.common.crafting.DataComponentIngredient;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
 import lombok.Setter;
 import lombok.experimental.Accessors;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Consumer;
 
 @Accessors(chain = true, fluent = true)
 public class ShapelessRecipeBuilder {
 
-    private final List<Ingredient> ingredients = new ArrayList<>();
+    private final NonNullList<Ingredient> ingredients = NonNullList.create();
     @Setter
-    protected String group;
+    protected String group = "";
+    @Setter
+    private CraftingBookCategory category = CraftingBookCategory.MISC;
 
     private ItemStack output = ItemStack.EMPTY;
     @Setter
-    private float experience;
-    @Setter
-    private int cookingTime;
-    @Setter
-    protected ResourceLocation id;
+    protected Identifier id;
 
-    public ShapelessRecipeBuilder(@Nullable ResourceLocation id) {
+    public ShapelessRecipeBuilder(Identifier id) {
         this.id = id;
     }
 
     public ShapelessRecipeBuilder requires(TagKey<Item> itemStack) {
-        return requires(Ingredient.of(itemStack));
+        return requires(Ingredient.of(com.gregtechceu.gtceu.utils.TagUtil.holderSet(net.minecraft.core.registries.BuiltInRegistries.ITEM, itemStack)));
     }
 
     public ShapelessRecipeBuilder requires(ItemStack itemStack) {
-        requires(itemStack.hasTag() ? StrictNBTIngredient.of(itemStack) : Ingredient.of(itemStack));
+        if (!itemStack.getComponentsPatch().isEmpty()) {
+            requires(DataComponentIngredient.of(true, itemStack));
+        } else {
+            requires(Ingredient.of((itemStack).getItem()));
+        }
         return this;
     }
 
@@ -73,74 +65,16 @@ public class ShapelessRecipeBuilder {
         return this;
     }
 
-    public ShapelessRecipeBuilder output(ItemStack itemStack, int count, CompoundTag nbt) {
-        this.output = itemStack.copy();
-        this.output.setCount(count);
-        this.output.setTag(nbt);
-        return this;
+    public ShapelessRecipe build() {
+        return new ShapelessRecipe(new net.minecraft.world.item.crafting.Recipe.CommonInfo(false),
+                new net.minecraft.world.item.crafting.CraftingRecipe.CraftingBookInfo(this.category,
+                        java.util.Objects.requireNonNullElse(this.group, "")),
+                net.minecraft.world.item.ItemStackTemplate.fromNonEmptyStack(this.output), this.ingredients);
     }
 
-    protected ResourceLocation defaultId() {
-        return BuiltInRegistries.ITEM.getKey(output.getItem());
-    }
+    public void save(RecipeOutput consumer) {
+        var recipeId = id;
 
-    public void toJson(JsonObject json) {
-        if (group != null) {
-            json.addProperty("group", group);
-        }
-
-        JsonArray jsonarray = new JsonArray();
-        for (Ingredient ingredient : ingredients) {
-            jsonarray.add(ingredient.toJson());
-        }
-        json.add("ingredients", jsonarray);
-
-        if (output.isEmpty()) {
-            GTCEu.LOGGER.error("shapeless recipe {} output is empty", id);
-            throw new IllegalArgumentException(id + ": output items is empty");
-        } else {
-            JsonObject result = new JsonObject();
-            result.addProperty("item", BuiltInRegistries.ITEM.getKey(output.getItem()).toString());
-            if (output.getCount() > 1) {
-                result.addProperty("count", output.getCount());
-            }
-            if (output.hasTag() && output.getTag() != null) {
-                result.add("nbt", NBTToJsonConverter.getObject(output.getTag()));
-            }
-            json.add("result", result);
-        }
-    }
-
-    public void save(Consumer<FinishedRecipe> consumer) {
-        consumer.accept(new FinishedRecipe() {
-
-            @Override
-            public void serializeRecipeData(JsonObject pJson) {
-                toJson(pJson);
-            }
-
-            @Override
-            public ResourceLocation getId() {
-                var ID = id == null ? defaultId() : id;
-                return ID.withPath("shapeless/" + ID.getPath());
-            }
-
-            @Override
-            public RecipeSerializer<?> getType() {
-                return RecipeSerializer.SHAPELESS_RECIPE;
-            }
-
-            @Nullable
-            @Override
-            public JsonObject serializeAdvancement() {
-                return null;
-            }
-
-            @Nullable
-            @Override
-            public ResourceLocation getAdvancementId() {
-                return null;
-            }
-        });
+        consumer.accept(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.RECIPE, recipeId.withPrefix("shapeless/")), build(), null);
     }
 }

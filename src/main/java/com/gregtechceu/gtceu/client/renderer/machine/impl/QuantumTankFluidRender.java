@@ -1,29 +1,34 @@
 package com.gregtechceu.gtceu.client.renderer.machine.impl;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+
+import net.minecraft.util.LightCoordsUtil;
+
 import com.gregtechceu.gtceu.api.item.MetaMachineItem;
+import com.gregtechceu.gtceu.api.item.datacomponents.LargeFluidContent;
 import com.gregtechceu.gtceu.client.renderer.machine.DynamicRender;
 import com.gregtechceu.gtceu.client.renderer.machine.DynamicRenderType;
 import com.gregtechceu.gtceu.client.util.RenderBufferHelper;
 import com.gregtechceu.gtceu.client.util.RenderUtil;
 import com.gregtechceu.gtceu.common.data.GTMachines;
+import com.gregtechceu.gtceu.common.data.item.GTDataComponents;
 import com.gregtechceu.gtceu.common.machine.storage.CreativeTankMachine;
 import com.gregtechceu.gtceu.common.machine.storage.QuantumTankMachine;
 
-import net.minecraft.client.renderer.LightTexture;
-import net.minecraft.client.renderer.MultiBufferSource;
+import com.gregtechceu.gtceu.compat.client.render.MultiBufferSource;
 import net.minecraft.client.renderer.Sheets;
 import net.minecraft.core.Direction;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.client.extensions.common.IClientFluidTypeExtensions;
-import net.minecraftforge.fluids.FluidStack;
+import com.gregtechceu.gtceu.compat.client.extensions.common.IClientFluidTypeExtensions;
+import com.gregtechceu.gtceu.compat.fluids.FluidStack;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 
 import java.util.EnumSet;
 
@@ -35,7 +40,7 @@ import static com.gregtechceu.gtceu.common.machine.storage.QuantumTankMachine.TA
 public class QuantumTankFluidRender extends DynamicRender<QuantumTankMachine, QuantumTankFluidRender> {
 
     // spotless:off
-    public static final Codec<QuantumTankFluidRender> CODEC = Codec.unit(QuantumTankFluidRender::new);
+    public static final MapCodec<QuantumTankFluidRender> CODEC = MapCodec.unit(QuantumTankFluidRender::new);
     public static final DynamicRenderType<QuantumTankMachine, QuantumTankFluidRender> TYPE = new DynamicRenderType<>(QuantumTankFluidRender.CODEC);
     // spotless:on
 
@@ -54,12 +59,14 @@ public class QuantumTankFluidRender extends DynamicRender<QuantumTankMachine, Qu
     @Override
     public void renderByItem(ItemStack stack, ItemDisplayContext displayContext,
                              PoseStack poseStack, MultiBufferSource buffer, int packedLight, int packedOverlay) {
-        if (CREATIVE_FLUID_ITEM == null) CREATIVE_FLUID_ITEM = GTMachines.CREATIVE_FLUID.getItem();
-        if (stack.hasTag()) {
+        if (CREATIVE_FLUID_ITEM == null) CREATIVE_FLUID_ITEM = GTMachines.CREATIVE_FLUID.asItem();
+
+        LargeFluidContent content = stack.get(GTDataComponents.LARGE_FLUID_CONTENT);
+        if (content != null) {
             poseStack.pushPose();
 
-            FluidStack stored = FluidStack.loadFluidStackFromNBT(stack.getOrCreateTagElement("stored"));
-            long storedAmount = stack.getOrCreateTag().getLong("storedAmount");
+            FluidStack stored = content.stored();
+            long storedAmount = content.amount();
             if (storedAmount == 0 && !stored.isEmpty()) storedAmount = stored.getAmount();
             long maxAmount = 0;
             if (stack.getItem() instanceof MetaMachineItem machineItem) {
@@ -88,7 +95,7 @@ public class QuantumTankFluidRender extends DynamicRender<QuantumTankMachine, Qu
         poseStack.popPose();
     }
 
-    @OnlyIn(Dist.CLIENT)
+    @Environment(EnvType.CLIENT)
     public void renderTank(PoseStack poseStack, MultiBufferSource buffer, Direction frontFacing,
                            FluidStack stored, long storedAmount, long maxAmount, FluidStack locked,
                            boolean isCreative) {
@@ -99,7 +106,7 @@ public class QuantumTankFluidRender extends DynamicRender<QuantumTankMachine, Qu
         var fluidSprite = RenderUtil.FluidTextureType.STILL.map(ext, fluid);
 
         EnumSet<Direction> sidesToRender = EnumSet.of(frontFacing);
-        VertexConsumer builder = buffer.getBuffer(Sheets.translucentCullBlockSheet());
+        VertexConsumer builder = buffer.getBuffer(RenderTypes.translucentMovingBlock());
 
         boolean gas = fluid.getFluid().getFluidType().isLighterThanAir();
         float percentFull = isCreative || maxAmount <= storedAmount ? 1f : (float) storedAmount / maxAmount;
@@ -131,7 +138,7 @@ public class QuantumTankFluidRender extends DynamicRender<QuantumTankMachine, Qu
             sidesToRender.add(gas ? Direction.DOWN : Direction.UP);
         }
         RenderBufferHelper.renderTexturedCube(builder, poseStack.last(), sidesToRender,
-                ext.getTintColor(fluid) | 0xff000000, LightTexture.FULL_BRIGHT, fluidSprite,
+                ext.getTintColor(fluid) | 0xff000000, LightCoordsUtil.FULL_BRIGHT, fluidSprite,
                 MIN, minY, minZ, MAX, maxY, maxZ);
 
         drawAmountText(poseStack, buffer, frontFacing, storedAmount, isCreative);

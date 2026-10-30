@@ -1,13 +1,12 @@
 package com.gregtechceu.gtceu.common.item.behavior;
 
 import com.gregtechceu.gtceu.GTCEu;
+import com.gregtechceu.gtceu.api.capability.GTCapability;
 import com.gregtechceu.gtceu.api.events.RegisterSpoilablesEvent;
 import com.gregtechceu.gtceu.api.item.component.ISpoilableItem;
 import com.gregtechceu.gtceu.api.item.component.SpoilContext;
 import com.gregtechceu.gtceu.api.item.component.SpoilUtils;
 import com.gregtechceu.gtceu.common.item.SpoilableItemStack;
-import com.gregtechceu.gtceu.integration.kjs.GTCEuStartupEvents;
-import com.gregtechceu.gtceu.integration.kjs.events.RegisterSpoilablesEventJS;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
@@ -15,43 +14,42 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ItemLike;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.AttachCapabilitiesEvent;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
+import com.gregtechceu.gtceu.compat.fml.ModLoader;
+import com.gregtechceu.gtceu.compat.capabilities.RegisterCapabilitiesEvent;
 
+import lombok.Setter;
+import lombok.experimental.Accessors;
+import lombok.experimental.Tolerate;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.function.ToLongFunction;
 
 /**
  * This object holds all spoilage-related data for specific item types,
  * NOT individual item stacks. This class handles attaching the {@link ISpoilableItem}
- * capability by registering its' instances to the {@link AttachCapabilitiesEvent}
+ * capability by registering its' instances to the {@link RegisterCapabilitiesEvent}
  */
 public class SpoilableBehavior {
 
-    private final Function<ItemStack, Long> ticks;
+    private final ToLongFunction<ItemStack> ticks;
     private final SpoilResultProvider spoilResult;
     private final Function<ItemStack, Component> spoilsIntoTooltip;
     private final List<ItemLike> attachedTo = new ArrayList<>();
 
-    public static void init(IEventBus eventBus) {
+    public static void init() {
         RegisterSpoilablesEvent event = new RegisterSpoilablesEvent(SpoilableBehavior::builder);
-        eventBus.post(event);
-        if (GTCEu.Mods.isKubeJSLoaded()) {
-            KJSCallWrapper.fireKJSEvent(event);
-        }
+        ModLoader.postEvent(event);
     }
 
     private static Builder builder() {
         return new Builder();
     }
 
-    private SpoilableBehavior(Function<ItemStack, Long> ticks, SpoilResultProvider spoilResult,
+    private SpoilableBehavior(ToLongFunction<ItemStack> ticks, SpoilResultProvider spoilResult,
                               Function<ItemStack, Component> spoilsIntoTooltip) {
         this.ticks = ticks;
         this.spoilResult = spoilResult;
@@ -59,7 +57,7 @@ public class SpoilableBehavior {
     }
 
     /**
-     * Registers this object to the {@link AttachCapabilitiesEvent} if it wasn't registered yet,
+     * Registers this object to the {@link RegisterCapabilitiesEvent} if it wasn't registered yet,
      * and adds the specified item to the list of items that this will attach to.
      * 
      * @param item the item to attach the behavior to
@@ -67,18 +65,16 @@ public class SpoilableBehavior {
      */
     public SpoilableBehavior attachTo(ItemLike item) {
         if (attachedTo.isEmpty()) {
-            MinecraftForge.EVENT_BUS.register(this);
+            GTCEu.gtModBus.addListener(com.gregtechceu.gtceu.compat.capabilities.RegisterCapabilitiesEvent.class,
+                    this::registerCapabilities);
         }
         attachedTo.add(item);
         return this;
     }
 
-    @SubscribeEvent
-    public void attachCapability(AttachCapabilitiesEvent<ItemStack> event) {
-        ItemStack stack = event.getObject();
-        if (attachedTo.stream().map(ItemLike::asItem).anyMatch(stack::is)) {
-            event.addCapability(GTCEu.id("spoilable"), new SpoilableBehaviourStack(stack));
-        }
+    private void registerCapabilities(RegisterCapabilitiesEvent event) {
+        event.registerItem(GTCapability.CAPABILITY_SPOILABLE_ITEM, (stack, ctx) -> new SpoilableBehaviourStack(stack),
+                attachedTo.toArray(ItemLike[]::new));
     }
 
     /**
@@ -93,7 +89,7 @@ public class SpoilableBehavior {
 
         @Override
         public long getSpoilTicks() {
-            return ticks.apply(getStack());
+            return SpoilableBehavior.this.ticks.applyAsLong(getStack());
         }
 
         @Override
@@ -113,9 +109,11 @@ public class SpoilableBehavior {
         ItemStack getSpoilResult(@NotNull ItemStack stack, @NotNull SpoilContext spoilContext, boolean simulate);
     }
 
+    @Accessors(fluent = true)
+    @Setter
     public static class Builder {
 
-        private Function<ItemStack, Long> ticks;
+        private ToLongFunction<ItemStack> ticks;
         private SpoilResultProvider result;
         private Function<ItemStack, Component> tooltip;
 
@@ -128,33 +126,22 @@ public class SpoilableBehavior {
             return new SpoilableBehavior(ticks, result, tooltip);
         }
 
-        public Builder ticks(Function<ItemStack, Long> ticks) {
-            this.ticks = ticks;
-            return this;
-        }
-
-        public Builder result(SpoilResultProvider result) {
-            this.result = result;
-            return this;
-        }
-
-        public Builder tooltip(Function<ItemStack, Component> tooltip) {
-            this.tooltip = tooltip;
-            return this;
-        }
-
+        @Tolerate
         public Builder ticks(long ticks) {
             return ticks(stack -> ticks);
         }
 
+        @Tolerate
         public Builder result(ItemLike itemLike) {
             return result(stack -> itemLike.asItem().getDefaultInstance().copyWithCount(stack.getCount()));
         }
 
+        @Tolerate
         public Builder result(ItemStack stack) {
             return result(stack1 -> stack.copyWithCount(stack1.getCount()));
         }
 
+        @Tolerate
         public Builder result(Function<ItemStack, ItemStack> result) {
             return result((stack, spoilContext, simulate) -> result.apply(stack))
                     .tooltip(stack -> {
@@ -164,10 +151,12 @@ public class SpoilableBehavior {
                     });
         }
 
+        @Tolerate
         public Builder result(EntityType<? extends Mob> entityType) {
             return result(() -> entityType);
         }
 
+        @Tolerate
         public Builder result(Supplier<? extends EntityType<? extends Mob>> entityType) {
             SpoilResultProvider previousResult = result;
             Function<ItemStack, Component> previousTooltip = tooltip;
@@ -193,7 +182,7 @@ public class SpoilableBehavior {
                 ItemStack total = prevResult.getSpoilResult(stack, spoilContext, simulate);
                 for (int i = 1; i < mult; i++) {
                     ItemStack temp = prevResult.getSpoilResult(stack, spoilContext, simulate);
-                    if (ItemStack.isSameItemSameTags(total, temp)) total.grow(temp.getCount());
+                    if (ItemStack.isSameItemSameComponents(total, temp)) total.grow(temp.getCount());
                 }
                 return total;
             }).tooltip(stack -> {
@@ -204,15 +193,10 @@ public class SpoilableBehavior {
             });
         }
 
+        @Tolerate
         public Builder tooltip(Component tooltip) {
             return tooltip(stack -> tooltip);
         }
     }
 
-    private static class KJSCallWrapper {
-
-        public static void fireKJSEvent(RegisterSpoilablesEvent event) {
-            GTCEuStartupEvents.REGISTER_SPOILABLES.post(new RegisterSpoilablesEventJS(event));
-        }
-    }
 }

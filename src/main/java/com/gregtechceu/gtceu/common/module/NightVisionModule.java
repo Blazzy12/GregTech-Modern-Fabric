@@ -8,9 +8,9 @@ import com.gregtechceu.gtceu.api.item.module.ModuleData;
 import com.gregtechceu.gtceu.data.lang.LangUtils;
 import com.gregtechceu.gtceu.utils.input.SyncedKeyMappings;
 
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.LivingEntity;
@@ -18,6 +18,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import lombok.Getter;
 
@@ -27,12 +28,12 @@ public class NightVisionModule extends ItemModule implements IHUDProviderItemMod
 
     private static final double ENERGY_PER_TICK = 0.25;
 
-    public NightVisionModule(ResourceLocation id) {
+    public NightVisionModule(Identifier id) {
         super(id);
     }
 
     @Override
-    public Codec<? extends ModuleData> moduleDataCodec() {
+    public MapCodec<? extends ModuleData> moduleDataCodec() {
         return NightVisionModuleData.CODEC;
     }
 
@@ -54,7 +55,7 @@ public class NightVisionModule extends ItemModule implements IHUDProviderItemMod
     @Override
     public void onArmorTick(ModuleContext moduleContext, LivingEntity entity) {
         if (!(entity instanceof Player player)) return;
-        if (entity.level().isClientSide) return;
+        if (entity.level().isClientSide()) return;
 
         if (!isEnabled(moduleContext)) {
             var data = moduleContext.getData(NightVisionModuleData.class);
@@ -83,10 +84,10 @@ public class NightVisionModule extends ItemModule implements IHUDProviderItemMod
             if (nightVision && !ArmorUtils.useModuleEnergy(moduleContext.getAppliedTo(),
                     ArmorUtils.toModuleEnergyCredits(ENERGY_PER_TICK), true)) {
                 nightVision = false;
-                player.displayClientMessage(Component.translatable("armor.gtceu.night_vision.error"), true);
+                player.sendOverlayMessage(Component.translatable("armor.gtceu.night_vision.error"));
             } else {
-                player.displayClientMessage(Component
-                        .translatable(LangUtils.enabledBoolean("armor.gtceu.night_vision", nightVision)), true);
+                player.sendOverlayMessage(Component
+                        .translatable(LangUtils.enabledBoolean("armor.gtceu.night_vision", nightVision)));
             }
             data = data.withNightVision(nightVision).withToggleTimer(toggleTimer);
             moduleContext.setData(data);
@@ -118,7 +119,7 @@ public class NightVisionModule extends ItemModule implements IHUDProviderItemMod
     }
 
     @Override
-    public void drawHUD(ModuleContext moduleContext, ArmorUtils.ModularHUD hud, GuiGraphics graphics) {
+    public void drawHUD(ModuleContext moduleContext, ArmorUtils.ModularHUD hud, GuiGraphicsExtractor graphics) {
         var data = moduleContext.getData(NightVisionModuleData.class);
         if (data.isNightVision()) {
             hud.newLine(Component.translatable("armor.gtceu.night_vision.enabled"));
@@ -130,17 +131,17 @@ public class NightVisionModule extends ItemModule implements IHUDProviderItemMod
     public static class NightVisionModuleData extends ModuleData {
 
         // spotless:off
-        public static final Codec<NightVisionModuleData> CODEC = RecordCodecBuilder.create(instance -> baseCodec(instance).and(instance.group(
+        public static final MapCodec<NightVisionModuleData> CODEC = RecordCodecBuilder.mapCodec(instance -> baseCodec(instance).and(instance.group(
                 Codec.BOOL.fieldOf("night_vision").forGetter(NightVisionModuleData::isNightVision),
                 Codec.BYTE.fieldOf("toggle_timer").forGetter(NightVisionModuleData::getToggleTimer),
                 Codec.LONG.fieldOf("night_vision_tick").forGetter(NightVisionModuleData::getNightVisionToggleTick))
         ).apply(instance, NightVisionModuleData::new));
-        // spotless:on
+        //spotless:on
 
         @Getter
-        private boolean nightVision = false;
+        private final boolean nightVision;
         @Getter
-        private byte toggleTimer = 0;
+        private final byte toggleTimer;
         @Getter
         private final long nightVisionToggleTick;
 
@@ -160,13 +161,13 @@ public class NightVisionModule extends ItemModule implements IHUDProviderItemMod
         }
 
         @Override
-        public ModuleData withEnabled(boolean enabled) {
+        public ModuleData withModuleItem(ItemStack moduleItem) {
             return new NightVisionModuleData(slot, module, moduleItem, enabled, nightVision, toggleTimer,
                     nightVisionToggleTick);
         }
 
         @Override
-        public ModuleData withModuleItem(ItemStack moduleItem) {
+        public ModuleData withEnabled(boolean enabled) {
             return new NightVisionModuleData(slot, module, moduleItem, enabled, nightVision, toggleTimer,
                     nightVisionToggleTick);
         }

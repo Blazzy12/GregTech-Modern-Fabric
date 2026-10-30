@@ -1,42 +1,37 @@
 package com.gregtechceu.gtceu.common.item;
 
 import com.gregtechceu.gtceu.GTCEu;
-import com.gregtechceu.gtceu.api.capability.GTCapability;
 import com.gregtechceu.gtceu.api.capability.GTCapabilityHelper;
-import com.gregtechceu.gtceu.api.item.IMergeableNBTSerializable;
+import com.gregtechceu.gtceu.api.item.IMergeableDataComponent;
 import com.gregtechceu.gtceu.api.item.ISpoilableItemStackExtension;
 import com.gregtechceu.gtceu.api.item.component.*;
+import com.gregtechceu.gtceu.common.data.item.GTDataComponents;
 import com.gregtechceu.gtceu.common.item.behavior.SpoilableBehavior;
 import com.gregtechceu.gtceu.utils.FormattingUtil;
 
 import net.minecraft.ChatFormatting;
-import net.minecraft.core.Direction;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.util.FastColor;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.util.ARGB;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.ItemLike;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.common.capabilities.ICapabilityProvider;
-import net.minecraftforge.common.util.INBTSerializable;
-import net.minecraftforge.common.util.LazyOptional;
-import net.minecraftforge.event.AttachCapabilitiesEvent;
 
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
+import io.netty.buffer.ByteBuf;
 import it.unimi.dsi.fastutil.ints.IntIntPair;
 import lombok.Getter;
-import lombok.Setter;
-import org.jetbrains.annotations.NotNull;
+import lombok.With;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
 /**
- * This class is a basic implementation of the {@link ISpoilableItem} capability,
- * to be attached to an item in an {@link AttachCapabilitiesEvent<ItemStack>} listener.
+ * This class is a basic implementation of the {@link ISpoilableItem} capability.
  * It leaves some methods unimplemented, such as {@link ISpoilableItem#getSpoilTicks()} and
  * {@link ISpoilableItem#spoilResult(SpoilContext, boolean)}.
  *
@@ -45,36 +40,122 @@ import java.util.List;
  * @see SpoilableBehavior
  * @see SpoilableBehavior#attachTo(ItemLike)
  */
-public abstract class SpoilableItemStack implements ISpoilableItem, IAddInformation, IDurabilityBar,
-                                         IMergeableNBTSerializable, ICapabilityProvider {
+public abstract class SpoilableItemStack implements ISpoilableItem, IAddInformation, IDurabilityBar {
 
-    public static final String SPOIL_CONTEXT_KEY = "spoilContext";
-    public static final String FROZEN_TICKS_KEY = "frozenRemainingTicks";
-    public static final String CREATION_TICK_KEY = "creationTick";
+    @With
+    public record SpoilableData(
+                                boolean initialized,
+                                boolean frozen,
+                                long frozenTicks,
+                                long creationTick,
+                                SpoilContext spoilContext)
+            implements IMergeableDataComponent {
+
+        public static final Codec<SpoilableData> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+                Codec.BOOL.fieldOf("frozen").forGetter(SpoilableData::frozen),
+                Codec.LONG.fieldOf("frozen_ticks").forGetter(SpoilableData::frozenTicks),
+                Codec.LONG.fieldOf("creation_tick").forGetter(SpoilableData::creationTick),
+                SpoilContext.CODEC.fieldOf("spoil_context").forGetter(SpoilableData::spoilContext))
+                .apply(instance, SpoilableData::new));
+
+        public static final StreamCodec<ByteBuf, SpoilableData> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.BOOL, SpoilableData::frozen,
+                ByteBufCodecs.VAR_LONG, SpoilableData::frozenTicks,
+                ByteBufCodecs.VAR_LONG, SpoilableData::creationTick,
+                SpoilContext.STREAM_CODEC, SpoilableData::spoilContext,
+                SpoilableData::new);
+
+        public static final SpoilableData EMPTY = new SpoilableData(false, 0, -1, new SpoilContext());
+
+        public SpoilableData(boolean frozen, long frozenTicks, long creationTick, SpoilContext spoilContext) {
+            this(creationTick != -1, frozen, frozenTicks, creationTick, spoilContext);
+        }
+
+        /**
+         * This method averages the spoil progress of the two stacks (or, more
+         * accurately, their {@link ISpoilableItem#getCreationTick()}). If {@link SpoilableItemStack#FROZEN_EQUALITY}
+         * is {@code true}, this method will ignore the frozen/not frozen status of stacks.
+         *
+         * @implNote This implementation may lead to spoil progress averaging in situations other
+         *           than stack merging, though I don't think this will lead to any big user-facing bugs.
+         */
+        @Override
+        public void prepareForComparisonWith(ItemStack stack, ItemStack other) {
+            SpoilableData spoilable = other.get(GTDataComponents.SPOILABLE);
+            if (spoilable == null) return;
+            if (!initialized || !spoilable.initialized) return;
+            if (frozen || spoilable.frozen) {
+                return;
+            }
+            long tick1 = creationTick;
+            long tick2 = spoilable.creationTick;
+            if (tick1 != tick2) {
+                long average;
+                if (!stack.isEmpty() && !other.isEmpty()) {
+                    average = (tick1 * stack.getCount() + tick2 * other.getCount()) /
+                            (stack.getCount() + other.getCount());
+                } else average = tick1;
+                stack.set(GTDataComponents.SPOILABLE, this.withCreationTick(average));
+                other.set(GTDataComponents.SPOILABLE, spoilable.withCreationTick(average));
+            }
+        }
+    }
 
     @Getter
     private final ItemStack stack;
 
     private final Item originalItem;
 
-    private boolean initialized;
-    @Getter
-    private boolean frozen = false;
-    private long frozenTicks;
-    @Getter
-    private long creationTick = 0;
-    @Getter
-    @Setter
-    private SpoilContext spoilContext = new SpoilContext();
-
     public SpoilableItemStack(ItemStack stack) {
         this.stack = stack;
         this.originalItem = stack.getItem();
     }
 
+    private SpoilableData getData() {
+        return stack.getOrDefault(GTDataComponents.SPOILABLE, SpoilableData.EMPTY);
+    }
+
+    private void setData(SpoilableData data) {
+        stack.set(GTDataComponents.SPOILABLE, data);
+    }
+
     public void setCreationTick(long creationTick) {
-        this.initialized = true;
-        this.creationTick = creationTick;
+        setData(getData()
+                .withCreationTick(creationTick)
+                .withInitialized(true));
+    }
+
+    public void setSpoilContext(SpoilContext spoilContext) {
+        setData(getData().withSpoilContext(spoilContext));
+    }
+
+    public void setFrozenTicks(long frozenTicks) {
+        setData(getData().withFrozenTicks(frozenTicks));
+    }
+
+    public void setFrozen(boolean frozen) {
+        setData(getData().withFrozen(frozen));
+    }
+
+    @Override
+    public long getCreationTick() {
+        return getData().creationTick;
+    }
+
+    public long getFrozenTicks() {
+        return getData().frozenTicks;
+    }
+
+    public boolean isInitialized() {
+        return getData().initialized;
+    }
+
+    public boolean isFrozen() {
+        return getData().frozen;
+    }
+
+    public SpoilContext getSpoilContext() {
+        return getData().spoilContext;
     }
 
     /**
@@ -98,18 +179,18 @@ public abstract class SpoilableItemStack implements ISpoilableItem, IAddInformat
      */
     public void updateFreshness(SpoilContext spoilContext, boolean createTag) {
         if (!stack.is(originalItem)) return;
-        if (!createTag && !initialized || frozen) return;
+        if (!createTag && !isInitialized() || isFrozen()) return;
         if (!spoilContext.isEmpty()) setSpoilContext(spoilContext);
         Level level = SpoilContext.getDefaultLevel();
-        if (level != null && createTag && !initialized) {
+        if (level != null && createTag && !isInitialized()) {
             setCreationTick(level.getGameTime());
         }
         if (level != null && this.shouldSpoil()) {
             long spoilTicks = this.getSpoilTicks();
-            long timeDifference = level.getGameTime() - creationTick - spoilTicks;
+            long timeDifference = level.getGameTime() - getCreationTick() - spoilTicks;
             if (timeDifference >= 0) {
                 ItemStack newStack = this.spoilResult(getSpoilContext(), GTCEu.isClientThread());
-                ((ISpoilableItemStackExtension) (Object) stack).gtceu$setStack(newStack);
+                ((ISpoilableItemStackExtension) (Object) stack).gtceu$forceContentTo(newStack);
                 onItemChanged();
                 ISpoilableItem newSpoilable = GTCapabilityHelper.getSpoilable(stack);
                 if (newSpoilable != null) {
@@ -127,8 +208,8 @@ public abstract class SpoilableItemStack implements ISpoilableItem, IAddInformat
     @Override
     public long getTicksUntilSpoiled() {
         updateFreshness(new SpoilContext(), false);
-        if (!initialized) return this.getSpoilTicks();
-        if (frozen) return frozenTicks;
+        if (!isInitialized()) return this.getSpoilTicks();
+        if (isFrozen()) return getFrozenTicks();
         Level level = SpoilContext.getDefaultLevel();
         if (level != null) {
             return this.getSpoilTicks() - level.getGameTime() +
@@ -141,19 +222,19 @@ public abstract class SpoilableItemStack implements ISpoilableItem, IAddInformat
     public void setTicksUntilSpoiled(long value) {
         updateFreshness(new SpoilContext(), false);
         Level level = SpoilContext.getDefaultLevel();
-        if (level != null && initialized)
+        if (level != null && isInitialized())
             setCreationTick(level.getGameTime() - this.getSpoilTicks() + value);
     }
 
     private void setFreezeSpoiling(boolean freeze) {
         if (freeze) {
             updateFreshness(new SpoilContext(), true);
-            frozenTicks = getTicksUntilSpoiled();
-            frozen = true;
+            setFrozenTicks(getTicksUntilSpoiled());
+            setFrozen(true);
         } else {
-            if (initialized && frozen) {
-                setTicksUntilSpoiled(frozenTicks);
-                frozen = false;
+            if (isInitialized() && isFrozen()) {
+                setTicksUntilSpoiled(getFrozenTicks());
+                setFrozen(false);
             }
         }
     }
@@ -174,7 +255,7 @@ public abstract class SpoilableItemStack implements ISpoilableItem, IAddInformat
     }
 
     @Override
-    public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltipComponents,
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context, List<Component> tooltipComponents,
                                 TooltipFlag isAdvanced) {
         tooltipComponents.add(Component.translatable(
                 "gtceu.tooltip.spoil_time_remaining",
@@ -193,14 +274,15 @@ public abstract class SpoilableItemStack implements ISpoilableItem, IAddInformat
             SpoilContext ctx = getSpoilContext();
             if (ctx.level() != null && ctx.pos() != null)
                 tooltipComponents.add(Component.translatable("gtceu.tooltip.location",
-                        ctx.level().dimensionTypeId().location().toString(),
+                        ctx.level().dimension().identifier().toString(),
                         ctx.pos().getX(), ctx.pos().getY(), ctx.pos().getZ()));
             if (ctx.entity() != null) tooltipComponents.add(Component.translatable("gtceu.tooltip.location_entity",
                     ctx.entity().getType().getDescription()));
             if (ctx.itemHandlerSource() != null) tooltipComponents
                     .add(Component.translatable("gtceu.tooltip.item_handler_source", ctx.itemHandlerSource()));
             if (ctx.itemHandlerData() != null)
-                tooltipComponents.add(Component.translatable("gtceu.tooltip.item_handler_data", ctx.itemHandlerData()));
+                tooltipComponents.add(
+                        Component.translatable("gtceu.tooltip.item_handler_data", ctx.itemHandlerData().toString()));
             if (ctx.slot() != -1)
                 tooltipComponents.add(Component.translatable("gtceu.tooltip.location_slot", ctx.slot()));
         }
@@ -212,7 +294,7 @@ public abstract class SpoilableItemStack implements ISpoilableItem, IAddInformat
 
     @Override
     public int getBarColor(ItemStack stack) {
-        return FastColor.ARGB32.color(255, 255, 255, 255);
+        return ARGB.color(255, 255, 255, 255);
     }
 
     @Override
@@ -228,64 +310,6 @@ public abstract class SpoilableItemStack implements ISpoilableItem, IAddInformat
     @Override
     public float getDurabilityForDisplay(ItemStack stack) {
         return (float) getTicksUntilSpoiled() / getSpoilTicks();
-    }
-
-    @Override
-    public Tag serializeNBT() {
-        if (!initialized) return new CompoundTag();
-        CompoundTag tag = new CompoundTag();
-        tag.put(SPOIL_CONTEXT_KEY, getSpoilContext().serializeNBT());
-        tag.putLong(CREATION_TICK_KEY, getCreationTick());
-        if (isFrozen())
-            tag.putLong(FROZEN_TICKS_KEY, frozenTicks);
-        return tag;
-    }
-
-    @Override
-    public void deserializeNBT(Tag nbt) {
-        if (nbt instanceof CompoundTag tag && !tag.isEmpty()) {
-            initialized = true;
-            spoilContext = SpoilContext.deserializeNBT(tag.getCompound(SPOIL_CONTEXT_KEY));
-            creationTick = tag.getLong(CREATION_TICK_KEY);
-            if (tag.contains(FROZEN_TICKS_KEY, Tag.TAG_LONG)) {
-                frozenTicks = tag.getLong(FROZEN_TICKS_KEY);
-                frozen = true;
-            } else frozen = false;
-        } else initialized = false;
-    }
-
-    /**
-     * This method averages the spoil progress of the two stacks (or, more
-     * accurately, their {@link ISpoilableItem#getCreationTick()}).
-     *
-     * @implNote This implementation may lead to spoil progress averaging in situations other
-     *           than stack merging, though I don't think this will lead to any big user-facing bugs.
-     */
-    @Override
-    public void prepareForComparisonWith(INBTSerializable<Tag> other) {
-        if (other instanceof SpoilableItemStack spoilable) {
-            if (!initialized || !spoilable.initialized) return;
-            if (isFrozen() || spoilable.isFrozen()) {
-                return;
-            }
-            long tick1 = getCreationTick();
-            long tick2 = spoilable.getCreationTick();
-            if (tick1 != tick2) {
-                long average;
-                if (!stack.isEmpty() && !spoilable.stack.isEmpty()) {
-                    average = (tick1 * stack.getCount() + tick2 * spoilable.stack.getCount()) /
-                            (stack.getCount() + spoilable.stack.getCount());
-                } else average = tick1;
-                this.setCreationTick(average);
-                spoilable.setCreationTick(average);
-            }
-            spoilable.setSpoilContext(this.spoilContext);
-        }
-    }
-
-    @Override
-    public @NotNull <T> LazyOptional<T> getCapability(@NotNull Capability<T> cap, @Nullable Direction side) {
-        return GTCapability.CAPABILITY_SPOILABLE_ITEM.orEmpty(cap, LazyOptional.of(() -> this));
     }
 
     /**

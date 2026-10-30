@@ -1,5 +1,7 @@
 package com.gregtechceu.gtceu.api.machine.trait.recipe;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.api.capability.IWorkable;
 import com.gregtechceu.gtceu.api.capability.recipe.EURecipeCapability;
@@ -30,8 +32,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import lombok.Getter;
@@ -656,19 +656,19 @@ public class RecipeLogic extends MachineTrait implements IWorkable {
     //////////////////////////////////////
     // ******** MISC *********//
     //////////////////////////////////////
-    @OnlyIn(Dist.CLIENT)
+    @Environment(EnvType.CLIENT)
     public void updateSound() {
         if (isWorking() && getRLMachine().shouldWorkingPlaySound()) {
             var sound = getRLMachine().getRecipeType().getSound();
             if (workingSound instanceof AutoReleasedSound soundEntry) {
-                if (soundEntry.soundEntry == sound && !soundEntry.isStopped()) {
+                if (sound != null && soundEntry.soundEntry == sound.value() && !soundEntry.isStopped()) {
                     return;
                 }
                 soundEntry.release();
                 workingSound = null;
             }
             if (sound != null) {
-                workingSound = sound.playAutoReleasedSound(
+                workingSound = sound.value().playAutoReleasedSound(
                         () -> getRLMachine().shouldWorkingPlaySound() && isWorking() && !getMachine().isRemoved() &&
                                 getMachine().getLevel().isLoaded(getMachine().getBlockPos()) &&
                                 MetaMachine.getMachine(getMachine().getLevel(), getMachine().getBlockPos()) ==

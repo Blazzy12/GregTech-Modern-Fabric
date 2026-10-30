@@ -1,16 +1,18 @@
 package com.gregtechceu.gtceu.api.mui.factory;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.api.machine.MetaMachine;
 import com.gregtechceu.gtceu.api.machine.feature.IMuiMachine;
 import com.gregtechceu.gtceu.api.mui.GTGuiScreen;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.core.Vec3i;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
+import net.minecraft.world.level.Level;
 
 import brachy.modularui.api.IUIHolder;
 import brachy.modularui.factory.AbstractUIFactory;
@@ -65,17 +67,22 @@ public class MachineUIFactory extends AbstractUIFactory<PosGuiData> {
 
     @Override
     public boolean canInteractWith(Player player, PosGuiData guiData) {
-        return player == guiData.getPlayer() && getMachine(guiData) != null &&
-                guiData.getSquaredDistance(player) <= 8 * 8;
+        if (player != guiData.getPlayer() || getMachine(guiData) == null) {
+            return false;
+        }
+        if (guiData.getSquaredDistance(player) <= 8 * 8) {
+            return true;
+        }
+        return false;
     }
 
     @Override
-    public void writeGuiData(PosGuiData guiData, FriendlyByteBuf buffer) {
+    public void writeGuiData(PosGuiData guiData, RegistryFriendlyByteBuf buffer) {
         buffer.writeBlockPos(guiData.getBlockPos());
     }
 
     @Override
-    public @NotNull PosGuiData readGuiData(Player player, FriendlyByteBuf buffer) {
+    public @NotNull PosGuiData readGuiData(Player player, RegistryFriendlyByteBuf buffer) {
         return new PosGuiData(player, buffer.readBlockPos());
     }
 
@@ -84,7 +91,7 @@ public class MachineUIFactory extends AbstractUIFactory<PosGuiData> {
     }
 
     @Override
-    @OnlyIn(Dist.CLIENT)
+    @Environment(EnvType.CLIENT)
     public ModularScreen createScreen(PosGuiData data, ModularPanel<?> mainPanel) {
         return new GTGuiScreen(MOD_ID, mainPanel, getThemeId(data));
     }

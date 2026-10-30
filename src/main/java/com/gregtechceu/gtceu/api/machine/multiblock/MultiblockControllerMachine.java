@@ -9,7 +9,6 @@ import com.gregtechceu.gtceu.api.machine.multiblock.part.MultiblockPartMachine;
 import com.gregtechceu.gtceu.api.machine.property.GTMachineModelProperties;
 import com.gregtechceu.gtceu.api.machine.trait.MachineTrait;
 import com.gregtechceu.gtceu.api.machine.trait.multiblock.MultiblockMachineTrait;
-import com.gregtechceu.gtceu.api.mui.MultiblockSchemaInfo;
 import com.gregtechceu.gtceu.api.multiblock.MultiblockWorldSavedData;
 import com.gregtechceu.gtceu.api.multiblock.pattern.*;
 import com.gregtechceu.gtceu.api.multiblock.util.AbstractStructureHelper;
@@ -22,7 +21,6 @@ import com.gregtechceu.gtceu.client.model.machine.MachineRenderState;
 import com.gregtechceu.gtceu.client.mui.schema.MutableSchema;
 import com.gregtechceu.gtceu.client.renderer.PatternPreviewRenderer;
 import com.gregtechceu.gtceu.common.machine.multiblock.part.ParallelHatchPartMachine;
-import com.gregtechceu.gtceu.common.mui.GTGuiTextures;
 import com.gregtechceu.gtceu.config.ConfigHolder;
 import com.gregtechceu.gtceu.utils.ExtendedUseOnContext;
 
@@ -35,12 +33,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 
 import brachy.modularui.api.widget.IWidget;
-import brachy.modularui.drawable.Icon;
-import brachy.modularui.utils.Alignment;
 import brachy.modularui.value.sync.PanelSyncManager;
-import brachy.modularui.widget.ParentWidget;
-import brachy.modularui.widget.Widget;
-import brachy.modularui.widgets.ListWidget;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
 import it.unimi.dsi.fastutil.Pair;
@@ -64,9 +57,6 @@ import java.util.function.Predicate;
 public class MultiblockControllerMachine extends MetaMachine {
 
     public static final String DEFAULT_STRUCTURE = "main";
-
-    public static final int MULTI_UI_TEXT_PANEL_WIDTH = 190;
-    public static final int MULTI_UI_TEXT_PANEL_HEIGHT = 136;
 
     private final List<MultiblockPartMachine> parts = new ArrayList<>();
     private @Nullable ParallelHatchPartMachine parallelHatch = null;
@@ -97,7 +87,7 @@ public class MultiblockControllerMachine extends MetaMachine {
         super.onLoad();
         if (!isRemote()) {
             // run a structure check on the first tick
-            ((ServerLevel) getLevel()).getServer().tell(new TickTask(2, this::checkAndFormStructure));
+            ((ServerLevel) getLevel()).getServer().schedule(new TickTask(2, this::checkAndFormStructure));
         }
     }
 
@@ -489,7 +479,7 @@ public class MultiblockControllerMachine extends MetaMachine {
                 blockState.getValue(GTBlockStateProperties.UPWARDS_FACING) != upwardsFacing) {
             getLevel().setBlockAndUpdate(getBlockPos(),
                     blockState.setValue(GTBlockStateProperties.UPWARDS_FACING, upwardsFacing));
-            if (getLevel() != null && !getLevel().isClientSide) {
+            if (getLevel() != null && !getLevel().isClientSide()) {
                 notifyBlockUpdate();
                 invalidateStructureCaches();
                 checkAndFormStructure();
@@ -501,7 +491,7 @@ public class MultiblockControllerMachine extends MetaMachine {
     public void setFrontFacing(Direction facing) {
         super.setFrontFacing(facing);
 
-        if (getLevel() != null && !getLevel().isClientSide) {
+        if (getLevel() != null && !getLevel().isClientSide()) {
             invalidateStructureCaches();
             checkAndFormStructure();
         }
@@ -532,11 +522,7 @@ public class MultiblockControllerMachine extends MetaMachine {
                 }
 
                 if (structureHelper != null) {
-                    var info = new MultiblockSchemaInfo(this.getDefinition());
-                    info.setIgnorePreviewCount(true);
-                    structureHelper.populate(info, resultStructure, pattern,
-                            null,
-                            getFrontFacing(), getUpwardsFacing(),
+                    structureHelper.populate(resultStructure, pattern, null, getFrontFacing(), getUpwardsFacing(),
                             isFlipped());
                     Long2ReferenceMap<BlockState> blocks = new Long2ReferenceOpenHashMap<>();
                     resultStructure.forEach((pos, state) -> blocks.put(pos.asLong(), state.getBlockState()));
@@ -546,7 +532,7 @@ public class MultiblockControllerMachine extends MetaMachine {
                             ConfigHolder.INSTANCE.client.inWorldPreviewDuration * 20);
                 }
             }
-            return InteractionResult.sidedSuccess(isRemote());
+            return InteractionResult.SUCCESS;
         }
         return super.onUse(context);
     }
@@ -561,30 +547,6 @@ public class MultiblockControllerMachine extends MetaMachine {
 
     // TODO move to recipe logic
     public void setBatchEnabled(boolean batch) {}
-
-    public Widget<?> getMainTextPanel(PanelSyncManager syncManager) {
-        return getMainTextPanel(syncManager, MULTI_UI_TEXT_PANEL_WIDTH, MULTI_UI_TEXT_PANEL_HEIGHT);
-    }
-
-    public Widget<?> getMainTextPanel(PanelSyncManager syncManager, int width, int height) {
-        var parentWidget = new ParentWidget<>();
-        var listWidget = new ListWidget<>();
-        listWidget
-                .width(width - 6)
-                .height(height - 6)
-                .childSeparator(Icon.EMPTY_2PX)
-                .crossAxisAlignment(Alignment.CrossAxis.START)
-                .collapseDisabledChildren()
-                .posRel(Alignment.CenterLeft)
-                .left(3)
-                .top(3);
-        parentWidget.size(width, height)
-                .background(GTGuiTextures.DISPLAY);
-
-        listWidget.children(getWidgetsForDisplay(syncManager));
-        parentWidget.child(listWidget.left(3).top(3));
-        return parentWidget;
-    }
 
     /**
      * Can be overridden to just add widgets to the black box in the middle instead of overriding the whole UI.

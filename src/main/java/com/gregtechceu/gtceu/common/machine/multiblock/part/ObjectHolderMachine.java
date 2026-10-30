@@ -2,9 +2,6 @@ package com.gregtechceu.gtceu.common.machine.multiblock.part;
 
 import com.gregtechceu.gtceu.api.blockentity.BlockEntityCreationInfo;
 import com.gregtechceu.gtceu.api.capability.recipe.IO;
-import com.gregtechceu.gtceu.api.item.IComponentItem;
-import com.gregtechceu.gtceu.api.item.component.IDataItem;
-import com.gregtechceu.gtceu.api.item.component.IItemComponent;
 import com.gregtechceu.gtceu.api.machine.feature.IMuiMachine;
 import com.gregtechceu.gtceu.api.machine.multiblock.MultiblockControllerMachine;
 import com.gregtechceu.gtceu.api.machine.multiblock.part.MultiblockPartMachine;
@@ -13,9 +10,10 @@ import com.gregtechceu.gtceu.api.multiblock.pattern.PatternState;
 import com.gregtechceu.gtceu.api.sync_system.annotations.SaveField;
 import com.gregtechceu.gtceu.api.sync_system.annotations.SyncToClient;
 import com.gregtechceu.gtceu.api.transfer.item.CustomItemStackHandler;
+import com.gregtechceu.gtceu.common.data.item.GTDataComponents;
 import com.gregtechceu.gtceu.common.mui.GTGuiTextures;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
 import net.minecraft.core.Direction;
 import net.minecraft.world.item.ItemStack;
 
@@ -149,16 +147,7 @@ public class ObjectHolderMachine extends MultiblockPartMachine implements IMuiMa
                 return true;
             }
 
-            boolean isDataItem = false;
-            if (stack.getItem() instanceof IComponentItem metaItem) {
-                for (IItemComponent behaviour : metaItem.getComponents()) {
-                    if (behaviour instanceof IDataItem) {
-                        isDataItem = true;
-                        break;
-                    }
-                }
-            }
-
+            boolean isDataItem = stack.has(GTDataComponents.DATA_ITEM);
             if (slot == 0 && !isDataItem) {
                 return true;
             } else return slot == 1 && isDataItem;

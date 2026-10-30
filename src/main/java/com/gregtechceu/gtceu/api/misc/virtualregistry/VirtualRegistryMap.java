@@ -1,10 +1,11 @@
 package com.gregtechceu.gtceu.api.misc.virtualregistry;
 
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.common.util.INBTSerializable;
+import net.minecraft.resources.Identifier;
+import com.gregtechceu.gtceu.compat.common.util.INBTSerializable;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import org.jetbrains.annotations.Nullable;
@@ -17,8 +18,8 @@ public class VirtualRegistryMap implements INBTSerializable<CompoundTag> {
 
     public VirtualRegistryMap() {}
 
-    public VirtualRegistryMap(CompoundTag tag) {
-        deserializeNBT(tag);
+    public VirtualRegistryMap(HolderLookup.Provider registries, CompoundTag tag) {
+        deserializeNBT(registries, tag);
     }
 
     @SuppressWarnings("unchecked")
@@ -57,13 +58,13 @@ public class VirtualRegistryMap implements INBTSerializable<CompoundTag> {
     }
 
     @Override
-    public CompoundTag serializeNBT() {
+    public CompoundTag serializeNBT(HolderLookup.Provider registries) {
         CompoundTag tag = new CompoundTag();
         for (Map.Entry<EntryTypes<?>, Map<String, VirtualEntry>> entry : registryMap.entrySet()) {
             ListTag entriesTag = new ListTag();
             for (VirtualEntry innerEntry : entry.getValue().values()) {
                 if (innerEntry.canRemove()) continue;
-                entriesTag.add(innerEntry.serializeNBT());
+                entriesTag.add(innerEntry.serializeNBT(registries));
             }
             tag.put(entry.getKey().toString(), entriesTag);
         }
@@ -71,9 +72,9 @@ public class VirtualRegistryMap implements INBTSerializable<CompoundTag> {
     }
 
     @Override
-    public void deserializeNBT(CompoundTag nbt) {
-        for (String entryTypeString : nbt.getAllKeys()) {
-            ResourceLocation entryTypeLoc = ResourceLocation.tryParse(entryTypeString);
+    public void deserializeNBT(HolderLookup.Provider registries, CompoundTag nbt) {
+        for (String entryTypeString : nbt.keySet()) {
+            Identifier entryTypeLoc = Identifier.tryParse(entryTypeString);
             if (entryTypeLoc == null) continue;
             EntryTypes<?> type = EntryTypes.fromLocation(entryTypeLoc);
             if (type == null) continue;
@@ -82,16 +83,16 @@ public class VirtualRegistryMap implements INBTSerializable<CompoundTag> {
 
             // backwards compat
             if (virtualEntries instanceof CompoundTag compoundTag) {
-                for (String name : compoundTag.getAllKeys()) {
-                    CompoundTag entryTag = compoundTag.getCompound(name);
-                    VirtualEntry entry = type.createInstance(entryTag);
+                for (String name : compoundTag.keySet()) {
+                    CompoundTag entryTag = compoundTag.getCompoundOrEmpty(name);
+                    VirtualEntry entry = type.createInstance(registries, entryTag);
                     if (entry.canRemove()) continue;
-                    addEntry(entry.getColorStr(), type.createInstance(entryTag));
+                    addEntry(entry.getColorStr(), type.createInstance(registries, entryTag));
                 }
             } else {
                 ListTag listTag = (ListTag) virtualEntries;
                 for (int i = 0; i < Objects.requireNonNull(listTag).size(); i++) {
-                    var entry = type.createInstance(listTag.getCompound(i));
+                    var entry = type.createInstance(registries, listTag.getCompoundOrEmpty(i));
                     if (entry.canRemove()) continue;
                     addEntry(entry.getColorStr(), entry);
                 }

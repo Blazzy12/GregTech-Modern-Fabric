@@ -1,5 +1,9 @@
 package com.gregtechceu.gtceu.client.renderer.monitor;
 
+import brachy.modularui.utils.MouseButtons;
+
+import com.mojang.blaze3d.platform.InputConstants;
+
 import com.gregtechceu.gtceu.api.machine.MetaMachine;
 import com.gregtechceu.gtceu.api.machine.feature.IMuiMachine;
 import com.gregtechceu.gtceu.api.mui.factory.MachineUIFactory;
@@ -7,29 +11,24 @@ import com.gregtechceu.gtceu.common.machine.multiblock.electric.CentralMonitorMa
 import com.gregtechceu.gtceu.common.machine.multiblock.electric.monitor.MonitorGroup;
 import com.gregtechceu.gtceu.common.machine.multiblock.part.monitor.AdvancedMonitorPartMachine;
 import com.gregtechceu.gtceu.common.machine.multiblock.part.monitor.MonitorPartMachine;
-import com.gregtechceu.gtceu.utils.GTUtil;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.renderer.MultiBufferSource;
+import com.gregtechceu.gtceu.compat.client.render.MultiBufferSource;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
-import net.minecraftforge.common.ForgeMod;
-import net.minecraftforge.common.MinecraftForge;
 
 import brachy.modularui.api.MCHelper;
 import brachy.modularui.factory.GuiManager;
 import brachy.modularui.factory.PosGuiData;
 import brachy.modularui.screen.*;
-import com.mojang.blaze3d.pipeline.RenderTarget;
-import com.mojang.blaze3d.pipeline.TextureTarget;
 import com.mojang.blaze3d.vertex.*;
 import com.mojang.datafixers.util.Pair;
 import org.joml.Vector2d;
-import org.lwjgl.glfw.GLFW;
 
 public class MonitorGuiRenderer implements IMonitorRenderer {
 
@@ -41,10 +40,8 @@ public class MonitorGuiRenderer implements IMonitorRenderer {
     private int mouseX = -1, mouseY = -1;
     private final Level targetLevel;
     private final BlockPos targetPos;
-    private final RenderTarget renderTarget = new TextureTarget(width, height, true, Minecraft.ON_OSX);
 
     public MonitorGuiRenderer(Pair<Level, BlockPos> target) {
-        MinecraftForge.EVENT_BUS.register(this);
         this.targetLevel = target.getFirst();
         this.targetPos = target.getSecond();
         if (target.getSecond() == null) {
@@ -117,7 +114,7 @@ public class MonitorGuiRenderer implements IMonitorRenderer {
      * }
      * 
      * @SuppressWarnings("UnstableApiUsage")
-     * public void renderGuiToBuffer(GuiGraphics guiGraphics, float partialTick) {
+     * public void renderGuiToBuffer(GuiGraphicsExtractor guiGraphics, float partialTick) {
      * if (screen == null || MCHelper.getPlayer() == null) return;
      * screen.getContext().setGraphics(guiGraphics);
      * screen.onFrameUpdate();
@@ -168,7 +165,7 @@ public class MonitorGuiRenderer implements IMonitorRenderer {
      * screen.onFrameUpdate();
      * AnimatorManager.INSTANCE.onDraw(null);
      * if (width * height == 0) return;
-     * RenderSystem.setShaderTexture(0, renderTarget.getColorTextureId());
+     * brachy.modularui.drawable.GuiDraw.bindTexture(renderTarget.getColorTextureId());
      * ShaderInstance shaderInstance = MCHelper.getMc().gameRenderer.blitShader;
      * shaderInstance.setSampler("DiffuseSampler", renderTarget.getColorTextureId());
      * Matrix4f pose = poseStack.last().pose();
@@ -195,11 +192,11 @@ public class MonitorGuiRenderer implements IMonitorRenderer {
                        MultiBufferSource buffer, int packedLight, int packedOverlay) {
         if (screen == null || group.isEmpty()) return;
         BlockPos rel = group.getRow(0, machine::toRelative).get(0);
-        BlockPos size = GTUtil.getLast(group.getRow(-1, machine::toRelative))
+        BlockPos size = group.getRow(-1, machine::toRelative).getLast()
                 .offset(-rel.getX() + 1, -rel.getY() + 1, -rel.getZ() + 1);
         poseStack.translate(rel.getX(), rel.getY(), rel.getZ());
         Player player = MCHelper.getPlayer();
-        HitResult hit = player.pick(player.getAttributeValue(ForgeMod.BLOCK_REACH.get()), partialTick, false);
+        HitResult hit = player.pick(player.getAttributeValue(Attributes.BLOCK_INTERACTION_RANGE), partialTick, false);
         double mouseX = -1, mouseY = -1;
         if (hit instanceof BlockHitResult blockHit) {
             BlockPos pos = blockHit.getBlockPos();
@@ -211,8 +208,7 @@ public class MonitorGuiRenderer implements IMonitorRenderer {
                 if (monitor instanceof AdvancedMonitorPartMachine advancedMonitor && mouseX >= 0 && mouseY >= 0 &&
                         mouseX <= width && mouseY <= height) {
                     if (advancedMonitor.isClickedThisFrame()) {
-                        this.screen.mousePressed(GLFW.GLFW_MOUSE_BUTTON_LEFT);
-                        this.vanillaScreen.mouseClicked(mouseX * 256, mouseY * 256, GLFW.GLFW_MOUSE_BUTTON_LEFT);
+                        this.screen.mousePressed(MouseButtons.LEFT);
                         advancedMonitor.setClickedThisFrame(false);
                     }
                 }

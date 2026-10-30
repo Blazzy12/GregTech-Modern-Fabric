@@ -5,97 +5,102 @@ import com.gregtechceu.gtceu.api.capability.GTCapabilityHelper;
 import com.gregtechceu.gtceu.api.capability.IElectricItem;
 import com.gregtechceu.gtceu.api.item.armor.ArmorLogicSuite;
 import com.gregtechceu.gtceu.api.item.armor.ArmorUtils;
+import com.gregtechceu.gtceu.api.item.datacomponents.GTArmor;
+import com.gregtechceu.gtceu.common.data.item.GTDataComponents;
 import com.gregtechceu.gtceu.data.lang.LangUtils;
 import com.gregtechceu.gtceu.utils.input.SyncedKeyMappings;
 
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
+import net.minecraft.util.Mth;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ArmorItem;
+import net.minecraft.world.item.equipment.ArmorType;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-
-import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 
 public class NightvisionGoggles extends ArmorLogicSuite {
 
-    public NightvisionGoggles(int energyPerUse, long capacity, int voltageTier, ArmorItem.Type slot) {
+    public NightvisionGoggles(int energyPerUse, long capacity, int voltageTier, ArmorType slot) {
         super(energyPerUse, capacity, voltageTier, slot);
     }
 
     @Override
-    public void onArmorTick(Level world, @NotNull Player player, @NotNull ItemStack itemStack) {
-        IElectricItem item = GTCapabilityHelper.getElectricItem(itemStack);
+    public void onArmorTick(Level level, Player player, ItemStack stack) {
+        IElectricItem item = GTCapabilityHelper.getElectricItem(stack);
         if (item == null) {
             return;
         }
-        CompoundTag data = itemStack.getOrCreateTag();
-        byte toggleTimer = data.contains("toggleTimer") ? data.getByte("toggleTimer") : 0;
-        int nightVisionTimer = data.contains("nightVisionTimer") ? data.getInt("nightVisionTimer") :
-                ArmorUtils.NIGHTVISION_DURATION;
-        if (type == ArmorItem.Type.HELMET) {
-            boolean nightVision = data.contains("nightVision") && data.getBoolean("nightVision");
+        GTArmor.Mutable data = stack.getOrDefault(GTDataComponents.ARMOR_DATA, GTArmor.EMPTY).toMutable();
+        byte toggleTimer = data.toggleTimer();
+        int nightVisionTimer = data.nightVisionTimer();
+        if (!player.getItemBySlot(EquipmentSlot.HEAD).is(stack.getItem())) {
+            disableNightVision(level, player, false);
+        }
+        if (type == ArmorType.HELMET) {
+            boolean nightVision = data.nightVision();
             if (toggleTimer == 0 && SyncedKeyMappings.NIGHT_VISION_ENABLE.isKeyDown(player)) {
                 nightVision = !nightVision;
                 toggleTimer = 5;
                 if (item.getCharge() < ArmorUtils.MIN_NIGHTVISION_CHARGE) {
                     nightVision = false;
-                    player.displayClientMessage(Component.translatable("armor.gtceu.night_vision.error"), true);
+                    player.sendOverlayMessage(Component.translatable("armor.gtceu.night_vision.error"));
                 } else {
-                    player.displayClientMessage(Component
-                            .translatable(LangUtils.enabledBoolean("armor.gtceu.night_vision", nightVision)), true);
+                    player.sendOverlayMessage(Component
+                            .translatable(LangUtils.enabledBoolean("armor.gtceu.night_vision", nightVision)));
                 }
             }
 
             if (nightVision) {
                 player.removeEffect(MobEffects.BLINDNESS);
+                float tickRate = level.tickRateManager().tickrate();
                 if (nightVisionTimer <= ArmorUtils.NIGHT_VISION_RESET) {
-                    nightVisionTimer = ArmorUtils.NIGHTVISION_DURATION;
+                    nightVisionTimer = Mth.floor(ArmorUtils.NIGHTVISION_DURATION);
                     player.addEffect(
-                            new MobEffectInstance(MobEffects.NIGHT_VISION, ArmorUtils.NIGHTVISION_DURATION, 0, true,
+                            new MobEffectInstance(MobEffects.NIGHT_VISION, nightVisionTimer, 0, true,
                                     false));
                     item.discharge((energyPerUse), this.tier, true, false, false);
                 }
             } else {
                 player.removeEffect(MobEffects.NIGHT_VISION);
             }
-            data.putBoolean("nightVision", nightVision);
+            data.nightVision(nightVision);
 
         }
 
         if (nightVisionTimer > 0) nightVisionTimer--;
         if (toggleTimer > 0) toggleTimer--;
 
-        data.putInt("nightVisionTimer", nightVisionTimer);
-        data.putByte("toggleTimer", toggleTimer);
+        data.nightVisionTimer(nightVisionTimer);
+        data.toggleTimer(toggleTimer);
+        stack.set(GTDataComponents.ARMOR_DATA, data.toImmutable());
     }
 
     public static void disableNightVision(Level world, Player player, boolean sendMsg) {
-        if (!world.isClientSide) {
+        if (!world.isClientSide()) {
             player.removeEffect(MobEffects.NIGHT_VISION);
             if (sendMsg)
-                player.displayClientMessage(Component.translatable("armor.gtceu.night_vision.disabled"), true);
+                player.sendOverlayMessage(Component.translatable("armor.gtceu.night_vision.disabled"));
         }
     }
 
     @Override
-    public ResourceLocation getArmorTexture(ItemStack stack, Entity entity, EquipmentSlot slot, String type) {
+    public Identifier getArmorTexture(ItemStack stack, Entity entity, EquipmentSlot slot,
+                                            com.gregtechceu.gtceu.api.item.armor.ArmorLayer layer) {
         return GTCEu.id("textures/armor/nightvision_goggles.png");
     }
 
     @Override
     public void addInfo(ItemStack itemStack, List<Component> lines) {
         super.addInfo(itemStack, lines);
-        if (type == ArmorItem.Type.HELMET) {
-            CompoundTag nbtData = itemStack.getOrCreateTag();
-            boolean nv = nbtData.getBoolean("nightVision");
+        if (type == ArmorType.HELMET) {
+            GTArmor data = itemStack.getOrDefault(GTDataComponents.ARMOR_DATA, GTArmor.EMPTY);
+            boolean nv = data.nightVision();
             if (nv) {
                 lines.add(Component.translatable("armor.gtceu.night_vision.enabled"));
             } else {

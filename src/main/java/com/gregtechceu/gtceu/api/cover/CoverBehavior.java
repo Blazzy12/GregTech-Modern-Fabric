@@ -16,7 +16,6 @@ import com.gregtechceu.gtceu.client.renderer.cover.IDynamicCoverRenderer;
 import com.gregtechceu.gtceu.common.mui.GTGuiTextures;
 import com.gregtechceu.gtceu.utils.ExtendedUseOnContext;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerPlayer;
@@ -25,7 +24,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.items.IItemHandlerModifiable;
+import com.gregtechceu.gtceu.compat.items.IItemHandlerModifiable;
 
 import brachy.modularui.drawable.UITexture;
 import com.mojang.datafixers.util.Pair;
@@ -38,13 +37,9 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Supplier;
 
-import javax.annotation.ParametersAreNonnullByDefault;
-
 /**
  * Represents a cover instance attached on a specific side of a machine
  */
-@ParametersAreNonnullByDefault
-@MethodsReturnNonnullByDefault
 public abstract class CoverBehavior implements ISyncManaged, IToolGridHighlight, ICopyable {
 
     @Getter
@@ -161,7 +156,7 @@ public abstract class CoverBehavior implements ISyncManaged, IToolGridHighlight,
             if (context.getPlayer() instanceof ServerPlayer serverPlayer) {
                 CoverUIFactory.INSTANCE.open(serverPlayer, muiCover);
             }
-            return InteractionResult.sidedSuccess(coverHolder.isRemote());
+            return InteractionResult.SUCCESS;
         }
         return InteractionResult.PASS;
     }
@@ -173,6 +168,7 @@ public abstract class CoverBehavior implements ISyncManaged, IToolGridHighlight,
     //////////////////////////////////////
     // ******* Rendering ********//
     //////////////////////////////////////
+
     /**
      * @return If the pipe this is placed on and a pipe on the other side should be able to connect
      */
@@ -208,10 +204,10 @@ public abstract class CoverBehavior implements ISyncManaged, IToolGridHighlight,
     }
 
     /**
-     * get Appearance. same as IForgeBlock.getAppearance() / IFabricBlock.getAppearance()
+     * get Appearance. same as IBlockExtension.getAppearance() / IFabricBlock.getAppearance()
      */
     @Nullable
-    public BlockState getAppearance(BlockState sourceState, BlockPos sourcePos) {
+    public BlockState getAppearance(@Nullable BlockState sourceState, @Nullable BlockPos sourcePos) {
         return null;
     }
 

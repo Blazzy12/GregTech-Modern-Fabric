@@ -21,8 +21,11 @@ import com.gregtechceu.gtceu.common.mui.GTGuiTextures;
 import com.gregtechceu.gtceu.utils.ExtendedUseOnContext;
 import com.gregtechceu.gtceu.utils.ISubscription;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
 import net.minecraft.core.Direction;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.ItemStack;
 
@@ -57,7 +60,6 @@ public class RotorHolderPartMachine extends TieredPartMachine implements IMuiMac
     public int rotorSpeed;
     @SaveField
     @SyncToClient
-    @Getter
     public @Nullable Material rotorMaterial = null; // 0 - no rotor
     @Nullable
     protected TickableSubscription rotorSpeedSubs;
@@ -70,16 +72,25 @@ public class RotorHolderPartMachine extends TieredPartMachine implements IMuiMac
         this.maxRotorHolderSpeed = 2000 + 1000 * tier;
     }
 
+    @Override
+    public void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        // Because the null material sentinel value was removed in favour of just using null directly,
+        // remove occurences where a null material was serialised as the null sentinel value in old saves.
+        if (tag.contains("rotorMaterial") && tag.getString("rotorMaterial").equals("gtceu:null")) {
+            tag.remove("rotorMaterial");
+        }
+        super.loadAdditional(tag, registries);
+    }
+
     //////////////////////////////////////
     // ***** Initialization ******//
     //////////////////////////////////////
 
     @Override
     public int tintColor(int index) {
-        if (getRotorMaterial() == null) return super.tintColor(index);
-        if (index >= 2) {
+        if (index >= 2 && getRotorMaterial() != null) {
             return getRotorMaterial().getLayerARGB(index - 2);
-        } else if (index <= -103) {
+        } else if (index <= -103 && getRotorMaterial() != null) {
             return getRotorMaterial().getLayerARGB(index + 2);
         }
         return super.tintColor(index);
@@ -117,6 +128,10 @@ public class RotorHolderPartMachine extends TieredPartMachine implements IMuiMac
     //////////////////////////////////////
     // ****** Rotor Holder ******//
     //////////////////////////////////////
+
+    public @Nullable Material getRotorMaterial() {
+        return rotorMaterial;
+    }
 
     private void onRotorInventoryChanged() {
         var stack = getRotorStack();
@@ -214,7 +229,8 @@ public class RotorHolderPartMachine extends TieredPartMachine implements IMuiMac
         if (!isRemote() && getRotorSpeed() > 0 && !context.getPlayer().isCreative()) {
             TurbineRotorBehaviour behaviour = TurbineRotorBehaviour.getBehaviour(getRotorStack());
             if (behaviour != null) {
-                context.getPlayer().hurt(GTDamageTypes.TURBINE.source(level), behaviour.getDamage(getRotorStack()));
+                context.getPlayer().hurt(level.damageSources().source(GTDamageTypes.TURBINE),
+                        behaviour.getDamage(getRotorStack()));
             }
             return InteractionResult.FAIL;
         }
@@ -369,5 +385,10 @@ public class RotorHolderPartMachine extends TieredPartMachine implements IMuiMac
             }
         }
         return true;
+    }
+
+    @Override
+    public Component getFailReason() {
+        return Component.translatable("gtceu.multiblock.turbine.no_rotor");
     }
 }

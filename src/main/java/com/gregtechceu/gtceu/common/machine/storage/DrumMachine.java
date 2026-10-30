@@ -8,17 +8,19 @@ import com.gregtechceu.gtceu.api.machine.MetaMachine;
 import com.gregtechceu.gtceu.api.machine.trait.notifiable.NotifiableFluidTank;
 import com.gregtechceu.gtceu.api.sync_system.annotations.SaveField;
 import com.gregtechceu.gtceu.api.sync_system.annotations.SyncToClient;
+import com.gregtechceu.gtceu.common.data.item.GTDataComponents;
 import com.gregtechceu.gtceu.common.machine.trait.AutoOutputTrait;
 import com.gregtechceu.gtceu.utils.ExtendedUseOnContext;
 import com.gregtechceu.gtceu.utils.ISubscription;
 
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
 import net.minecraft.core.Direction;
-import net.minecraft.nbt.CompoundTag;
+import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.world.InteractionResult;
-import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.FluidUtil;
+import com.gregtechceu.gtceu.compat.fluids.FluidStack;
+import com.gregtechceu.gtceu.compat.fluids.FluidUtil;
+import com.gregtechceu.gtceu.compat.fluids.SimpleFluidContent;
 
-import com.mojang.blaze3d.MethodsReturnNonnullByDefault;
 import lombok.Getter;
 import org.jetbrains.annotations.Nullable;
 
@@ -95,20 +97,17 @@ public class DrumMachine extends MetaMachine {
     //////////////////////////////////////
 
     @Override
-    public void saveToItem(CompoundTag tag, boolean clone) {
-        if (clone || stored.isEmpty()) return;
-        tag.put("Fluid", stored.writeToNBT(new CompoundTag()));
+    protected void applyImplicitComponents(net.minecraft.core.component.DataComponentGetter componentInput) {
+        super.applyImplicitComponents(componentInput);
+        stored = componentInput.getOrDefault(GTDataComponents.FLUID_CONTENT.get(), SimpleFluidContent.EMPTY).copy();
+        // "stored" may not be same as cache (due to item's fluid cap). we should update it.
+        cache.getStorages()[0].setFluid(stored.copy());
     }
 
     @Override
-    public void loadFromItem(CompoundTag tag) {
-        if (tag.contains("Fluid")) {
-            stored = FluidStack.loadFluidStackFromNBT(tag.getCompound("Fluid"));
-        } else {
-            stored = FluidStack.EMPTY;
-        }
-        // "stored" may not be same as cache (due to item's fluid cap). we should update it.
-        cache.getStorages()[0].setFluid(stored.copy());
+    public void collectImplicitComponents(DataComponentMap.Builder components) {
+        super.collectImplicitComponents(components);
+        if (!stored.isEmpty()) components.set(GTDataComponents.FLUID_CONTENT.get(), SimpleFluidContent.copyOf(stored));
     }
 
     @Override

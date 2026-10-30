@@ -1,5 +1,6 @@
 package com.gregtechceu.gtceu.api.pipenet;
 
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
@@ -21,14 +22,14 @@ public abstract class TickableLevelPipeNet<NodeDataType, T extends PipeNet<NodeD
         super(serverLevel);
     }
 
-    public TickableLevelPipeNet(ServerLevel serverLevel, CompoundTag tag) {
-        super(serverLevel, tag);
+    public TickableLevelPipeNet(ServerLevel serverLevel, CompoundTag tag, HolderLookup.Provider provider) {
+        super(serverLevel, tag, provider);
     }
 
     private boolean isChunkLoaded(ChunkPos chunkPos) {
         var worldServer = getWorld();
         if (worldServer == null) return false;
-        return worldServer.getChunkSource().hasChunk(chunkPos.x, chunkPos.z);
+        return worldServer.getChunkSource().hasChunk(chunkPos.x(), chunkPos.z());
     }
 
     protected abstract int getUpdateRate();

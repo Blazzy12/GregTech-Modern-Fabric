@@ -3,7 +3,6 @@ package com.gregtechceu.gtceu.api.data.worldgen.ores;
 import com.gregtechceu.gtceu.api.data.worldgen.IWorldGenLayer;
 import com.gregtechceu.gtceu.api.data.worldgen.WorldGeneratorUtils;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.ChunkPos;
 
@@ -13,13 +12,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import javax.annotation.ParametersAreNonnullByDefault;
-
 /**
  * Holds a vein's {@link OreBlockPlacer}s for each of its blocks, grouped by chunk.
  */
-@MethodsReturnNonnullByDefault
-@ParametersAreNonnullByDefault
 public class GeneratedVein {
 
     @Getter

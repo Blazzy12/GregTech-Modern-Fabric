@@ -4,7 +4,7 @@ import com.gregtechceu.gtceu.client.util.RenderUtil;
 import com.gregtechceu.gtceu.config.ConfigHolder;
 
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FormattedText;
 import net.minecraft.util.FormattedCharSequence;
@@ -31,100 +31,113 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-@Mixin(GuiGraphics.class)
+/**
+ * Draws research items as their result while shift is held, and replaces vanilla tooltips with rich tooltips.
+ * <p>
+ * Tooltips in 26.x are deferred to the end of the frame, so the rich tooltip is deferred the same way.
+ */
+@Mixin(GuiGraphicsExtractor.class)
 public abstract class GuiGraphicsMixin {
 
-    @Shadow(remap = false)
-    private ItemStack tooltipStack;
+    @Shadow
+    private @Nullable Runnable deferredTooltip;
 
-    @WrapMethod(method = "renderItem(Lnet/minecraft/world/entity/LivingEntity;Lnet/minecraft/world/level/Level;Lnet/minecraft/world/item/ItemStack;IIII)V")
+    @Unique
+    private ItemStack gtceu$tooltipStack = ItemStack.EMPTY;
+
+    @WrapMethod(method = "item(Lnet/minecraft/world/entity/LivingEntity;Lnet/minecraft/world/level/Level;Lnet/minecraft/world/item/ItemStack;III)V")
     private void gtceu$renderResearchItemContent(@Nullable LivingEntity entity, @Nullable Level level,
-                                                 ItemStack stack, int x, int y, int seed, int z,
+                                                 ItemStack stack, int x, int y, int seed,
                                                  Operation<Void> original) {
-        if (!RenderUtil.renderResearchItemContent((GuiGraphics) (Object) this, original,
-                entity, level, stack, x, y, z, seed)) {
-            original.call(entity, level, stack, x, y, seed, z);
+        if (!RenderUtil.renderResearchItemContent((GuiGraphicsExtractor) (Object) this, original,
+                entity, level, stack, x, y, seed)) {
+            original.call(entity, level, stack, x, y, seed);
         }
     }
 
-    @Inject(method = "renderTooltip(Lnet/minecraft/client/gui/Font;Ljava/util/List;Ljava/util/Optional;II)V",
-            at = @At(value = "HEAD"),
-            cancellable = true)
-    private void gtceu$replaceWithRichTooltip(Font font, List<Component> tooltipLines,
-                                              Optional<TooltipComponent> visualComponent, int mouseX, int mouseY,
-                                              CallbackInfo ci) {
-        // funny cast to get from List<Component> to List<FormattedText>
-        // I just don't want to copy the list unnecessarily
-        // this is safe because Component extends FormattedText
-        // noinspection unchecked
-        gtceu$drawRichTooltip(font, (List<FormattedText>) (List<?>) tooltipLines, visualComponent, mouseX, mouseY, ci);
+    @Inject(method = "setTooltipForNextFrame(Lnet/minecraft/client/gui/Font;Lnet/minecraft/world/item/ItemStack;II)V",
+            at = @At("HEAD"))
+    private void gtceu$captureTooltipStack(Font font, ItemStack stack, int x, int y, CallbackInfo ci) {
+        this.gtceu$tooltipStack = stack;
     }
 
-    @Inject(
-            method = {
-                    "renderTooltip(Lnet/minecraft/client/gui/Font;Ljava/util/List;Lnet/minecraft/client/gui/screens/inventory/tooltip/ClientTooltipPositioner;II)V",
-                    "renderTooltip(Lnet/minecraft/client/gui/Font;Ljava/util/List;II)V"
-            },
-            at = @At(value = "HEAD"),
+    @Inject(method = "setTooltipForNextFrame(Lnet/minecraft/client/gui/Font;Lnet/minecraft/world/item/ItemStack;II)V",
+            at = @At("RETURN"))
+    private void gtceu$releaseTooltipStack(Font font, ItemStack stack, int x, int y, CallbackInfo ci) {
+        this.gtceu$tooltipStack = ItemStack.EMPTY;
+    }
+
+    @Inject(method = {
+            "setTooltipForNextFrame(Lnet/minecraft/client/gui/Font;Ljava/util/List;Ljava/util/Optional;IILnet/minecraft/resources/Identifier;Z)V",
+            "setComponentTooltipForNextFrame(Lnet/minecraft/client/gui/Font;Ljava/util/List;IILnet/minecraft/resources/Identifier;)V"
+    },
+            at = @At("HEAD"),
             cancellable = true)
     private void gtceu$replaceWithRichTooltip(CallbackInfo ci,
                                               @Local(argsOnly = true) Font font,
-                                              @Local(argsOnly = true) List<FormattedCharSequence> tooltipLines,
+                                              @Local(argsOnly = true) List<Component> tooltipLines,
                                               @Local(ordinal = 0, argsOnly = true) int mouseX,
                                               @Local(ordinal = 1, argsOnly = true) int mouseY) {
+        // safe because Component extends FormattedText
+        // noinspection unchecked
+        gtceu$deferRichTooltip(font, (List<FormattedText>) (List<?>) tooltipLines, Optional.empty(), mouseX, mouseY,
+                false, ci);
+    }
+
+    @Inject(method = {
+            "setTooltipForNextFrame(Lnet/minecraft/client/gui/Font;Ljava/util/List;IILnet/minecraft/resources/Identifier;)V",
+            "setTooltipForNextFrame(Lnet/minecraft/client/gui/Font;Ljava/util/List;Lnet/minecraft/client/gui/screens/inventory/tooltip/ClientTooltipPositioner;IIZ)V"
+    },
+            at = @At("HEAD"),
+            cancellable = true)
+    private void gtceu$replaceSequencesWithRichTooltip(CallbackInfo ci,
+                                                       @Local(argsOnly = true) Font font,
+                                                       @Local(argsOnly = true) List<FormattedCharSequence> tooltipLines,
+                                                       @Local(ordinal = 0, argsOnly = true) int mouseX,
+                                                       @Local(ordinal = 1, argsOnly = true) int mouseY) {
         List<FormattedText> text = tooltipLines.stream()
                 .map(FontRenderHelper::getComponentFromCharSequence)
                 .collect(Collectors.toList());
-        gtceu$drawRichTooltip(font, text, Optional.empty(), mouseX, mouseY, ci);
-    }
-
-    @Inject(method = "renderComponentTooltip*",
-            at = @At(
-                     value = "INVOKE",
-                     target = "Lnet/minecraftforge/client/ForgeHooksClient;gatherTooltipComponents(Lnet/minecraft/world/item/ItemStack;Ljava/util/List;IIILnet/minecraft/client/gui/Font;)Ljava/util/List;",
-                     remap = false),
-            cancellable = true)
-    private void gtceu$replaceWithRichTooltip2(CallbackInfo ci,
-                                               @Local(argsOnly = true) Font font,
-                                               @Local(argsOnly = true) List<FormattedText> tooltipLines,
-                                               @Local(ordinal = 0, argsOnly = true) int mouseX,
-                                               @Local(ordinal = 1, argsOnly = true) int mouseY) {
-        gtceu$drawRichTooltip(font, tooltipLines, Optional.empty(), mouseX, mouseY, ci);
+        gtceu$deferRichTooltip(font, text, Optional.empty(), mouseX, mouseY, false, ci);
     }
 
     @Unique
-    private void gtceu$drawRichTooltip(Font font, List<FormattedText> textLines,
-                                       Optional<TooltipComponent> tooltipComponent, int mouseX, int mouseY,
-                                       CallbackInfo ci) {
+    private void gtceu$deferRichTooltip(Font font, List<FormattedText> textLines,
+                                        Optional<TooltipComponent> tooltipComponent, int mouseX, int mouseY,
+                                        boolean replaceExisting, CallbackInfo ci) {
         if (!ConfigHolder.INSTANCE.client.ui.replaceVanillaTooltips || textLines.isEmpty()) {
             return;
         }
+        // Cancel vanilla tooltip rendering
+        ci.cancel();
+        if (this.deferredTooltip != null && !replaceExisting) {
+            return;
+        }
 
+        ItemStack stack = this.gtceu$tooltipStack;
         RichTooltip tooltip = new RichTooltip();
         tooltip.parent(area -> RichTooltip.findIngredientArea(area, mouseX, mouseY));
         // Other positions don't really work due to the lack of GuiContext in non-modular uis
-        tooltip.add((Component) textLines.get(0)).newLine();
+        tooltip.add((Component) textLines.getFirst()).newLine();
         // vanilla inserts the bundle tooltip here so we need to do it as the 2nd item too
         tooltipComponent.ifPresent(component -> tooltip.addLine(component.toString()));
 
-        if (!this.tooltipStack.isEmpty()) {
+        if (!stack.isEmpty()) {
             tooltip.spaceLine();
         }
         for (int i = 1, n = textLines.size(); i < n; i++) {
             tooltip.add((Component) textLines.get(i)).newLine();
         }
 
-        GuiContext context = GuiContext.getDefault();
-        GuiGraphics lastGraphics = context.getGraphics();
+        this.deferredTooltip = () -> {
+            GuiContext context = GuiContext.getDefault();
+            GuiGraphicsExtractor lastGraphics = context.getGraphics();
 
-        context.setOverrideFont(font);
-        context.setGraphics((GuiGraphics) (Object) this);
-        tooltip.draw(context, this.tooltipStack);
-
-        context.setGraphics(lastGraphics);
-        // the override font is removed at the end of RichTooltip#draw; no need to duplicate that here
-
-        // Cancel vanilla tooltip rendering
-        ci.cancel();
+            context.setOverrideFont(font);
+            context.setGraphics((GuiGraphicsExtractor) (Object) this);
+            tooltip.draw(context, stack);
+            // the override font is removed at the end of RichTooltip#draw; no need to duplicate that here
+            context.setGraphics(lastGraphics);
+        };
     }
 }

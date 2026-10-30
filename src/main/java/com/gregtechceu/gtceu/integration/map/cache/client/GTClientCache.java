@@ -12,6 +12,7 @@ import com.gregtechceu.gtceu.integration.map.layer.builtin.OreRenderLayer;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
@@ -34,15 +35,13 @@ public class GTClientCache extends WorldCache implements IClientCache {
         if (player == null) return;
 
         for (var vein : veins) {
-            var veinId = vein.id().toString();
-            var name = Component.translatable(veinId.replace("gtceu:", "gtceu.jei.ore_vein."));
+            var veinId = vein.definition().unwrapKey().orElseThrow().identifier();
+            var name = Component.translatable(veinId.toLanguageKey("ore_vein"));
             var material = OreRenderLayer.getMaterial(vein);
 
             if (material != null) {
                 var center = vein.center();
-                name.setStyle(name.getStyle().withColor(material.getMaterialRGB()).withHoverEvent(new HoverEvent(
-                        HoverEvent.Action.SHOW_TEXT,
-                        Component.literal("(%d, %d, %d)".formatted(center.getX(), center.getY(), center.getZ())))));
+                name.setStyle(name.getStyle().withColor(material.getMaterialRGB()).withHoverEvent(new HoverEvent.ShowText(Component.literal("(%d, %d, %d)".formatted(center.getX(), center.getY(), center.getZ())))));
             }
             player.sendSystemMessage(Component.translatable("message.gtceu.new_veins.name", name));
         }
@@ -71,22 +70,22 @@ public class GTClientCache extends WorldCache implements IClientCache {
     }
 
     @Override
-    public CompoundTag saveDimFile(String prefix, ResourceKey<Level> dim) {
+    public CompoundTag saveDimFile(String prefix, ResourceKey<Level> dim, HolderLookup.Provider registries) {
         if (!cache.containsKey(dim)) return null;
-        return cache.get(dim).toNBT(true);
+        return cache.get(dim).toNBT(registries);
     }
 
     @Override
-    public CompoundTag saveSingleFile(String name) {
+    public CompoundTag saveSingleFile(String name, HolderLookup.Provider registries) {
         return fluids.toNbt();
     }
 
     @Override
-    public void readDimFile(String prefix, ResourceKey<Level> dim, CompoundTag data) {
+    public void readDimFile(String prefix, ResourceKey<Level> dim, CompoundTag data, HolderLookup.Provider registries) {
         if (!cache.containsKey(dim)) {
             cache.put(dim, new DimensionCache());
         }
-        cache.get(dim).fromNBT(data, true);
+        cache.get(dim).fromNBT(data, registries);
 
         // FIXME janky hack mate
         GenericMapRenderer renderer = GroupingMapRenderer.getInstance();
@@ -100,7 +99,7 @@ public class GTClientCache extends WorldCache implements IClientCache {
     }
 
     @Override
-    public void readSingleFile(String name, CompoundTag data) {
+    public void readSingleFile(String name, CompoundTag data, HolderLookup.Provider registries) {
         fluids.fromNbt(data);
     }
 

@@ -3,7 +3,6 @@ package com.gregtechceu.gtceu.api.data.worldgen.ores;
 import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.config.ConfigHolder;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.chunk.ChunkAccess;
@@ -20,16 +19,12 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
-import javax.annotation.ParametersAreNonnullByDefault;
-
 /**
  * Used for caching ore veins between generated chunks.
  * 
  * <p>
  * Uses the {@link OreGenerator} to generate new veins in case no vein is cached for a queried chunk.
  */
-@MethodsReturnNonnullByDefault
-@ParametersAreNonnullByDefault
 public class OreGenCache {
 
     @Getter
@@ -116,11 +111,11 @@ public class OreGenCache {
     }
 
     private Stream<ChunkPos> getSurroundingChunks(ChunkPos center, int searchDistance) {
-        final int minX = center.x - searchDistance;
-        final int minZ = center.z - searchDistance;
+        final int minX = center.x() - searchDistance;
+        final int minZ = center.z() - searchDistance;
 
-        final int maxX = center.x + searchDistance;
-        final int maxZ = center.z + searchDistance;
+        final int maxX = center.x() + searchDistance;
+        final int maxZ = center.z() + searchDistance;
 
         MutableInt x = new MutableInt(minX - 1);
         MutableInt z = new MutableInt(minZ);

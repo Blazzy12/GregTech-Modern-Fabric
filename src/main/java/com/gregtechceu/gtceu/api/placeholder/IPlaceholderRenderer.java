@@ -3,7 +3,7 @@ package com.gregtechceu.gtceu.api.placeholder;
 import com.gregtechceu.gtceu.common.machine.multiblock.electric.CentralMonitorMachine;
 import com.gregtechceu.gtceu.common.machine.multiblock.electric.monitor.MonitorGroup;
 
-import net.minecraft.client.renderer.MultiBufferSource;
+import com.gregtechceu.gtceu.compat.client.render.MultiBufferSource;
 import net.minecraft.nbt.CompoundTag;
 
 import com.mojang.blaze3d.vertex.PoseStack;

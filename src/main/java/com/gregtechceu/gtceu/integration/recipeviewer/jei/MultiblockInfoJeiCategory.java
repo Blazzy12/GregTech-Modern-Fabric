@@ -1,19 +1,16 @@
 package com.gregtechceu.gtceu.integration.recipeviewer.jei;
 
 import com.gregtechceu.gtceu.GTCEu;
-import com.gregtechceu.gtceu.api.machine.MachineDefinition;
 import com.gregtechceu.gtceu.api.machine.MultiblockMachineDefinition;
 import com.gregtechceu.gtceu.api.registry.GTRegistries;
 import com.gregtechceu.gtceu.common.data.machines.GTMultiMachines;
-import com.gregtechceu.gtceu.core.mixins.mui.ModularUIJeiRecipeAccessor;
 import com.gregtechceu.gtceu.integration.recipeviewer.widgets.MultiblockPreviewWidget;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 
-import brachy.modularui.api.widget.IWidget;
 import brachy.modularui.integration.jei.recipe.ModularUIJeiCategory;
 import mezz.jei.api.constants.VanillaTypes;
 import mezz.jei.api.gui.builder.IRecipeLayoutBuilder;
@@ -24,46 +21,35 @@ import mezz.jei.api.recipe.IFocusGroup;
 import mezz.jei.api.recipe.RecipeIngredientRole;
 import mezz.jei.api.recipe.RecipeType;
 import mezz.jei.api.registration.IRecipeRegistration;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Function;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 
 @MethodsReturnNonnullByDefault
 @ParametersAreNonnullByDefault
-public class MultiblockInfoJeiCategory extends ModularUIJeiCategory<MultiblockMachineDefinition> {
+public class MultiblockInfoJeiCategory extends
+                                       ModularUIJeiCategory<MultiblockMachineDefinition> {
 
     public final static RecipeType<MultiblockMachineDefinition> RECIPE_TYPE = new RecipeType<>(
             GTCEu.id("multiblock_info"),
             MultiblockMachineDefinition.class);
-
     private final IDrawable icon;
 
     public MultiblockInfoJeiCategory(IJeiHelpers helpers) {
-        super(v -> new MultiblockPreviewWidget(v, null, 200, 180, false), MachineDefinition::getId);
+        super(v -> new MultiblockPreviewWidget(v, null, 200, 180), v -> v.getId());
         IGuiHelper guiHelper = helpers.getGuiHelper();
         this.icon = guiHelper.createDrawableItemStack(GTMultiMachines.ELECTRIC_BLAST_FURNACE.asStack());
     }
 
     public static void registerRecipes(IRecipeRegistration registry) {
-        registry.addRecipes(RECIPE_TYPE, GTRegistries.MACHINES.values().stream()
+        registry.addRecipes(RECIPE_TYPE, GTRegistries.MACHINES.stream()
                 .filter(MultiblockMachineDefinition.class::isInstance)
                 .map(MultiblockMachineDefinition.class::cast)
                 .filter(MultiblockMachineDefinition::isRenderXEIPreview)
                 .toList());
-    }
-
-    @Override
-    public @Nullable ResourceLocation getRegistryName(MultiblockMachineDefinition recipe) {
-        return recipe.getId();
-    }
-
-    @Override
-    public RecipeType<MultiblockMachineDefinition> getRecipeType() {
-        return RECIPE_TYPE;
     }
 
     @Override
@@ -79,20 +65,25 @@ public class MultiblockInfoJeiCategory extends ModularUIJeiCategory<MultiblockMa
     @Override
     public void setupRecipeIngredients(IRecipeLayoutBuilder builder, MultiblockMachineDefinition definition,
                                        IFocusGroup focuses) {
-        List<ItemStack> containedBlocks = new ArrayList<>();
+        List<ItemStack> containedBlocks = MultiblockPreviewWidget.initializeContainedBlocks(definition);
 
-        builder.addSlot(RecipeIngredientRole.OUTPUT).addIngredient(VanillaTypes.ITEM_STACK,
+        builder.addInvisibleIngredients(RecipeIngredientRole.OUTPUT).addIngredient(VanillaTypes.ITEM_STACK,
                 new ItemStack(definition.getBlock()));
 
-        var recipeUI = ((MultiblockPreviewWidget) ((Function<MultiblockMachineDefinition, IWidget>) ((ModularUIJeiRecipeAccessor) this)
-                .getRecipeUI()).apply(definition));
-        if (recipeUI.getMultiblockSchemaInfo() == null) return;
-        var blockCounts = recipeUI.getMultiblockSchemaInfo().getBlockCounts();
-        blockCounts.forEach((block, count) -> containedBlocks.add(new ItemStack(block.asItem(), count)));
-
         for (var stack : containedBlocks) {
-            builder.addSlot(RecipeIngredientRole.INPUT).addIngredient(VanillaTypes.ITEM_STACK, stack);
+            builder.addInvisibleIngredients(RecipeIngredientRole.INPUT).addIngredient(VanillaTypes.ITEM_STACK, stack);
         }
+    }
+
+    @Override
+    public @Nullable Identifier getRegistryName(MultiblockMachineDefinition recipe) {
+        return recipe.getId();
+    }
+
+    @Override
+    @NotNull
+    public RecipeType<MultiblockMachineDefinition> getRecipeType() {
+        return RECIPE_TYPE;
     }
 
     @Override
@@ -100,6 +91,7 @@ public class MultiblockInfoJeiCategory extends ModularUIJeiCategory<MultiblockMa
         return Component.translatable("gtceu.jei.multiblock_info");
     }
 
+    @NotNull
     @Override
     public IDrawable getIcon() {
         return icon;

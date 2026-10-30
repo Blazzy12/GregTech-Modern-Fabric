@@ -28,8 +28,7 @@ public class SurfaceRockBlockItem extends BlockItem {
         return (SurfaceRockBlock) super.getBlock();
     }
 
-    @Override
-    public Component getDescription() {
+        public Component getDescription() {
         return this.getBlock().getName();
     }
 

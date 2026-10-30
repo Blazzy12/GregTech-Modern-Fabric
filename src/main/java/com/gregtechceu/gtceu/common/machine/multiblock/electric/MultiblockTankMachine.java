@@ -13,7 +13,7 @@ import com.gregtechceu.gtceu.utils.ExtendedUseOnContext;
 import com.gregtechceu.gtceu.utils.FormattingUtil;
 
 import net.minecraft.ChatFormatting;
-import net.minecraft.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionResult;
@@ -69,7 +69,6 @@ public class MultiblockTankMachine extends MultiblockControllerMachine implement
 
     /////////////////////////////////////
     // *********** GUI ***********//
-
     /////////////////////////////////////
 
     @Override

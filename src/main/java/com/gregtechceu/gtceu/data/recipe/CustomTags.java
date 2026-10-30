@@ -1,10 +1,11 @@
 package com.gregtechceu.gtceu.data.recipe;
 
-import com.gregtechceu.gtceu.api.data.tag.TagUtil;
+import com.gregtechceu.gtceu.api.data.tag.TagPrefix;
+import com.gregtechceu.gtceu.api.registry.GTRegistries;
+import com.gregtechceu.gtceu.utils.TagUtil;
 
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.EntityType;
@@ -12,18 +13,17 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.material.Fluid;
+import com.gregtechceu.gtceu.compat.common.Tags;
 
 public class CustomTags {
 
     // Added Vanilla tags
     public static final TagKey<Item> PISTONS = TagUtil.createItemTag("pistons");
-    public static final TagKey<Item> CONCRETE_ITEM = TagUtil.createItemTag("concretes");
-    public static final TagKey<Item> CONCRETE_POWDER_ITEM = TagUtil.createItemTag("concrete_powders");
     // common/mod compat tags
-    public static final TagKey<Item> DOUGHS = TagUtil.createItemTag("dough");
-    public static final TagKey<Item> WHEAT_DOUGHS = TagUtil.createItemTag("dough/wheat");
-    public static final TagKey<Item> GRAINS = TagUtil.createItemTag("grain");
-    public static final TagKey<Item> WHEAT_GRAINS = TagUtil.createItemTag("grain/wheat");
+    public static final TagKey<Item> DOUGHS = TagUtil.createItemTag("doughs");
+    public static final TagKey<Item> WHEAT_DOUGHS = TagUtil.createItemTag("doughs/wheat");
+    public static final TagKey<Item> GRAINS = TagUtil.createItemTag("grains");
+    public static final TagKey<Item> WHEAT_GRAINS = TagUtil.createItemTag("grains/wheat");
 
     // Why did I put them all here? Why not? Science isn't about why, it's about why NOT!
     // Why is so much of our science dangerous? Why don't you marry safe science if you love it so much!?
@@ -145,87 +145,98 @@ public class CustomTags {
     public static final TagKey<Block> MINEABLE_WITH_CONFIG_VALID_PICKAXE_WIRE_CUTTER = TagUtil
             .createModBlockTag("mineable/pickaxe_or_wire_cutter");
 
-    public static final TagKey<Block> NEEDS_WOOD_TOOL = TagUtil.createBlockTag("needs_wood_tool");
-    public static final TagKey<Block> NEEDS_GOLD_TOOL = TagUtil.createBlockTag("needs_gold_tool");
-    public static final TagKey<Block> NEEDS_NETHERITE_TOOL = TagUtil.createBlockTag("needs_netherite_tool");
-    public static final TagKey<Block> NEEDS_DURANIUM_TOOL = TagUtil.createBlockTag("needs_duranium_tool");
-    public static final TagKey<Block> NEEDS_NEUTRONIUM_TOOL = TagUtil.createBlockTag("needs_neutronium_tool");
+    public static final TagKey<Block> NEEDS_DURANIUM_TOOL = TagUtil.createModBlockTag("needs_duranium_tool");
+    public static final TagKey<Block> NEEDS_NEUTRONIUM_TOOL = TagUtil.createModBlockTag("needs_neutronium_tool");
+    public static final TagKey<Block> INCORRECT_FOR_DURANIUM_TOOL = TagUtil
+            .createModBlockTag("incorrect_for_duranium_tool");
+    public static final TagKey<Block> INCORRECT_FOR_NEUTRONIUM_TOOL = TagUtil
+            .createModBlockTag("incorrect_for_neutronium_tool");
 
     // Tool tags
     public static final TagKey<Item> TOOLS_IGNITER = TagUtil.createItemTag("tools/igniter");
+    public static final TagKey<Item> TOOLS_BUTCHERY_KNIFE = TagUtil.createItemTag("tools/butchery_knife");
+    public static final TagKey<Item> TOOLS_BUZZSAW = TagUtil.createItemTag("tools/buzzsaw");
+    public static final TagKey<Item> TOOLS_CHAINSAW = TagUtil.createItemTag("tools/chainsaw");
+    public static final TagKey<Item> TOOLS_CROWBAR = TagUtil.createItemTag("tools/crowbar");
+    public static final TagKey<Item> TOOLS_DRILL = TagUtil.createItemTag("tools/drill");
+    public static final TagKey<Item> TOOLS_FILE = TagUtil.createItemTag("tools/file");
+    public static final TagKey<Item> TOOLS_HAMMER = TagUtil.createItemTag("tools/hammer");
+    public static final TagKey<Item> TOOLS_KNIFE = TagUtil.createItemTag("tools/knife");
+    public static final TagKey<Item> TOOLS_MALLET = TagUtil.createItemTag("tools/mallet");
+    public static final TagKey<Item> TOOLS_MINING_HAMMER = TagUtil.createItemTag("tools/mining_hammer");
+    public static final TagKey<Item> TOOLS_MORTAR = TagUtil.createItemTag("tools/mortar");
+    public static final TagKey<Item> TOOLS_PLUNGER = TagUtil.createItemTag("tools/plunger");
+    public static final TagKey<Item> TOOLS_SAW = TagUtil.createItemTag("tools/saw");
+    public static final TagKey<Item> TOOLS_SCREWDRIVER = TagUtil.createItemTag("tools/screwdriver");
+    public static final TagKey<Item> TOOLS_SCYTHE = TagUtil.createItemTag("tools/scythe");
+    public static final TagKey<Item> TOOLS_SHEAR = Tags.Items.TOOLS_SHEAR;
+    public static final TagKey<Item> TOOLS_SPADE = TagUtil.createItemTag("tools/spade");
+    public static final TagKey<Item> TOOLS_WIRE_CUTTER = TagUtil.createItemTag("tools/wire_cutter");
+    public static final TagKey<Item> TOOLS_WRENCH = Tags.Items.TOOLS_WRENCH;
 
-    public static final TagKey<Item> BUTCHERY_KNIVES = TagUtil.createItemTag("tools/butchery_knives");
-    public static final TagKey<Item> BUZZSAWS = TagUtil.createItemTag("tools/buzzsaws");
-    public static final TagKey<Item> CHAINSAWS = TagUtil.createItemTag("tools/chainsaws");
-    public static final TagKey<Item> CROWBARS = TagUtil.createItemTag("tools/crowbars");
-    public static final TagKey<Item> DRILLS = TagUtil.createItemTag("tools/drills");
-    public static final TagKey<Item> FILES = TagUtil.createItemTag("tools/files");
-    public static final TagKey<Item> HAMMERS = TagUtil.createItemTag("tools/hammers");
-    public static final TagKey<Item> KNIVES = TagUtil.createItemTag("tools/knives");
-    public static final TagKey<Item> MALLETS = TagUtil.createItemTag("tools/mallets");
-    public static final TagKey<Item> MINING_HAMMERS = TagUtil.createItemTag("tools/mining_hammers");
-    public static final TagKey<Item> MORTARS = TagUtil.createItemTag("tools/mortars");
-    public static final TagKey<Item> PLUNGERS = TagUtil.createItemTag("tools/plungers");
-    public static final TagKey<Item> SAWS = TagUtil.createItemTag("tools/saws");
-    public static final TagKey<Item> SCREWDRIVERS = TagUtil.createItemTag("tools/screwdrivers");
-    public static final TagKey<Item> SCYTHES = TagUtil.createItemTag("tools/scythes");
-    public static final TagKey<Item> SHEARS = TagUtil.createItemTag("tools/shears");
-    public static final TagKey<Item> SPADES = TagUtil.createItemTag("tools/spades");
-    public static final TagKey<Item> WIRE_CUTTERS = TagUtil.createItemTag("tools/wire_cutters");
-    public static final TagKey<Item> WRENCHES = TagUtil.createItemTag("tools/wrenches");
-    public static final TagKey<Item> WRENCH = TagUtil.createItemTag("tools/wrench"); // Compat with other mods
-
-    // Tool Crafting Tags
-    public static final TagKey<Item> CRAFTING_CROWBARS = TagUtil.createModItemTag("tools/crafting_crowbars");
-    public static final TagKey<Item> CRAFTING_FILES = TagUtil.createModItemTag("tools/crafting_files");
-    public static final TagKey<Item> CRAFTING_HAMMERS = TagUtil.createModItemTag("tools/crafting_hammers");
-    public static final TagKey<Item> CRAFTING_KNIVES = TagUtil.createModItemTag("tools/crafting_knives");
-    public static final TagKey<Item> CRAFTING_MALLETS = TagUtil.createModItemTag("tools/crafting_mallets");
-    public static final TagKey<Item> CRAFTING_MORTARS = TagUtil.createModItemTag("tools/crafting_mortars");
-    public static final TagKey<Item> CRAFTING_SAWS = TagUtil.createModItemTag("tools/crafting_saws");
-    public static final TagKey<Item> CRAFTING_SCREWDRIVERS = TagUtil.createModItemTag("tools/crafting_screwdrivers");
-    public static final TagKey<Item> CRAFTING_WIRE_CUTTERS = TagUtil.createModItemTag("tools/crafting_wire_cutters");
-    public static final TagKey<Item> CRAFTING_WRENCHES = TagUtil.createModItemTag("tools/crafting_wrenches");
+    // Crafting Tool Tags
+    public static final TagKey<Item> CRAFTING_CROWBARS = TagUtil.createModItemTag("crafting_tools/crowbar");
+    public static final TagKey<Item> CRAFTING_FILES = TagUtil.createModItemTag("crafting_tools/file");
+    public static final TagKey<Item> CRAFTING_HAMMERS = TagUtil.createModItemTag("crafting_tools/hammer");
+    public static final TagKey<Item> CRAFTING_KNIVES = TagUtil.createModItemTag("crafting_tools/knife");
+    public static final TagKey<Item> CRAFTING_MALLETS = TagUtil.createModItemTag("crafting_tools/mallet");
+    public static final TagKey<Item> CRAFTING_MORTARS = TagUtil.createModItemTag("crafting_tools/mortar");
+    public static final TagKey<Item> CRAFTING_SAWS = TagUtil.createModItemTag("crafting_tools/saw");
+    public static final TagKey<Item> CRAFTING_SCREWDRIVERS = TagUtil.createModItemTag("crafting_tools/screwdriver");
+    public static final TagKey<Item> CRAFTING_WIRE_CUTTERS = TagUtil.createModItemTag("crafting_tools/wire_cutter");
+    public static final TagKey<Item> CRAFTING_WRENCHES = TagUtil.createModItemTag("crafting_tools/wrench");
 
     @SuppressWarnings("unchecked")
     public static final TagKey<Block>[] TOOL_TIERS = new TagKey[] {
-            NEEDS_WOOD_TOOL,
+            Tags.Blocks.NEEDS_WOOD_TOOL,
             BlockTags.NEEDS_STONE_TOOL,
             BlockTags.NEEDS_IRON_TOOL,
             BlockTags.NEEDS_DIAMOND_TOOL,
-            NEEDS_NETHERITE_TOOL,
+            Tags.Blocks.NEEDS_NETHERITE_TOOL,
             NEEDS_DURANIUM_TOOL,
             NEEDS_NEUTRONIUM_TOOL,
     };
 
+    @SuppressWarnings("unchecked")
+    public static final TagKey<Block>[] INCORRECT_TOOL_TIERS = new TagKey[] {
+            BlockTags.INCORRECT_FOR_WOODEN_TOOL,
+            BlockTags.INCORRECT_FOR_STONE_TOOL,
+            BlockTags.INCORRECT_FOR_IRON_TOOL,
+            BlockTags.INCORRECT_FOR_DIAMOND_TOOL,
+            BlockTags.INCORRECT_FOR_NETHERITE_TOOL,
+            INCORRECT_FOR_DURANIUM_TOOL,
+            INCORRECT_FOR_NEUTRONIUM_TOOL,
+    };
+
     public static final TagKey<Block> ENDSTONE_ORE_REPLACEABLES = TagUtil.createBlockTag("end_stone_ore_replaceables");
-    public static final TagKey<Block> CONCRETE_BLOCK = TagUtil.createBlockTag("concretes");
+
     public static final TagKey<Block> VERY_FAST_WALKABLE_BLOCKS = TagUtil.createBlockTag("very_fast_walkable_blocks");
     public static final TagKey<Block> FAST_WALKABLE_BLOCKS = TagUtil.createBlockTag("fast_walkable_blocks");
     public static final TagKey<Block> SLOW_WALKABLE_BLOCKS = TagUtil.createBlockTag("slow_walkable_blocks");
-    public static final TagKey<Block> CONCRETE_POWDER_BLOCK = TagUtil.createBlockTag("concrete_powders");
+
     public static final TagKey<Block> CLEANROOM_FLOORS = TagUtil.createModBlockTag("cleanroom_floors");
     public static final TagKey<Block> CHARCOAL_PILE_IGNITER_WALLS = TagUtil.createModBlockTag(
             "charcoal_pile_igniter_walls");
-    public static final TagKey<Block> CREATE_WRENCH_PICKUP = TagUtil.optionalTag(BuiltInRegistries.BLOCK,
-            ResourceLocation.fromNamespaceAndPath("create", "wrench_pickup"));
+    public static final TagKey<Block> CREATE_WRENCH_PICKUP = TagUtil.optionalTag(Registries.BLOCK,
+            Identifier.fromNamespaceAndPath("create", "wrench_pickup"));
 
     public static final TagKey<Block> TALL_PLANTS = TagUtil.createModBlockTag("tall_plants");
 
-    public static final TagKey<Biome> IS_SWAMP = TagUtil.createTag(Registries.BIOME, "is_swamp", false);
-    public static final TagKey<Biome> IS_SANDY = TagUtil.createModTag(Registries.BIOME, "is_sandy");
     public static final TagKey<Biome> HAS_RUBBER_TREE = TagUtil.createModTag(Registries.BIOME, "has_rubber_tree");
 
     public static final TagKey<EntityType<?>> HEAT_IMMUNE = TagUtil.createModTag(Registries.ENTITY_TYPE, "heat_immune");
     public static final TagKey<EntityType<?>> CHEMICAL_IMMUNE = TagUtil.createModTag(Registries.ENTITY_TYPE,
             "chemical_immune");
+    public static final TagKey<EntityType<?>> IRON_GOLEMS = TagUtil.createTag(Registries.ENTITY_TYPE, "iron_golems",
+            false);
+    public static final TagKey<EntityType<?>> SPIDERS = TagUtil.createTag(Registries.ENTITY_TYPE, "spiders", false);
 
     public static final TagKey<Fluid> LIGHTER_FLUIDS = TagUtil.createModFluidTag("lighter_fluids");
     public static final TagKey<Fluid> POTION_FLUIDS = TagUtil.createFluidTag("potion");
 
     public static final TagKey<Fluid> FREEZABLE_FLUIDS = TagUtil.createModFluidTag("freezable_fluids");
     /** @deprecated Use FREEZABLE_FLUIDS for fluids requiring metal freezing. */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public static final TagKey<Fluid> MOLTEN_FLUIDS = TagUtil.createFluidTag("molten");
     public static final TagKey<Fluid> LIQUID_FLUIDS = TagUtil.createFluidTag("liquid");
     public static final TagKey<Fluid> PLASMA_FLUIDS = TagUtil.createFluidTag("plasmatic");
@@ -271,4 +282,9 @@ public class CustomTags {
             RED_LENS,
             BLACK_LENS
     };
+
+    public static final TagKey<TagPrefix> INHALATION_TRIGGER_PREFIXES = TagUtil
+            .createModTag(GTRegistries.Keys.TAG_PREFIX, "inhalation_trigger");
+    public static final TagKey<TagPrefix> SKIN_CONTACT_TRIGGER_PREFIXES = TagUtil
+            .createModTag(GTRegistries.Keys.TAG_PREFIX, "skin_contact_trigger");
 }

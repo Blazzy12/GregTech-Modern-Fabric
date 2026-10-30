@@ -4,7 +4,7 @@ import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.api.machine.trait.notifiable.NotifiableFluidTank;
 import com.gregtechceu.gtceu.api.machine.trait.notifiable.NotifiableItemStackHandler;
 
-import net.minecraftforge.items.IItemHandler;
+import com.gregtechceu.gtceu.compat.items.IItemHandler;
 
 import brachy.modularui.value.sync.ItemSlotSyncHandler;
 import brachy.modularui.value.sync.PanelSyncManager;
@@ -63,15 +63,8 @@ public class GTMuiMachineUtil {
     public static SlotGroupWidget createSquareSlotGroupFromInventory(IItemHandler itemHandler,
                                                                      String slotGroupName,
                                                                      PanelSyncManager syncManager) {
-        return createSquareSlotGroupFromInventory(itemHandler, slotGroupName, i -> i, syncManager);
-    }
-
-    public static SlotGroupWidget createSquareSlotGroupFromInventory(IItemHandler itemHandler,
-                                                                     String slotGroupName,
-                                                                     UnaryOperator<ItemSlot> slotModifier,
-                                                                     PanelSyncManager syncManager) {
-        return createSlotGroupFromInventory(itemHandler, slotGroupName, itemHandler.getSlots(), 'I', slotModifier,
-                syncManager, createSquareMatrix(itemHandler.getSlots(), 'I'));
+        return createSlotGroupFromInventory(itemHandler, slotGroupName, itemHandler.getSlots(), 'I', syncManager,
+                createSquareMatrix(itemHandler.getSlots(), 'I'));
     }
 
     public static SlotGroupWidget createSlotGroupFromInventory(PanelSyncManager syncManager,

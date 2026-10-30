@@ -1,5 +1,7 @@
 package com.gregtechceu.gtceu.api.item.tool;
 
+import net.minecraft.world.item.Item;
+
 import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.api.data.chemical.material.Material;
 import com.gregtechceu.gtceu.api.data.chemical.material.info.MaterialFlags;
@@ -7,41 +9,29 @@ import com.gregtechceu.gtceu.api.item.IGTTool;
 import com.gregtechceu.gtceu.api.sound.SoundEntry;
 import com.gregtechceu.gtceu.client.model.runtimegen.ToolItemModelGenerator;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
 import net.minecraft.core.BlockPos;
-import net.minecraft.nbt.CompoundTag;
+import net.minecraft.core.Holder;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.InteractionResultHolder;
-import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.ai.attributes.Attribute;
-import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.DiggerItem;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.*;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.item.enchantment.Enchantment;
+import net.minecraft.world.item.enchantment.ItemEnchantments;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.common.ToolAction;
-import net.minecraftforge.common.capabilities.ICapabilityProvider;
+import com.gregtechceu.gtceu.compat.common.ItemAbility;
 
-import com.google.common.collect.Multimap;
 import lombok.Getter;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
-import java.util.Map;
 
-import javax.annotation.ParametersAreNonnullByDefault;
-
-@MethodsReturnNonnullByDefault
-@ParametersAreNonnullByDefault
-public class GTToolItem extends DiggerItem implements IGTTool {
+public class GTToolItem extends TieredItem implements IGTTool {
 
     @Getter
     protected final GTToolType toolType;
@@ -50,12 +40,11 @@ public class GTToolItem extends DiggerItem implements IGTTool {
     @Getter
     protected final Material material;
     @Getter
-    private IGTToolDefinition toolStats;
+    private final IGTToolDefinition toolStats;
 
     public GTToolItem(GTToolType toolType, MaterialToolTier tier, Material material, IGTToolDefinition definition,
                       Properties properties) {
-        super(0, 0, tier, toolType.harvestTags.isEmpty() ? null : toolType.harvestTags.get(0),
-                material.hasFlag(MaterialFlags.FIRE_RESISTANT) ? properties.fireResistant() : properties);
+        super(tier, material.hasFlag(MaterialFlags.FIRE_RESISTANT) ? properties.fireResistant() : properties);
         this.toolType = toolType;
         this.material = material;
         this.electricTier = toolType.electricTier;
@@ -67,17 +56,12 @@ public class GTToolItem extends DiggerItem implements IGTTool {
     }
 
     @Override
-    public @Nullable ICapabilityProvider initCapabilities(ItemStack stack, @Nullable CompoundTag nbt) {
-        return definition$initCapabilities(stack, nbt);
-    }
-
-    @Override
     public ItemStack getDefaultInstance() {
         return get();
     }
 
     @Override
-    public boolean canPerformAction(ItemStack stack, ToolAction action) {
+    public boolean canPerformAction(ItemStack stack, ItemAbility action) {
         return definition$canPerformAction(stack, action);
     }
 
@@ -91,12 +75,6 @@ public class GTToolItem extends DiggerItem implements IGTTool {
         return definition$onItemUse(context);
     }
 
-    @Override
-    public String getDescriptionId() {
-        return toolType.getUnlocalizedName();
-    }
-
-    @Override
     public Component getDescription() {
         return Component.translatable(toolType.getUnlocalizedName(), material.getLocalizedName());
     }
@@ -108,12 +86,8 @@ public class GTToolItem extends DiggerItem implements IGTTool {
 
     @Override
     public boolean mineBlock(ItemStack stack, Level level, BlockState state, BlockPos pos, LivingEntity miningEntity) {
-        return definition$mineBlock(stack, level, state, pos, miningEntity);
-    }
-
-    @Override
-    public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand usedHand) {
-        return definition$use(level, player, usedHand);
+        definition$mineBlock(stack, level, state, pos, miningEntity);
+        return true;
     }
 
     @Override
@@ -129,7 +103,7 @@ public class GTToolItem extends DiggerItem implements IGTTool {
 
     @Nullable
     @Override
-    public SoundEntry getSound() {
+    public Holder<SoundEntry> getSound() {
         return toolType.soundEntry;
     }
 
@@ -139,46 +113,28 @@ public class GTToolItem extends DiggerItem implements IGTTool {
     }
 
     @Override
-    public float getDestroySpeed(ItemStack stack, BlockState state) {
-        return definition$getDestroySpeed(stack, state);
+    public void hurtEnemy(ItemStack stack, LivingEntity target, LivingEntity attacker) {
+        definition$hurtEnemy(stack, target, attacker);
     }
 
     @Override
-    public boolean hurtEnemy(ItemStack stack, LivingEntity target, LivingEntity attacker) {
-        return definition$hurtEnemy(stack, target, attacker);
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context, net.minecraft.world.item.component.TooltipDisplay display, java.util.function.Consumer<Component> tooltipAdder, TooltipFlag flag) {
+        List<Component> lines = new java.util.ArrayList<>();
+        appendHoverText(stack, context, lines, flag);
+        lines.forEach(tooltipAdder);
     }
 
-    public boolean onBlockStartBreak(ItemStack stack, BlockPos pos, Player player) {
-        return definition$onBlockStartBreak(stack, pos, player);
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context, List<Component> tooltipComponents, TooltipFlag isAdvanced) {
+        definition$appendHoverText(stack, context, tooltipComponents, isAdvanced);
     }
 
     @Override
-    public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltipComponents,
-                                TooltipFlag isAdvanced) {
-        definition$appendHoverText(stack, level, tooltipComponents, isAdvanced);
-    }
-
-    public boolean canApplyAtEnchantingTable(ItemStack stack, Enchantment enchantment) {
-        return definition$canApplyAtEnchantingTable(stack, enchantment);
-    }
-
     public int getEnchantmentValue(ItemStack stack) {
         return getTotalEnchantability(stack);
     }
 
-    @Override
     public boolean isValidRepairItem(ItemStack stack, ItemStack repairCandidate) {
         return definition$isValidRepairItem(stack, repairCandidate);
-    }
-
-    @Override
-    public Map<Enchantment, Integer> getAllEnchantments(ItemStack stack) {
-        return definition$getAllEnchantments(stack);
-    }
-
-    @Override
-    public int getEnchantmentLevel(ItemStack stack, Enchantment enchantment) {
-        return definition$getEnchantmentLevel(stack, enchantment);
     }
 
     @Override
@@ -187,44 +143,47 @@ public class GTToolItem extends DiggerItem implements IGTTool {
     }
 
     @Override
-    public Multimap<Attribute, AttributeModifier> getAttributeModifiers(EquipmentSlot slot, ItemStack stack) {
-        return definition$getDefaultAttributeModifiers(slot, stack);
+    public ItemEnchantments getAllEnchantments(ItemStack stack, HolderLookup.RegistryLookup<Enchantment> lookup) {
+        return definition$getAllEnchantments(stack, lookup);
     }
 
+    @Override
+    public int getEnchantmentLevel(ItemStack stack, Holder<Enchantment> enchantment) {
+        return definition$getEnchantmentLevel(stack, enchantment);
+    }
+
+    @Override
     public boolean canDisableShield(ItemStack stack, ItemStack shield, LivingEntity entity, LivingEntity attacker) {
         return definition$canDisableShield(shield, shield, entity, attacker);
     }
 
+    @Override
     public boolean doesSneakBypassUse(ItemStack stack, LevelReader level, BlockPos pos, Player player) {
         return definition$doesSneakBypassUse(stack, level, pos, player);
     }
 
+    @Override
     public boolean shouldCauseBlockBreakReset(ItemStack oldStack, ItemStack newStack) {
         return definition$shouldCauseBlockBreakReset(oldStack, newStack);
     }
 
+    @Override
     public boolean hasCraftingRemainingItem(ItemStack stack) {
         return definition$hasCraftingRemainingItem(stack);
     }
 
+    @Override
     public ItemStack getCraftingRemainingItem(ItemStack itemStack) {
         return definition$getCraftingRemainingItem(itemStack);
     }
 
+    @Override
     public boolean shouldCauseReequipAnimation(ItemStack oldStack, ItemStack newStack, boolean slotChanged) {
         return definition$shouldCauseReequipAnimation(oldStack, newStack, slotChanged);
     }
 
-    public int getDamage(ItemStack stack) {
-        return definition$getDamage(stack);
-    }
-
-    public int getMaxDamage(ItemStack stack) {
-        return definition$getMaxDamage(stack);
-    }
-
     @Override
-    public boolean isCorrectToolForDrops(ItemStack stack, BlockState state) {
-        return definition$isCorrectToolForDrops(stack, state);
+    public InteractionResult use(Level level, Player player, InteractionHand usedHand) {
+        return definition$use(level, player, usedHand);
     }
 }

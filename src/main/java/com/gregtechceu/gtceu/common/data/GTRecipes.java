@@ -1,6 +1,5 @@
 package com.gregtechceu.gtceu.common.data;
 
-import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.api.addon.AddonFinder;
 import com.gregtechceu.gtceu.api.data.chemical.material.ItemMaterialData;
 import com.gregtechceu.gtceu.api.data.chemical.material.Material;
@@ -13,20 +12,23 @@ import com.gregtechceu.gtceu.data.recipe.generated.*;
 import com.gregtechceu.gtceu.data.recipe.misc.*;
 import com.gregtechceu.gtceu.data.recipe.serialized.chemistry.ChemistryRecipes;
 
-import net.minecraft.data.recipes.FinishedRecipe;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.level.block.ComposterBlock;
+import net.minecraft.advancements.Advancement;
+import net.minecraft.advancements.AdvancementHolder;
+import net.minecraft.data.recipes.RecipeOutput;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.item.crafting.Recipe;
+import com.gregtechceu.gtceu.compat.common.conditions.ICondition;
 
-import dev.latvian.mods.kubejs.bindings.event.ServerEvents;
-import dev.latvian.mods.kubejs.recipe.RecipesEventJS;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Set;
 import java.util.function.Consumer;
 
 public class GTRecipes {
 
-    public static final Set<ResourceLocation> RECIPE_FILTERS = new ObjectOpenHashSet<>();
+    public static final Set<Identifier> RECIPE_FILTERS = new ObjectOpenHashSet<>();
 
     /*
      * Called on resource reload in-game.
@@ -37,14 +39,22 @@ public class GTRecipes {
      * This should also be used for recipes that need
      * to respond to a config option in ConfigHolder.
      */
-    public static void recipeAddition(Consumer<FinishedRecipe> originalConsumer) {
-        Consumer<FinishedRecipe> consumer = recipe -> {
-            if (!RECIPE_FILTERS.contains(recipe.getId())) {
-                originalConsumer.accept(recipe);
+    public static void recipeAddition(RecipeOutput originalConsumer) {
+        RecipeOutput consumer = new com.gregtechceu.gtceu.data.recipe.GTRecipeOutput(originalConsumer) {
+
+            @Override
+            public Advancement.@NotNull Builder advancement() {
+                return originalConsumer.advancement();
+            }
+
+            @Override
+            public void accept(@NotNull Identifier id, @NotNull Recipe<?> recipe,
+                               @Nullable AdvancementHolder advancement) {
+                if (!RECIPE_FILTERS.contains(id)) {
+                    com.gregtechceu.gtceu.data.recipe.GTRecipeOutput.accept(originalConsumer, id, recipe, advancement);
+                }
             }
         };
-
-        ComposterRecipes.addComposterRecipes(ComposterBlock.COMPOSTABLES::put);
 
         // Decomposition info loading
         ItemMaterialData.reinitializeMaterialData();
@@ -52,8 +62,7 @@ public class GTRecipes {
 
         // com.gregtechceu.gtceu.data.recipe.generated.*
         for (Material material : GTRegistries.MATERIALS) {
-            if (material.hasFlag(MaterialFlags.NO_UNIFICATION) ||
-                    material.hasFlag(MaterialFlags.DISABLE_MATERIAL_RECIPES)) {
+            if (material.hasFlag(MaterialFlags.DISABLE_MATERIAL_RECIPES)) {
                 continue;
             }
 
@@ -97,13 +106,11 @@ public class GTRecipes {
         EquipmentFoundryRecipes.init(consumer);
         RecipeAddition.init(consumer);
 
-        AddonFinder.getAddons().forEach(addon -> addon.addRecipes(consumer));
+        AddonFinder.getAddonList().forEach(addon -> addon.addRecipes(consumer));
 
         // Must run recycling recipes very last
-        if (!(GTCEu.Mods.isKubeJSLoaded() && KJSCallWrapper.recipeEventHasListeners())) {
-            RecyclingRecipes.init(consumer);
-            ItemMaterialData.resolveItemMaterialInfos(consumer);
-        }
+        RecyclingRecipes.init(consumer);
+        ItemMaterialData.resolveItemMaterialInfos(consumer);
     }
 
     /*
@@ -111,17 +118,12 @@ public class GTRecipes {
      *
      * This is also where any recipe removals should happen.
      */
-    public static void recipeRemoval() {
+    public static void recipeRemoval(Consumer<Identifier> registry) {
+        final Consumer<Identifier> actualConsumer = registry.andThen(RECIPE_FILTERS::add);
         RECIPE_FILTERS.clear();
 
-        RecipeRemoval.init(RECIPE_FILTERS::add);
-        AddonFinder.getAddons().forEach(addon -> addon.removeRecipes(RECIPE_FILTERS::add));
+        RecipeRemoval.init(actualConsumer);
+        AddonFinder.getAddonList().forEach(addon -> addon.removeRecipes(actualConsumer));
     }
 
-    private static class KJSCallWrapper {
-
-        private static boolean recipeEventHasListeners() {
-            return ServerEvents.RECIPES.hasListeners() && RecipesEventJS.instance != null;
-        }
-    }
 }

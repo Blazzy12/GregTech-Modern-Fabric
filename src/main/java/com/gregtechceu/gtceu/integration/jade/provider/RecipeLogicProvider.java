@@ -39,7 +39,7 @@ public class RecipeLogicProvider extends MachineTraitProvider<RecipeLogic, Compo
         if (!capability.isWorking() && capability.isWorkingEnabled()) {
             var failureReason = capability.getBestFailureReason();
             if (failureReason != null) {
-                data.putString("FailureReason", Component.Serializer.toJson(failureReason));
+                data.putString("FailureReason", failureReason.getString());
                 data.putBoolean("Waiting", capability.isWaiting());
             }
         }
@@ -75,11 +75,11 @@ public class RecipeLogicProvider extends MachineTraitProvider<RecipeLogic, Compo
     @Override
     protected void addTooltip(CompoundTag capData, ITooltip tooltip, Player player, BlockAccessor block,
                               BlockEntity blockEntity, IPluginConfig config) {
-        if (capData.getBoolean("Working")) {
-            var recipeInfo = capData.getCompound("Recipe");
+        if (capData.getBooleanOr("Working", false)) {
+            var recipeInfo = capData.getCompoundOrEmpty("Recipe");
             if (!recipeInfo.isEmpty()) {
-                var EUt = recipeInfo.getLong("EUt");
-                var isInput = recipeInfo.getBoolean("isInput");
+                var EUt = recipeInfo.getLongOr("EUt", 0L);
+                var isInput = recipeInfo.getBooleanOr("isInput", false);
                 boolean isSteam = false;
 
                 if (EUt > 0) {
@@ -97,7 +97,7 @@ public class RecipeLogicProvider extends MachineTraitProvider<RecipeLogic, Compo
                         text = Component.translatable("gtceu.jade.fluid_use", FormattingUtil.formatNumbers(EUt))
                                 .withStyle(ChatFormatting.GREEN);
                     } else {
-                        var voltage = recipeInfo.getLong("voltage");
+                        var voltage = recipeInfo.getLongOr("voltage", 0L);
                         var tier = GTUtil.getTierByVoltage(voltage);
                         float minAmperage = (float) EUt / voltage;
 
@@ -128,7 +128,7 @@ public class RecipeLogicProvider extends MachineTraitProvider<RecipeLogic, Compo
                         tooltip.add(Component.translatable("gtceu.top.energy_consumption").append(" ").append(text));
                     } else {
                         tooltip.add(Component.translatable("gtceu.top.energy_production").append(" ").append(text));
-                        long generatorPower = recipeInfo.getLong("generatorPower");
+                        long generatorPower = recipeInfo.getLongOr("generatorPower", 0L);
                         if (generatorPower > 0 && generatorPower < EUt) {
                             tooltip.add(Component.translatable("gtceu.jade.generator.too_small")
                                     .withStyle(ChatFormatting.RED));
@@ -136,10 +136,10 @@ public class RecipeLogicProvider extends MachineTraitProvider<RecipeLogic, Compo
                     }
                 }
             }
-        } else if (capData.contains("FailureReason", Tag.TAG_STRING)) {
-            Component reason = Component.Serializer.fromJson(capData.getString("FailureReason"));
+        } else if (capData.contains("FailureReason")) {
+            Component reason = Component.translatable(capData.getStringOr("FailureReason", ""));
             if (reason != null) {
-                tooltip.add(capData.getBoolean("Waiting") ?
+                tooltip.add(capData.getBooleanOr("Waiting", false) ?
                         Component.translatable("gtceu.recipe_logic.recipe_waiting").withStyle(ChatFormatting.YELLOW) :
                         Component.translatable("gtceu.recipe_logic.setup_fail").withStyle(ChatFormatting.RED));
                 tooltip.add(reason);

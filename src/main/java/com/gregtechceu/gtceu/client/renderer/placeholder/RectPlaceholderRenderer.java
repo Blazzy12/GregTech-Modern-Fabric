@@ -1,12 +1,13 @@
 package com.gregtechceu.gtceu.client.renderer.placeholder;
 
+import net.minecraft.util.LightCoordsUtil;
+
 import com.gregtechceu.gtceu.api.placeholder.IPlaceholderRenderer;
 import com.gregtechceu.gtceu.client.renderer.GTRenderTypes;
 import com.gregtechceu.gtceu.common.machine.multiblock.electric.CentralMonitorMachine;
 import com.gregtechceu.gtceu.common.machine.multiblock.electric.monitor.MonitorGroup;
 
-import net.minecraft.client.renderer.LightTexture;
-import net.minecraft.client.renderer.MultiBufferSource;
+import com.gregtechceu.gtceu.compat.client.render.MultiBufferSource;
 import net.minecraft.nbt.CompoundTag;
 
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -21,14 +22,14 @@ public class RectPlaceholderRenderer implements IPlaceholderRenderer {
         poseStack.pushPose();
         VertexConsumer consumer = buffer.getBuffer(GTRenderTypes.getMonitor());
         Matrix4f pose = poseStack.last().pose();
-        float minX = 0, maxX = tag.getFloat("width");
-        float minY = 0, maxY = tag.getFloat("height");
-        int color = tag.getInt("color");
+        float minX = 0, maxX = tag.getFloatOr("width", 0f);
+        float minY = 0, maxY = tag.getFloatOr("height", 0f);
+        int color = tag.getIntOr("color", 0);
 
-        consumer.vertex(pose, minX, maxY, 0).color(color).uv2(LightTexture.FULL_BRIGHT).endVertex();
-        consumer.vertex(pose, maxX, maxY, 0).color(color).uv2(LightTexture.FULL_BRIGHT).endVertex();
-        consumer.vertex(pose, maxX, minY, 0).color(color).uv2(LightTexture.FULL_BRIGHT).endVertex();
-        consumer.vertex(pose, minX, minY, 0).color(color).uv2(LightTexture.FULL_BRIGHT).endVertex();
+        consumer.addVertex(pose, minX, maxY, 0).setColor(color).setLight(LightCoordsUtil.FULL_BRIGHT);
+        consumer.addVertex(pose, maxX, maxY, 0).setColor(color).setLight(LightCoordsUtil.FULL_BRIGHT);
+        consumer.addVertex(pose, maxX, minY, 0).setColor(color).setLight(LightCoordsUtil.FULL_BRIGHT);
+        consumer.addVertex(pose, minX, minY, 0).setColor(color).setLight(LightCoordsUtil.FULL_BRIGHT);
         poseStack.popPose();
     }
 }

@@ -17,10 +17,10 @@ import com.gregtechceu.gtceu.common.machine.trait.EnvironmentalExplosionTrait;
 import com.gregtechceu.gtceu.config.ConfigHolder;
 import com.gregtechceu.gtceu.utils.GTUtil;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
 import net.minecraft.core.Direction;
-import net.minecraftforge.energy.IEnergyStorage;
-import net.minecraftforge.items.IItemHandlerModifiable;
+import com.gregtechceu.gtceu.compat.energy.IEnergyStorage;
+import com.gregtechceu.gtceu.compat.items.IItemHandlerModifiable;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -153,7 +153,7 @@ public class NotifiableEnergyContainer extends NotifiableRecipeHandlerTrait<Ener
     }
 
     public void serverTick() {
-        if (getMachine().getLevel().isClientSide)
+        if (getMachine().getLevel().isClientSide())
             return;
         if (getEnergyStored() >= getOutputVoltage() && getOutputVoltage() > 0 && getOutputAmperage() > 0) {
             long outputVoltage = getOutputVoltage();

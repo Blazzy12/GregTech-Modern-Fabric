@@ -1,6 +1,6 @@
 {
   "parent": "minecraft:block/block",
-  "loader": "gtceu:machine",
+  "fabric:type": "gtceu:machine",
   "machine": "gtceu:steel_multiblock_tank",
   "texture_overrides": {
     "all": "gtceu:block/casings/solid/machine_casing_solid_steel"

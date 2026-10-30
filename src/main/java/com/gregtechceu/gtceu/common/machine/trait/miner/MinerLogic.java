@@ -3,7 +3,9 @@ package com.gregtechceu.gtceu.common.machine.trait.miner;
 import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.api.capability.IMiner;
 import com.gregtechceu.gtceu.api.capability.recipe.*;
-import com.gregtechceu.gtceu.api.item.MaterialBlockItem;
+import com.gregtechceu.gtceu.api.capability.recipe.IO;
+import com.gregtechceu.gtceu.api.data.chemical.ChemicalHelper;
+import com.gregtechceu.gtceu.api.data.tag.TagPrefix;
 import com.gregtechceu.gtceu.api.item.tool.GTToolType;
 import com.gregtechceu.gtceu.api.machine.trait.recipe.RecipeHandlerList;
 import com.gregtechceu.gtceu.api.machine.trait.recipe.RecipeLogic;
@@ -29,14 +31,15 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.common.Tags;
-import net.minecraftforge.items.IItemHandlerModifiable;
+import com.gregtechceu.gtceu.compat.common.Tags;
+import com.gregtechceu.gtceu.compat.items.IItemHandlerModifiable;
 
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import lombok.Getter;
@@ -142,7 +145,8 @@ public class MinerLogic extends RecipeLogic implements IRecipeCapabilityHolder {
         this.currentRadius = maximumRadius;
         this.maximumRadius = maximumRadius;
         this.isDone = false;
-        this.pickaxeTool = GTMaterialItems.TOOL_ITEMS.get(GTMaterials.Neutronium, GTToolType.PICKAXE).get().get();
+        this.pickaxeTool = GTMaterialItems.TOOL_ITEMS.get(GTMaterials.Neutronium.value(), GTToolType.PICKAXE).get()
+                .get();
         this.capabilitiesProxy = new EnumMap<>(IO.class);
         this.capabilitiesFlat = new EnumMap<>(IO.class);
     }
@@ -159,7 +163,10 @@ public class MinerLogic extends RecipeLogic implements IRecipeCapabilityHolder {
 
     @Override
     public void onMachineLoad() {
-        super.onMachineLoad();
+        if (getMachine().getLevel() != null) {
+            var registry = getMachine().getLevel().registryAccess().lookupOrThrow(Registries.ENCHANTMENT);
+            this.pickaxeTool.enchant(registry.getOrThrow(Enchantments.FORTUNE), fortune);
+        }
 
         this.inputItemHandler = new ItemRecipeHandler(IO.IN,
                 getRLMachine().getRecipeType().getMaxInputs(ItemRecipeCapability.CAP), getMachine());
@@ -190,11 +197,10 @@ public class MinerLogic extends RecipeLogic implements IRecipeCapabilityHolder {
     private static BlockState findMiningReplacementBlock(Level level, BlockPos pos) {
         if (ConfigHolder.INSTANCE.machines.replaceWithCobbleVersion) {
             BlockState oreState = level.getBlockState(pos);
-            if (oreState.getBlock().asItem() instanceof MaterialBlockItem matBlockItem) {
-                var prefix = matBlockItem.tagPrefix;
-                if (!GTBlocks.COBBLE_BLOCKS.containsKey(prefix)) return Blocks.COBBLESTONE.defaultBlockState();
-                return GTBlocks.COBBLE_BLOCKS.get(prefix).get();
-            }
+            TagPrefix prefix = ChemicalHelper.getPrefix(oreState.getBlock());
+            if (prefix == null || !GTBlocks.COBBLE_BLOCKS.containsKey(prefix))
+                return Blocks.COBBLESTONE.defaultBlockState();
+            return GTBlocks.COBBLE_BLOCKS.get(prefix).get();
         }
 
         try {
@@ -564,10 +570,10 @@ public class MinerLogic extends RecipeLogic implements IRecipeCapabilityHolder {
         int calculated = 0;
 
         if (this.minBuildHeight == Integer.MAX_VALUE)
-            this.minBuildHeight = level.getMinBuildHeight();
+            this.minBuildHeight = level.getMinY();
 
         if (this.maxBuildHeight == Integer.MAX_VALUE)
-            this.maxBuildHeight = level.getMaxBuildHeight();
+            this.maxBuildHeight = level.getMaxY();
 
         // keep getting blocks until the target amount is reached
         while (calculated < calcAmount) {
@@ -631,7 +637,7 @@ public class MinerLogic extends RecipeLogic implements IRecipeCapabilityHolder {
      * @return the mean tick time
      */
     private static double getMeanTickTime(Level world) {
-        return mean(Objects.requireNonNull(world.getServer()).tickTimes) * 1.0E-6D;
+        return mean(Objects.requireNonNull(world.getServer()).getTickTimesNanos()) * 1.0E-6D;
     }
 
     /**

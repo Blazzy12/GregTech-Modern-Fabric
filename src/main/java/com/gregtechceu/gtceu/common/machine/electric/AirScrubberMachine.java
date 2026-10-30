@@ -44,7 +44,7 @@ public class AirScrubberMachine extends SimpleTieredMachine {
         GTRecipeBuilder builder = GTRecipeTypes.AIR_SCRUBBER_RECIPES.recipeBuilder(condition.id.withSuffix("_autogen"))
                 .duration(200).EUt(VHA[LV]);
         condition.recipeModifier.accept(builder);
-        return this.recipeLogic.checkMatchedRecipeAvailable(builder.buildRawRecipe());
+        return this.recipeLogic.checkMatchedRecipeAvailable(builder.build());
     }
 
     @Override

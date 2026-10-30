@@ -1,5 +1,9 @@
 package com.gregtechceu.gtceu.client.renderer.machine.impl;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
+import net.minecraft.client.renderer.chunk.ChunkSectionLayer;
+
 import com.gregtechceu.gtceu.api.block.property.GTBlockStateProperties;
 import com.gregtechceu.gtceu.api.machine.multiblock.MultiblockControllerMachine;
 import com.gregtechceu.gtceu.api.machine.multiblock.part.MultiblockPartMachine;
@@ -12,23 +16,20 @@ import com.gregtechceu.gtceu.client.util.RenderUtil;
 import com.gregtechceu.gtceu.common.block.BoilerFireboxType;
 import com.gregtechceu.gtceu.common.data.GTBlocks;
 
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
-import net.minecraft.client.renderer.block.model.BakedQuad;
-import net.minecraft.client.resources.model.BakedModel;
+import com.gregtechceu.gtceu.compat.client.render.MultiBufferSource;
+import com.gregtechceu.gtceu.compat.client.model.BakedQuad;
+import com.gregtechceu.gtceu.compat.client.model.BakedModel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.util.RandomSource;
-import net.minecraft.world.level.BlockAndTintGetter;
+import net.minecraft.client.renderer.block.BlockAndTintGetter;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.client.model.data.ModelData;
+import com.gregtechceu.gtceu.compat.client.model.data.ModelData;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import lombok.Getter;
 import org.jetbrains.annotations.Nullable;
@@ -40,7 +41,7 @@ public class BoilerMultiPartRender extends DynamicRender<MultiblockControllerMac
                                    implements IControllerModelRenderer {
 
     // spotless:off
-    public static final Codec<BoilerMultiPartRender> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+    public static final MapCodec<BoilerMultiPartRender> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
             BlockState.CODEC.fieldOf("firebox_idle").forGetter(BoilerMultiPartRender::getFireboxIdle),
             BlockState.CODEC.fieldOf("firebox_active").forGetter(BoilerMultiPartRender::getFireboxActive),
             BlockState.CODEC.fieldOf("casing_block").forGetter(BoilerMultiPartRender::getCasing)
@@ -90,11 +91,11 @@ public class BoilerMultiPartRender extends DynamicRender<MultiblockControllerMac
 
     @SuppressWarnings("DataFlowIssue")
     @Override
-    @OnlyIn(Dist.CLIENT)
+    @Environment(EnvType.CLIENT)
     public void renderPartModel(List<BakedQuad> quads, MultiblockControllerMachine controller,
                                 MultiblockPartMachine part,
                                 Direction frontFacing, @Nullable Direction side, RandomSource rand,
-                                ModelData modelData, @Nullable RenderType renderType) {
+                                ModelData modelData, @Nullable ChunkSectionLayer renderType) {
         if (this.fireboxIdleModel == null) {
             this.fireboxIdleModel = RenderUtil.getModelForState(fireboxIdle);
         }
@@ -121,15 +122,15 @@ public class BoilerMultiPartRender extends DynamicRender<MultiblockControllerMac
             var recipeLogic = controller.getTrait(RecipeLogic.class);
 
             if (recipeLogic != null && recipeLogic.isWorking()) {
-                emitQuads(quads, fireboxActiveModel, controller.getLevel(), partPos, fireboxActive,
+                emitQuads(quads, fireboxActiveModel, RenderUtil.tintGetter(controller.getLevel()), partPos, fireboxActive,
                         side, rand, modelData, renderType);
             } else {
-                emitQuads(quads, fireboxIdleModel, controller.getLevel(), partPos, fireboxIdle,
+                emitQuads(quads, fireboxIdleModel, RenderUtil.tintGetter(controller.getLevel()), partPos, fireboxIdle,
                         side, rand, modelData, renderType);
             }
         } else {
             // Not exactly one below the controller, so not a firebox
-            emitQuads(quads, casingModel, controller.getLevel(), partPos, casing,
+            emitQuads(quads, casingModel, RenderUtil.tintGetter(controller.getLevel()), partPos, casing,
                     side, rand, modelData, renderType);
         }
     }
@@ -137,7 +138,7 @@ public class BoilerMultiPartRender extends DynamicRender<MultiblockControllerMac
     private static void emitQuads(List<BakedQuad> quads, @Nullable BakedModel model,
                                   BlockAndTintGetter level, BlockPos pos, BlockState state,
                                   @Nullable Direction side, RandomSource rand,
-                                  ModelData modelData, @Nullable RenderType renderType) {
+                                  ModelData modelData, @Nullable ChunkSectionLayer renderType) {
         if (model == null) return;
         modelData = model.getModelData(level, pos, state, modelData);
         quads.addAll(model.getQuads(state, side, rand, modelData, renderType));

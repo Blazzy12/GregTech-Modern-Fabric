@@ -1,11 +1,9 @@
 package com.gregtechceu.gtceu.api.machine.trait.notifiable;
 
 import com.gregtechceu.gtceu.GTCEu;
-import com.gregtechceu.gtceu.api.capability.GTCapability;
-import com.gregtechceu.gtceu.api.capability.IOpticalComputationHatch;
-import com.gregtechceu.gtceu.api.capability.IOpticalComputationProvider;
-import com.gregtechceu.gtceu.api.capability.IOpticalComputationReceiver;
+import com.gregtechceu.gtceu.api.capability.*;
 import com.gregtechceu.gtceu.api.capability.recipe.*;
+import com.gregtechceu.gtceu.api.capability.recipe.IO;
 import com.gregtechceu.gtceu.api.machine.feature.IRecipeLogicMachine;
 import com.gregtechceu.gtceu.api.machine.multiblock.MultiblockControllerMachine;
 import com.gregtechceu.gtceu.api.machine.multiblock.part.MultiblockPartMachine;
@@ -190,7 +188,7 @@ public class NotifiableComputationContainer extends NotifiableRecipeHandlerTrait
         if (io == IO.IN) {
             int availableCWUt = requestCWUt(Integer.MAX_VALUE, true);
             if (availableCWUt >= sum) {
-                if (recipe != null && recipe.data.getBoolean("duration_is_total_cwu")) {
+                if (recipe != null && recipe.data.getBooleanOr("duration_is_total_cwu", false)) {
                     int drawn = provider.requestCWUt(availableCWUt, simulate);
                     if (!simulate) {
                         var machine = getMachine();
@@ -256,13 +254,8 @@ public class NotifiableComputationContainer extends NotifiableRecipeHandlerTrait
             }
         }
         for (Direction direction : GTUtil.DIRECTIONS) {
-            BlockEntity blockEntity = getLevel().getBlockEntity(getBlockPos().relative(direction));
-            if (blockEntity == null) continue;
-
-            // noinspection DataFlowIssue can be null just fine.
-            IOpticalComputationProvider provider = blockEntity
-                    .getCapability(GTCapability.CAPABILITY_COMPUTATION_PROVIDER, direction.getOpposite()).orElse(null);
-            // noinspection ConstantValue can be null because above.
+            IOpticalComputationProvider provider = GTCapabilityHelper.getOpticalComputationProvider(
+                    getMachine().getLevel(), getMachine().getBlockPos().relative(direction), direction.getOpposite());
             if (provider != null && provider != this) {
                 return provider;
             }
@@ -275,12 +268,8 @@ public class NotifiableComputationContainer extends NotifiableRecipeHandlerTrait
         for (Direction direction : GTUtil.DIRECTIONS) {
             BlockEntity blockEntity = getLevel().getBlockEntity(getBlockPos().relative(direction));
             if (blockEntity instanceof OpticalPipeBlockEntity) {
-                // noinspection DataFlowIssue can be null just fine.
-                IOpticalComputationProvider provider = blockEntity
-                        .getCapability(GTCapability.CAPABILITY_COMPUTATION_PROVIDER, direction.getOpposite())
-                        .orElse(null);
-                // noinspection ConstantValue can be null because above.
-                if (provider != null) return provider;
+                return getMachine().getLevel().getCapability(GTCapability.CAPABILITY_COMPUTATION_PROVIDER,
+                        blockEntity.getBlockPos(), blockEntity.getBlockState(), blockEntity, direction.getOpposite());
             }
         }
         return null;

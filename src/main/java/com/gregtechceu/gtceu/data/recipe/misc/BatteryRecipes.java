@@ -6,9 +6,7 @@ import com.gregtechceu.gtceu.common.data.GTBlocks;
 import com.gregtechceu.gtceu.data.recipe.CustomTags;
 import com.gregtechceu.gtceu.data.recipe.VanillaRecipeHelper;
 
-import net.minecraft.data.recipes.FinishedRecipe;
-
-import java.util.function.Consumer;
+import net.minecraft.data.recipes.RecipeOutput;
 
 import static com.gregtechceu.gtceu.api.GTValues.*;
 import static com.gregtechceu.gtceu.api.data.tag.TagPrefix.*;
@@ -18,13 +16,13 @@ import static com.gregtechceu.gtceu.common.data.GTRecipeTypes.*;
 
 public class BatteryRecipes {
 
-    public static void init(Consumer<FinishedRecipe> provider) {
+    public static void init(RecipeOutput provider) {
         standardBatteries(provider);
         gemBatteries(provider);
         batteryBlocks(provider);
     }
 
-    private static void standardBatteries(Consumer<FinishedRecipe> provider) {
+    private static void standardBatteries(RecipeOutput provider) {
         // Tantalum Battery (since it doesn't fit elsewhere)
         ASSEMBLER_RECIPES.recipeBuilder("tantalum_capacitor")
                 .inputItems(dust, Tantalum)
@@ -251,7 +249,7 @@ public class BatteryRecipes {
                 .outputItems(BATTERY_HULL_LARGE_NAQUADRIA).save(provider);
     }
 
-    private static void gemBatteries(Consumer<FinishedRecipe> provider) {
+    private static void gemBatteries(RecipeOutput provider) {
         // Energy Crystal
         MIXER_RECIPES.recipeBuilder("energium_dust")
                 .inputItems(dust, Redstone, 5)
@@ -434,7 +432,7 @@ public class BatteryRecipes {
                 .EUt(300000).duration(2000).save(provider);
     }
 
-    private static void batteryBlocks(Consumer<FinishedRecipe> provider) {
+    private static void batteryBlocks(RecipeOutput provider) {
         // Empty Tier I
         ASSEMBLER_RECIPES.recipeBuilder("empty_tier_1_battery")
                 .inputItems(frameGt, Ultimet)

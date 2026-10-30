@@ -1,5 +1,7 @@
 package com.gregtechceu.gtceu.common.machine.multiblock.primitive;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import com.gregtechceu.gtceu.api.GTValues;
 import com.gregtechceu.gtceu.api.blockentity.BlockEntityCreationInfo;
 import com.gregtechceu.gtceu.api.machine.TickableSubscription;
@@ -15,7 +17,7 @@ import com.gregtechceu.gtceu.common.mui.GTGuiTextures;
 import com.gregtechceu.gtceu.config.ConfigHolder;
 import com.gregtechceu.gtceu.utils.GTUtil;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
@@ -25,8 +27,6 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 
 import brachy.modularui.api.ITheme;
 import brachy.modularui.api.drawable.Text;
@@ -46,12 +46,12 @@ import brachy.modularui.widgets.slot.ItemSlot;
 import brachy.modularui.widgets.slot.ModularSlot;
 import brachy.modularui.widgets.slot.SlotGroup;
 import lombok.Getter;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Set;
 
-import javax.annotation.Nullable;
 import javax.annotation.ParametersAreNonnullByDefault;
 
 @ParametersAreNonnullByDefault
@@ -89,11 +89,11 @@ public class PrimitiveBlastFurnaceMachine extends PrimitiveWorkableMachine imple
     }
 
     public Set<BlockPos> saveOffsets() {
-        return Collections.singleton(new BlockPos(getFrontFacing().getOpposite().getNormal()));
+        return Collections.singleton(BlockPos.ZERO.relative(getFrontFacing().getOpposite()));
     }
 
     @Override
-    @OnlyIn(Dist.CLIENT)
+    @Environment(EnvType.CLIENT)
     public void clientTick() {
         super.clientTick();
         if (isFormed) {
@@ -239,7 +239,7 @@ public class PrimitiveBlastFurnaceMachine extends PrimitiveWorkableMachine imple
     }
 
     private void hurtEntitiesAndBreakSnow() {
-        BlockPos middlePos = getBlockPos().offset(getFrontFacing().getOpposite().getNormal());
+        BlockPos middlePos = getBlockPos().offset(getFrontFacing().getOpposite().getUnitVec3i());
         getLevel().getEntities(null, new AABB(middlePos)).forEach(e -> e.hurt(e.damageSources().lava(), 3.0f));
 
         if (getOffsetTimer() % 10 == 0) {

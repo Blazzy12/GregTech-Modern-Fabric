@@ -1,6 +1,7 @@
 package com.gregtechceu.gtceu.utils;
 
 import com.gregtechceu.gtceu.api.capability.recipe.*;
+import com.gregtechceu.gtceu.api.capability.recipe.IO;
 import com.gregtechceu.gtceu.api.machine.trait.notifiable.NotifiableItemStackHandler;
 import com.gregtechceu.gtceu.api.machine.trait.recipe.RecipeHandlerList;
 import com.gregtechceu.gtceu.api.misc.EnergyContainerList;
@@ -11,7 +12,7 @@ import com.gregtechceu.gtceu.api.transfer.item.CustomItemStackHandler;
 
 import net.minecraft.core.NonNullList;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.crafting.Ingredient;
+import com.gregtechceu.gtceu.compat.common.crafting.SizedIngredient;
 
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import lombok.Getter;
@@ -81,7 +82,7 @@ public class DummyRecipeUtils {
         }
     }
 
-    public static class DummyItemHandler implements IRecipeHandler<Ingredient> {
+    public static class DummyItemHandler implements IRecipeHandler<SizedIngredient> {
 
         @Getter
         public CustomItemStackHandler storage;
@@ -99,8 +100,8 @@ public class DummyRecipeUtils {
         }
 
         @Override
-        public @NotNull List<Ingredient> handleRecipeInner(IO io, GTRecipe recipe, List<Ingredient> left,
-                                                           boolean simulate) {
+        public List<SizedIngredient> handleRecipeInner(IO io, GTRecipe recipe, List<SizedIngredient> left,
+                                                       boolean simulate) {
             return NotifiableItemStackHandler.handleRecipe(io, recipe, left, simulate, handlerIO, storage, null);
         }
 
@@ -129,7 +130,7 @@ public class DummyRecipeUtils {
         }
 
         @Override
-        public RecipeCapability<Ingredient> getCapability() {
+        public RecipeCapability<SizedIngredient> getCapability() {
             return ItemRecipeCapability.CAP;
         }
     }

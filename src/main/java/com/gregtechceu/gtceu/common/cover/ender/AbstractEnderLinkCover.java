@@ -20,7 +20,7 @@ import com.gregtechceu.gtceu.common.mui.GTMuiWidgets;
 
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -221,9 +221,9 @@ public abstract class AbstractEnderLinkCover<T extends VirtualEntry> extends Cov
 
     @Override
     public void pasteConfig(ServerPlayer player, CompoundTag tag) {
-        setColorStr(tag.getString("colorStr"));
-        setPermission(Permissions.values()[tag.getInt("permission")]);
-        setIo(IO.values()[tag.getInt("io")]);
+        setColorStr(tag.getStringOr("colorStr", ""));
+        setPermission(Permissions.values()[tag.getIntOr("permission", 0)]);
+        setIo(IO.values()[tag.getIntOr("io", 0)]);
         super.pasteConfig(player, tag);
     }
 
@@ -261,14 +261,15 @@ public abstract class AbstractEnderLinkCover<T extends VirtualEntry> extends Cov
         syncManager.syncValue("io", ioSync);
         syncManager.syncValue("color", colorSyncer);
 
-        var currentEntry = GenericSyncValue.builder(VirtualEntry.class)
+        var currentEntry = GenericSyncValue.<RegistryFriendlyByteBuf, VirtualEntry>builder(VirtualEntry.class)
+                .adapter(new VirtualEntryAdapter())
                 .getter(this::getEntry)
                 .adapter(new VirtualEntryAdapter())
                 .allowC2S()
                 .build();
         syncManager.syncValue("currentEntry", currentEntry);
 
-        DynamicLinkedSyncHandler<GenericSyncValue<VirtualEntry>> dynamicLinkedSyncHandler = new DynamicLinkedSyncHandler<>(
+        var dynamicLinkedSyncHandler = new DynamicLinkedSyncHandler<>(
                 currentEntry)
                 .widgetProvider((manager, entriesListSyncer) -> createVirtualEntryWidget(manager,
                         entriesListSyncer.getValue(), 18, 18, 0));
@@ -370,13 +371,13 @@ public abstract class AbstractEnderLinkCover<T extends VirtualEntry> extends Cov
                         .widthRelOffset(1f, -20)
                         .value(searchSync)));
 
-        var entries = new GenericListSyncHandler.Builder<VirtualEntry>()
+        var entries = new GenericListSyncHandler.Builder<RegistryFriendlyByteBuf, VirtualEntry>()
                 .getter(() -> this.getVirtualEntries(entry -> entry.getDescription().contains(searchString.get())))
                 .adapter(new VirtualEntryAdapter())
                 .build();
         syncManager.syncValue("entries", entries);
 
-        DynamicLinkedSyncHandler<GenericListSyncHandler<VirtualEntry>> dynamicLinkedSyncHandler = new DynamicLinkedSyncHandler<>(
+        var dynamicLinkedSyncHandler = new DynamicLinkedSyncHandler<>(
                 entries)
                 .widgetProvider((manager, entriesListSyncer) -> {
                     if (entriesListSyncer == null || entriesListSyncer.getValue() == null) return new EmptyWidget();
@@ -407,20 +408,22 @@ public abstract class AbstractEnderLinkCover<T extends VirtualEntry> extends Cov
         return panel;
     }
 
-    private class VirtualEntryAdapter implements IByteBufAdapter<VirtualEntry> {
+    private class VirtualEntryAdapter implements IByteBufAdapter<RegistryFriendlyByteBuf, VirtualEntry> {
 
         @Override
-        public VirtualEntry deserialize(FriendlyByteBuf buffer) {
-            VirtualEntry entry = getEntryType().createInstance();
-            var nbt = buffer.readNbt();
-            if (nbt == null) return entry;
-            entry.deserializeNBT(nbt);
-            return entry;
+        public void encode(RegistryFriendlyByteBuf buffer, VirtualEntry u) {
+            buffer.writeNbt(u.serializeNBT(buffer.registryAccess()));
         }
 
         @Override
-        public void serialize(FriendlyByteBuf buffer, VirtualEntry entry) {
-            buffer.writeNbt(entry.serializeNBT());
+        public VirtualEntry decode(RegistryFriendlyByteBuf buffer) {
+            VirtualEntry entry = getEntryType().createInstance();
+
+            CompoundTag nbt = buffer.readNbt();
+            if (nbt == null) return entry;
+
+            entry.deserializeNBT(buffer.registryAccess(), nbt);
+            return entry;
         }
 
         @Override

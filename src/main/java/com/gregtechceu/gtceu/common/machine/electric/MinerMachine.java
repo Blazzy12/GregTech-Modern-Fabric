@@ -33,7 +33,7 @@ import brachy.modularui.value.sync.PanelSyncManager;
 import brachy.modularui.widget.ParentWidget;
 import brachy.modularui.widgets.ListWidget;
 import brachy.modularui.widgets.layout.Flow;
-import com.mojang.blaze3d.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -190,10 +190,7 @@ public class MinerMachine extends WorkableTieredMachine
                                 .background(GuiTextures.DISPLAY)
                                 .child(textList.heightRel(1.0f).padding(3)))
                         .child(GTMuiMachineUtil
-                                .createSquareSlotGroupFromInventory(exportItems.storage, "export_inv", slot -> {
-                                    slot.getSlot().accessibility(false, true);
-                                    return slot;
-                                }, syncManager)
+                                .createSquareSlotGroupFromInventory(exportItems, "export_inv", syncManager)
                                 .verticalCenter())
                         .padding(4, 0));
     }

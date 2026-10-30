@@ -5,7 +5,7 @@
       "type": "gtceu:fusion_ring"
     }
   ],
-  "loader": "gtceu:machine",
+  "fabric:type": "gtceu:machine",
   "machine": "gtceu:zpm_fusion_reactor",
   "texture_overrides": {
     "all": "gtceu:block/casings/fusion/fusion_casing_mk2"

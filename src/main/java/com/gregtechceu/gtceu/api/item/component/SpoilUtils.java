@@ -7,12 +7,11 @@ import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.MobSpawnType;
+
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.items.IItemHandler;
+import com.gregtechceu.gtceu.compat.capabilities.Capabilities;
+import com.gregtechceu.gtceu.compat.items.IItemHandler;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -28,18 +27,15 @@ public class SpoilUtils {
     }
 
     public static void updateBlock(Level level, BlockPos pos) {
-        updateBlock(level.getBlockEntity(pos));
+        for (Direction side : Direction.values()) updateBlock(level, pos, side);
+        updateBlock(level, pos, null);
     }
 
-    public static void updateBlock(BlockEntity blockEntity) {
-        for (Direction side : Direction.values()) updateBlock(blockEntity, side);
-        updateBlock(blockEntity, null);
-    }
-
-    public static void updateBlock(BlockEntity blockEntity, Direction side) {
-        blockEntity.getCapability(ForgeCapabilities.ITEM_HANDLER, side)
-                .resolve()
-                .ifPresent(handler -> updateHandler(handler, blockEntity.getLevel(), blockEntity.getBlockPos(), side));
+    public static void updateBlock(Level level, BlockPos pos, Direction side) {
+        if (level == null) return;
+        IItemHandler handler = level.getCapability(Capabilities.ItemHandler.BLOCK, pos, side);
+        if (handler != null)
+            updateHandler(handler, level, pos, side);
     }
 
     public static void updateHandler(IItemHandler handler, Level level, @Nullable BlockPos pos,
@@ -66,7 +62,7 @@ public class SpoilUtils {
                         }
                     }
                 }
-                for (int i = 0; i < count; i++) type.spawn(level, pos, MobSpawnType.SPAWN_EGG);
+                for (int i = 0; i < count; i++) type.spawn(level, pos, net.minecraft.world.entity.EntitySpawnReason.SPAWN_ITEM_USE);
             }
         }
     }

@@ -2,38 +2,38 @@ package com.gregtechceu.gtceu.data.recipe.misc;
 
 import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.api.data.chemical.ChemicalHelper;
-import com.gregtechceu.gtceu.api.data.chemical.material.Material;
 import com.gregtechceu.gtceu.api.data.chemical.material.stack.MaterialEntry;
-import com.gregtechceu.gtceu.api.item.armor.ModularArmorItem;
 import com.gregtechceu.gtceu.api.recipe.FacadeCoverRecipe;
 import com.gregtechceu.gtceu.api.recipe.ingredient.FluidContainerIngredient;
-import com.gregtechceu.gtceu.api.recipe.ingredient.NBTPredicateIngredient;
-import com.gregtechceu.gtceu.api.recipe.ingredient.nbtpredicate.EqualsNBTPredicate;
+import com.gregtechceu.gtceu.api.registry.registrate.entry.MaterialRegistryEntry;
 import com.gregtechceu.gtceu.common.data.GTBlocks;
 import com.gregtechceu.gtceu.common.data.GTItems;
+import com.gregtechceu.gtceu.common.data.item.GTDataComponents;
 import com.gregtechceu.gtceu.common.pipelike.duct.DuctPipeType;
 import com.gregtechceu.gtceu.data.recipe.CustomTags;
 import com.gregtechceu.gtceu.data.recipe.VanillaRecipeHelper;
 
-import net.minecraft.data.recipes.FinishedRecipe;
+import net.minecraft.data.recipes.RecipeOutput;
 import net.minecraft.data.recipes.SpecialRecipeBuilder;
-import net.minecraft.nbt.ByteTag;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.ItemTags;
+import net.minecraft.util.Unit;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.Ingredient;
-import net.minecraft.world.item.crafting.RecipeSerializer;
+import net.minecraft.world.item.crafting.SmithingTransformRecipe;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraftforge.common.Tags;
-import net.minecraftforge.common.crafting.DifferenceIngredient;
+import com.gregtechceu.gtceu.compat.common.Tags;
+import com.gregtechceu.gtceu.compat.common.crafting.DataComponentIngredient;
+import net.fabricmc.fabric.api.recipe.v1.ingredient.DefaultCustomIngredients;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.world.item.crafting.Recipe;
+import net.minecraft.world.item.ItemStackTemplate;
+import java.util.Optional;
 
-import com.google.gson.JsonObject;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
-import java.util.function.Consumer;
 
 import static com.gregtechceu.gtceu.api.data.tag.TagPrefix.*;
 import static com.gregtechceu.gtceu.common.data.GTItems.*;
@@ -41,7 +41,25 @@ import static com.gregtechceu.gtceu.common.data.GTMaterials.*;
 
 public class CraftingRecipeLoader {
 
-    public static void init(Consumer<FinishedRecipe> provider) {
+    private static void netheritePlatingRecipes(RecipeOutput provider) {
+        for (var armor : List.of(HYDRAULIC_HELMET, HYDRAULIC_CHESTPLATE, HYDRAULIC_LEGGINGS, HYDRAULIC_BOOTS,
+                NANO_HELMET, NANO_CHESTPLATE, NANO_LEGGINGS, NANO_BOOTS,
+                QUANTUM_HELMET, QUANTUM_CHESTPLATE, QUANTUM_LEGGINGS, QUANTUM_BOOTS)) {
+            ItemStack result = new ItemStack(armor.get());
+            result.set(GTDataComponents.NETHERITE_PLATED.get(), Unit.INSTANCE);
+            // armor without plating; 26.x places recipes by item, so "armor minus plated armor" would be empty
+            Ingredient base = DefaultCustomIngredients.components(Ingredient.of(armor.get()),
+                    net.minecraft.core.component.DataComponentPatch.builder()
+                            .remove(GTDataComponents.NETHERITE_PLATED.get()).build());
+            provider.accept(ResourceKey.create(Registries.RECIPE, GTCEu.id("netherite_plated_" + armor.getId().getPath())),
+                    new SmithingTransformRecipe(new Recipe.CommonInfo(true),
+                            Optional.of(Ingredient.of(Items.NETHERITE_UPGRADE_SMITHING_TEMPLATE)), base,
+                            Optional.of(Ingredient.of(Items.NETHERITE_INGOT)), ItemStackTemplate.fromNonEmptyStack(result)),
+                    null);
+        }
+    }
+
+    public static void init(RecipeOutput provider) {
         netheritePlatingRecipes(provider);
 
         VanillaRecipeHelper.addShapedRecipe(provider, "small_wooden_pipe", ChemicalHelper.get(pipeSmallFluid, Wood),
@@ -119,8 +137,7 @@ public class CraftingRecipeLoader {
         VanillaRecipeHelper.addSmeltingRecipe(provider, "fireclay_brick", COMPRESSED_FIRECLAY.asStack(),
                 FIRECLAY_BRICK.asStack(), 0.3f);
 
-        VanillaRecipeHelper.addSmeltingRecipe(provider, "wrought_iron_nugget",
-                ChemicalHelper.getTagOrThrow(nugget, Iron),
+        VanillaRecipeHelper.addSmeltingRecipe(provider, "wrought_iron_nugget", ChemicalHelper.getTag(nugget, Iron),
                 ChemicalHelper.get(nugget, WroughtIron));
         VanillaRecipeHelper.addSmeltingRecipe(provider, "wrought_iron_ingot",
                 ChemicalHelper.getTagOrThrow(ingot, Iron),
@@ -256,17 +273,6 @@ public class CraftingRecipeLoader {
                 "   ", 'S', SHAPE_EMPTY.asStack());
         VanillaRecipeHelper.addStrictShapedRecipe(provider, "shape_mold_plate", SHAPE_MOLD_PLATE.asStack(), " h ",
                 " S ", "   ", 'S', SHAPE_EMPTY.asStack());
-        VanillaRecipeHelper.addStrictShapedRecipe(provider, "shape_mold_pipe_huge",
-                SHAPE_MOLD_HUGE_PIPE.asStack(), "   ", "   ", "hS ", 'S', SHAPE_EMPTY.asStack());
-        VanillaRecipeHelper.addStrictShapedRecipe(provider, "shape_mold_pipe_large",
-                SHAPE_MOLD_LARGE_PIPE.asStack(), "   ", "h  ", " S ", 'S', SHAPE_EMPTY.asStack());
-        VanillaRecipeHelper.addStrictShapedRecipe(provider, "shape_mold_pipe_normal",
-                SHAPE_MOLD_NORMAL_PIPE.asStack(), "   ", " h ", " S ", 'S', SHAPE_EMPTY.asStack());
-        VanillaRecipeHelper.addStrictShapedRecipe(provider, "shape_mold_pipe_small",
-                SHAPE_MOLD_SMALL_PIPE.asStack(), "   ", "  h", " S ", 'S', SHAPE_EMPTY.asStack());
-        VanillaRecipeHelper.addStrictShapedRecipe(provider, "shape_mold_pipe_tiny",
-                SHAPE_MOLD_TINY_PIPE.asStack(), "   ", "   ", " Sh", 'S', SHAPE_EMPTY.asStack());
-
         ///////////////////////////////////////////////////
         // Armors //
         ///////////////////////////////////////////////////
@@ -320,10 +326,11 @@ public class CraftingRecipeLoader {
         ///////////////////////////////////////////////////
         // Special //
         ///////////////////////////////////////////////////
-        SpecialRecipeBuilder.special(FacadeCoverRecipe.SERIALIZER).save(provider, "gtceu:crafting/facade_cover");
+        SpecialRecipeBuilder.special(() -> FacadeCoverRecipe.INSTANCE)
+                .save(provider, ResourceKey.create(Registries.RECIPE, FacadeCoverRecipe.ID));
     }
 
-    private static void addDuctRecipes(@NotNull Consumer<FinishedRecipe> provider, @NotNull Material material,
+    private static void addDuctRecipes(@NotNull RecipeOutput provider, @NotNull MaterialRegistryEntry material,
                                        int outputAmount) {
         VanillaRecipeHelper.addShapedRecipe(provider, "small_duct_%s".formatted(material.getName()),
                 GTBlocks.DUCT_PIPES[DuctPipeType.SMALL.ordinal()].asStack(outputAmount * 2), "w", "X", "h",
@@ -339,52 +346,7 @@ public class CraftingRecipeLoader {
                 'X', new MaterialEntry(plateDouble, material));
     }
 
-    private static void netheritePlatingRecipes(Consumer<FinishedRecipe> provider) {
-        for (var armor : List.of(HYDRAULIC_HELMET, HYDRAULIC_CHESTPLATE, HYDRAULIC_LEGGINGS, HYDRAULIC_BOOTS,
-                NANO_HELMET, NANO_CHESTPLATE, NANO_LEGGINGS, NANO_BOOTS,
-                QUANTUM_HELMET, QUANTUM_CHESTPLATE, QUANTUM_LEGGINGS, QUANTUM_BOOTS)) {
-            ItemStack result = new ItemStack(armor.get());
-            result.getOrCreateTag().putBoolean(ModularArmorItem.NETHERITE_PLATED_TAG, true);
-
-            var armorItem = armor.get().getDefaultInstance();
-            Ingredient base = DifferenceIngredient.of(Ingredient.of(armorItem),
-                    NBTPredicateIngredient.of(armorItem,
-                            new EqualsNBTPredicate(ModularArmorItem.NETHERITE_PLATED_TAG, ByteTag.valueOf(true))));
-
-            provider.accept(new FinishedRecipe() {
-
-                @Override
-                public void serializeRecipeData(JsonObject json) {
-                    json.add("template", Ingredient.of(Items.NETHERITE_UPGRADE_SMITHING_TEMPLATE).toJson());
-                    json.add("addition", Ingredient.of(Items.NETHERITE_INGOT).toJson());
-                    json.add("base", base.toJson());
-                    json.add("result", Ingredient.of(result).toJson());
-                }
-
-                @Override
-                public ResourceLocation getId() {
-                    return GTCEu.id("netherite_plated_" + armor.getId().getPath());
-                }
-
-                @Override
-                public RecipeSerializer<?> getType() {
-                    return RecipeSerializer.SMITHING_TRANSFORM;
-                }
-
-                @Override
-                public @Nullable JsonObject serializeAdvancement() {
-                    return null;
-                }
-
-                @Override
-                public @Nullable ResourceLocation getAdvancementId() {
-                    return null;
-                }
-            });
-        }
-    }
-
-    // private static void registerFacadeRecipe(Consumer<FinishedRecipe> provider, Material material, int facadeAmount)
+    // private static void registerFacadeRecipe(RecipeOutput provider, Material material, int facadeAmount)
     // {
     // OreIngredient ingredient = new OreIngredient(new MaterialEntry(plate, material).toString());
     // ForgeRegistries.RECIPES.register(new FacadeRecipe(null, ingredient, facadeAmount).setRegistryName("facade_" +

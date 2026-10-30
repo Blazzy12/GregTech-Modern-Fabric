@@ -12,7 +12,7 @@ import com.gregtechceu.gtceu.common.data.GTMaterials;
 import com.gregtechceu.gtceu.common.data.GTRecipeTypes;
 
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -35,7 +35,7 @@ public class LatheRecipeLogic extends RecipeLogic {
 
         @Override
         public void buildRepresentativeRecipes() {
-            var type = GTRecipeTypes.LATHE_RECIPES;
+            var type = GTRecipeTypes.LATHE_RECIPES.value();
             for (var category : type.getCategories()) {
                 for (var recipe : List.copyOf(type.getRecipesInCategory(category))) {
                     // Both viewers may use this hook, don't actually generate recipeDB entries for synth representative
@@ -69,13 +69,13 @@ public class LatheRecipeLogic extends RecipeLogic {
     public static @Nullable GTRecipe createLubricatedRecipe(GTRecipe match) {
         if (!isLubricatedRod(match)) return null;
 
-        var rodId = ResourceLocation.tryParse(match.data.getString(LUBRICATED_ROD));
+        var rodId = Identifier.tryParse(match.data.getStringOr(LUBRICATED_ROD, ""));
         if (rodId == null || !BuiltInRegistries.ITEM.containsKey(rodId)) {
             return null;
         }
         var wet = match.recipeType.recipeBuilder(match.id)
                 .inputFluids(GTMaterials.Lubricant, LUBRICANT_AMOUNT)
-                .outputItems(BuiltInRegistries.ITEM.get(rodId), 2).buildRawRecipe();
+                .outputItems(BuiltInRegistries.ITEM.getValue(rodId), 2).build();
         // Handle before modifiers so lube is handled properly, eg. 2 parallel = 50mb lube.
         var prepared = match.copy();
         prepared.inputs.putAll(wet.inputs);

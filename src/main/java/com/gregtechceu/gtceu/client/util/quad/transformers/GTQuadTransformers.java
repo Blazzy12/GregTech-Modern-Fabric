@@ -1,12 +1,11 @@
 package com.gregtechceu.gtceu.client.util.quad.transformers;
 
 import net.minecraft.client.renderer.FaceInfo;
-import net.minecraft.client.renderer.block.model.BakedQuad;
+import com.gregtechceu.gtceu.compat.client.model.BakedQuad;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.core.Direction;
-import net.minecraft.util.Mth;
-import net.minecraftforge.client.model.IQuadTransformer;
-import net.minecraftforge.client.model.QuadTransformers;
+import com.gregtechceu.gtceu.compat.client.model.IQuadTransformer;
+import com.gregtechceu.gtceu.compat.client.model.QuadTransformers;
 
 import java.lang.reflect.Array;
 
@@ -26,9 +25,9 @@ public final class GTQuadTransformers {
 
             for (int i = 0; i < 4; i++) {
                 FaceInfo.VertexInfo normal = faceInfo.getVertexInfo(i);
-                int xNormal = Direction.from3DDataValue(normal.xFace).getStepX();
-                int yNormal = Direction.from3DDataValue(normal.yFace).getStepY();
-                int zNormal = Direction.from3DDataValue(normal.zFace).getStepZ();
+                int xNormal = step(normal.xFace());
+                int yNormal = step(normal.yFace());
+                int zNormal = step(normal.zFace());
 
                 int offset = i * IQuadTransformer.STRIDE + IQuadTransformer.POSITION;
                 float x = Float.intBitsToFloat(vertices[offset]);
@@ -46,6 +45,14 @@ public final class GTQuadTransformers {
         };
     }
 
+    /** @return which way a vertex's corner points along its axis: +1 at the maximum, -1 at the minimum */
+    private static int step(FaceInfo.Extent extent) {
+        return switch (extent) {
+            case MAX_X, MAX_Y, MAX_Z -> 1;
+            case MIN_X, MIN_Y, MIN_Z -> -1;
+        };
+    }
+
     public static BakedQuad setSprite(BakedQuad quad, TextureAtlasSprite sprite) {
         TextureAtlasSprite oldSprite = quad.getSprite();
         int[] vertices = quad.getVertices().clone();
@@ -55,23 +62,24 @@ public final class GTQuadTransformers {
             float u = Float.intBitsToFloat(vertices[offset]);
             float v = Float.intBitsToFloat(vertices[offset + 1]);
 
-            // same as sprite.getX(oldSprite.getXOffset(x)), but we don't multiply and divide in between
-            u = Mth.map(u, oldSprite.getU0(), oldSprite.getU1(), sprite.getU0(), sprite.getU1());
-            v = Mth.map(v, oldSprite.getV0(), oldSprite.getV1(), sprite.getV0(), sprite.getV1());
+            u = sprite.getU((u - oldSprite.getU0()) / (oldSprite.getU1() - oldSprite.getU0()));
+            v = sprite.getV((v - oldSprite.getV0()) / (oldSprite.getV1() - oldSprite.getV0()));
 
             vertices[offset] = Float.floatToRawIntBits(u);
             vertices[offset + 1] = Float.floatToRawIntBits(v);
         }
         return new BakedQuad(vertices, quad.getTintIndex(), quad.getDirection(),
                 sprite, quad.isShade(), quad.hasAmbientOcclusion())
-                .gtceu$setTextureKey(quad.gtceu$getTextureKey());
+                .gtceu$setTextureKey(quad.gtceu$getTextureKey())
+                .gtceu$setFaceLayer(quad.gtceu$getFaceLayer());
     }
 
     public static BakedQuad setColor(BakedQuad quad, int argbColor, boolean clearTintIndex) {
         int[] vertices = quad.getVertices().clone();
         BakedQuad copy = new BakedQuad(vertices, clearTintIndex ? -1 : quad.getTintIndex(), quad.getDirection(),
                 quad.getSprite(), quad.isShade(), quad.hasAmbientOcclusion())
-                .gtceu$setTextureKey(quad.gtceu$getTextureKey());
+                .gtceu$setTextureKey(quad.gtceu$getTextureKey())
+                .gtceu$setFaceLayer(quad.gtceu$getFaceLayer());
 
         QuadTransformers.applyingColor(argbColor).processInPlace(copy);
         return copy;
@@ -107,7 +115,8 @@ public final class GTQuadTransformers {
     public static BakedQuad copy(BakedQuad quad) {
         return new BakedQuad(quad.getVertices().clone(), quad.getTintIndex(), quad.getDirection(),
                 quad.getSprite(), quad.isShade(), quad.hasAmbientOcclusion())
-                .gtceu$setTextureKey(quad.gtceu$getTextureKey());
+                .gtceu$setTextureKey(quad.gtceu$getTextureKey())
+                .gtceu$setFaceLayer(quad.gtceu$getFaceLayer());
     }
 
     public static int[] getPackedLights(BakedQuad quad) {

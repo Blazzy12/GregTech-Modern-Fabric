@@ -7,14 +7,13 @@ import com.gregtechceu.gtceu.api.machine.feature.ITieredMachine;
 import com.gregtechceu.gtceu.api.machine.trait.recipe.RecipeLogic;
 import com.gregtechceu.gtceu.api.sync_system.annotations.SaveField;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
-
 import lombok.Getter;
 
-import javax.annotation.ParametersAreNonnullByDefault;
-
-@ParametersAreNonnullByDefault
-@MethodsReturnNonnullByDefault
+/**
+ * @author screret
+ * @date 2023/7/11
+ * @implNote TieredWorkableElectricMultiblockMachine
+ */
 public class TieredWorkableElectricMultiblockMachine extends WorkableElectricMultiblockMachine
                                                      implements ITieredMachine, IOverclockMachine {
 

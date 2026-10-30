@@ -1,27 +1,37 @@
 package com.gregtechceu.gtceu.api.placeholder;
 
-import com.gregtechceu.gtceu.utils.GTUtil;
-
 import net.minecraft.ChatFormatting;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.StringTag;
-import net.minecraft.nbt.Tag;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.nbt.*;
 import net.minecraft.network.chat.*;
 
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.*;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.UnaryOperator;
+import java.util.stream.Collectors;
 
 @Accessors(chain = true)
 public class MultiLineComponent extends ArrayList<MutableComponent> {
+
+    // spotless:off
+    public static final Codec<MultiLineComponent> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+            ComponentSerialization.CODEC.listOf().fieldOf("text").forGetter(MultiLineComponent::toImmutable),
+            GraphicsComponent.CODEC.listOf().orElse(Collections.emptyList()).fieldOf("graphics").forGetter(MultiLineComponent::getGraphics)
+    ).apply(instance, MultiLineComponent::of));
+    // spotless:on
+
+    public MultiLineComponent() {}
 
     @Getter
     @Setter
@@ -31,12 +41,32 @@ public class MultiLineComponent extends ArrayList<MutableComponent> {
     private final List<GraphicsComponent> graphics = new ArrayList<>();
 
     public MultiLineComponent(List<MutableComponent> components) {
-        super();
-        this.addAll(components);
+        super(components);
+    }
+
+    protected static MultiLineComponent of(List<Component> lines, List<GraphicsComponent> graphics) {
+        MultiLineComponent component = lines.stream()
+                .map(Component::copy)
+                .collect(Collectors.toCollection(MultiLineComponent::new));
+        component.addGraphics(graphics);
+        return component;
+    }
+
+    public static MultiLineComponent of(List<Component> lines) {
+        List<MutableComponent> mutableLines = lines.stream()
+                .map(Component::copy)
+                .toList();
+        return new MultiLineComponent(mutableLines);
     }
 
     public static MultiLineComponent of(Component c) {
-        return new MultiLineComponent(List.of(c.copy()));
+        return MultiLineComponent.of(c.copy());
+    }
+
+    public static MultiLineComponent of(MutableComponent c) {
+        MultiLineComponent value = new MultiLineComponent();
+        value.add(c);
+        return value;
     }
 
     public static MultiLineComponent literal(char c) {
@@ -96,8 +126,9 @@ public class MultiLineComponent extends ArrayList<MutableComponent> {
     }
 
     public void append(@Nullable String s) {
-        if (s != null)
-            GTUtil.getLast(this).append(s);
+        if (s != null) {
+            this.getLast().append(s);
+        }
     }
 
     public void append(char c) {
@@ -108,10 +139,15 @@ public class MultiLineComponent extends ArrayList<MutableComponent> {
         if (lines == null) return this;
         if (lines.isEmpty()) return this;
         for (Component line : lines) {
-            GTUtil.getLast(this).append(line);
-            this.add(MutableComponent.create(ComponentContents.EMPTY));
+            this.getLast().append(line);
+            this.add(Component.empty());
         }
-        this.remove(this.size() - 1);
+        this.removeLast();
+        return this;
+    }
+
+    public MultiLineComponent append(@NotNull Component line) {
+        this.getLast().append(line);
         return this;
     }
 
@@ -122,7 +158,7 @@ public class MultiLineComponent extends ArrayList<MutableComponent> {
     }
 
     public void appendNewline() {
-        this.add(MutableComponent.create(ComponentContents.EMPTY));
+        this.add(Component.empty());
     }
 
     public MultiLineComponent withStyle(Style style) {
@@ -131,7 +167,7 @@ public class MultiLineComponent extends ArrayList<MutableComponent> {
             out.append(MultiLineComponent.of(c.withStyle(style)));
             out.appendNewline();
         }
-        if (!out.isEmpty()) out.remove(out.size() - 1);
+        if (!out.isEmpty()) out.removeLast();
         return out;
     }
 
@@ -141,7 +177,7 @@ public class MultiLineComponent extends ArrayList<MutableComponent> {
             out.append(MultiLineComponent.of(c.withStyle(style)));
             out.appendNewline();
         }
-        if (!out.isEmpty()) out.remove(out.size() - 1);
+        if (!out.isEmpty()) out.removeLast();
         out.addGraphics(this.getGraphics());
         return out;
     }
@@ -149,10 +185,10 @@ public class MultiLineComponent extends ArrayList<MutableComponent> {
     public MultiLineComponent withStyle(ChatFormatting... style) {
         MultiLineComponent out = MultiLineComponent.empty();
         for (MutableComponent c : this) {
-            out.append(MultiLineComponent.of(c.withStyle(style)));
+            out.append(c.withStyle(style));
             out.appendNewline();
         }
-        if (!out.isEmpty()) out.remove(out.size() - 1);
+        if (!out.isEmpty()) out.removeLast();
         out.addGraphics(this.getGraphics());
         return out;
     }
@@ -161,34 +197,34 @@ public class MultiLineComponent extends ArrayList<MutableComponent> {
         return new ArrayList<>(this);
     }
 
-    public Tag toTag() {
+    public Tag toTag(HolderLookup.Provider registries) {
         CompoundTag compoundTag = new CompoundTag();
         ListTag tag = new ListTag();
         for (MutableComponent component : this) {
-            tag.add(StringTag.valueOf(Component.Serializer.toJson(component)));
+            tag.add(StringTag.valueOf(com.gregtechceu.gtceu.compat.common.util.ComponentJson.toJson(component, registries)));
         }
         compoundTag.put("text", tag);
         ListTag graphicsTag = new ListTag();
         for (GraphicsComponent component : this.getGraphics()) {
-            graphicsTag.add(component.toTag());
+            graphicsTag.add(GraphicsComponent.CODEC.encodeStart(NbtOps.INSTANCE, component).result().orElseThrow());
         }
         compoundTag.put("graphics", graphicsTag);
         return compoundTag;
     }
 
-    public static MultiLineComponent fromTag(@Nullable Tag tag) {
+    public static MultiLineComponent fromTag(@Nullable Tag tag, HolderLookup.Provider registries) {
         MultiLineComponent out = MultiLineComponent.empty();
         out.clear();
         if (tag == null) return out;
         if (tag instanceof ListTag listTag) {
             for (Tag i : listTag) {
-                out.add(Component.Serializer.fromJson(i.getAsString()));
+                out.add(com.gregtechceu.gtceu.compat.common.util.ComponentJson.fromJson(i.asString().orElse(""), registries));
             }
         } else if (tag instanceof CompoundTag compoundTag) {
-            ListTag textTag = compoundTag.getList("text", Tag.TAG_STRING);
-            for (Tag i : textTag) out.add(Component.Serializer.fromJson(i.getAsString()));
-            ListTag graphicsTag = compoundTag.getList("graphics", Tag.TAG_COMPOUND);
-            for (Tag i : graphicsTag) out.addGraphics(GraphicsComponent.fromTag(i));
+            ListTag textTag = compoundTag.getListOrEmpty("text");
+            for (Tag i : textTag) out.add(com.gregtechceu.gtceu.compat.common.util.ComponentJson.fromJson(i.asString().orElse(""), registries));
+            ListTag graphicsTag = compoundTag.getListOrEmpty("graphics");
+            for (Tag i : graphicsTag) out.addGraphics(GraphicsComponent.CODEC.parse(NbtOps.INSTANCE, i).getOrThrow());
         }
         return out;
     }

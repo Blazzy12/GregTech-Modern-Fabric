@@ -1,19 +1,30 @@
 package com.gregtechceu.gtceu.client.model.item;
 
+import com.gregtechceu.gtceu.compat.client.model.VanillaUnbakedModel;
+
+import net.minecraft.client.resources.model.ModelBaker;
+
+import net.minecraft.client.renderer.block.dispatch.ModelState;
+
+import net.minecraft.client.resources.model.sprite.Material;
+
+import com.gregtechceu.gtceu.compat.client.model.UnbakedModel;
+
 import com.gregtechceu.gtceu.GTCEu;
 
-import net.minecraft.client.renderer.block.model.BlockModel;
-import net.minecraft.client.renderer.block.model.ItemOverrides;
+import com.gregtechceu.gtceu.compat.client.model.ItemOverrides;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.client.resources.model.*;
-import net.minecraft.resources.ResourceLocation;
+
+import com.gregtechceu.gtceu.compat.client.model.BakedModel;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemDisplayContext;
-import net.minecraftforge.client.extensions.common.IClientItemExtensions;
-import net.minecraftforge.client.model.BakedModelWrapper;
-import net.minecraftforge.client.model.generators.CustomLoaderBuilder;
-import net.minecraftforge.client.model.generators.ModelBuilder;
-import net.minecraftforge.client.model.geometry.*;
-import net.minecraftforge.common.data.ExistingFileHelper;
+import com.gregtechceu.gtceu.compat.client.model.BakedModelWrapper;
+import com.gregtechceu.gtceu.compat.client.model.generators.CustomLoaderBuilder;
+import com.gregtechceu.gtceu.compat.client.model.generators.ModelBuilder;
+import com.gregtechceu.gtceu.compat.client.model.geometry.IGeometryBakingContext;
+import com.gregtechceu.gtceu.compat.client.model.geometry.IGeometryLoader;
+import com.gregtechceu.gtceu.compat.client.model.geometry.IUnbakedGeometry;
+import com.gregtechceu.gtceu.compat.common.data.ExistingFileHelper;
 
 import com.google.gson.JsonDeserializationContext;
 import com.google.gson.JsonObject;
@@ -37,29 +48,15 @@ import java.util.function.Function;
 // spotless:on
 public class CustomItemRendererWrapperModel implements IUnbakedGeometry<CustomItemRendererWrapperModel> {
 
-    public static final ResourceLocation ID = GTCEu.id("custom_item_renderer_wrapper");
+    public static final Identifier ID = GTCEu.id("custom_item_renderer_wrapper");
 
-    private final BlockModel baseModel;
-
-    public CustomItemRendererWrapperModel(BlockModel baseModel) {
-        this.baseModel = baseModel;
-    }
+    public CustomItemRendererWrapperModel() {}
 
     @Override
     public BakedModel bake(IGeometryBakingContext context, ModelBaker baker,
                            Function<Material, TextureAtlasSprite> spriteGetter, ModelState modelState,
-                           ItemOverrides overrides, ResourceLocation modelLocation) {
-        BlockModel owner = baseModel;
-        if (context instanceof BlockGeometryBakingContext blockContext) owner = blockContext.owner;
-
-        BakedModel originalModel = baseModel.bake(baker, owner, spriteGetter, modelState, modelLocation,
-                context.isGui3d());
-        return new Baked(originalModel);
-    }
-
-    @Override
-    public void resolveParents(Function<ResourceLocation, UnbakedModel> modelGetter, IGeometryBakingContext context) {
-        baseModel.resolveParents(modelGetter);
+                           ItemOverrides itemOverrides) {
+        return new Baked(VanillaUnbakedModel.bakeVanilla(context.getBaseModel(), baker, modelState));
     }
 
     public static final class Baked extends BakedModelWrapper<BakedModel> {
@@ -72,13 +69,6 @@ public class CustomItemRendererWrapperModel implements IUnbakedGeometry<CustomIt
         public boolean isCustomRenderer() {
             return true;
         }
-
-        @Override
-        public BakedModel applyTransform(ItemDisplayContext cameraTransformType, PoseStack poseStack,
-                                         boolean applyLeftHandTransform) {
-            super.applyTransform(cameraTransformType, poseStack, applyLeftHandTransform);
-            return this;
-        }
     }
 
     public static final class Loader implements IGeometryLoader<CustomItemRendererWrapperModel> {
@@ -89,17 +79,15 @@ public class CustomItemRendererWrapperModel implements IUnbakedGeometry<CustomIt
 
         @Override
         public CustomItemRendererWrapperModel read(JsonObject json, JsonDeserializationContext context) {
-            // remove the loader field and parse it again as a normal vanilla model
-            json.remove("loader");
-
-            return new CustomItemRendererWrapperModel(context.deserialize(json, BlockModel.class));
+            // the rest of the JSON is a normal vanilla model, which the context hands to bake
+            return new CustomItemRendererWrapperModel();
         }
     }
 
     public static final class Builder<T extends ModelBuilder<T>> extends CustomLoaderBuilder<T> {
 
         public Builder(T parent, ExistingFileHelper existingFileHelper) {
-            super(ID, parent, existingFileHelper);
+            super(ID, parent, existingFileHelper, true);
         }
 
         public static <T extends ModelBuilder<T>> Builder<T> begin(T parent, ExistingFileHelper existingFileHelper) {

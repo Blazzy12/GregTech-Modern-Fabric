@@ -1,27 +1,29 @@
 package com.gregtechceu.gtceu.client.model.machine.multipart;
 
+import net.minecraft.client.renderer.chunk.ChunkSectionLayer;
+
 import com.gregtechceu.gtceu.api.machine.MachineDefinition;
 import com.gregtechceu.gtceu.api.machine.MetaMachine;
 import com.gregtechceu.gtceu.client.model.GTModelProperties;
 import com.gregtechceu.gtceu.client.model.machine.MachineRenderState;
 
-import net.minecraft.Util;
-import net.minecraft.client.renderer.RenderType;
-import net.minecraft.client.renderer.block.model.BakedQuad;
-import net.minecraft.client.renderer.block.model.ItemOverrides;
-import net.minecraft.client.renderer.block.model.ItemTransforms;
+import com.gregtechceu.gtceu.compat.client.model.BakedQuad;
+import com.gregtechceu.gtceu.compat.client.model.ItemOverrides;
+import net.minecraft.client.resources.model.cuboid.ItemTransforms;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.client.resources.model.BakedModel;
+import com.gregtechceu.gtceu.compat.client.model.BakedModel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.ItemDisplayContext;
-import net.minecraft.world.level.BlockAndTintGetter;
+import net.minecraft.client.renderer.block.BlockAndTintGetter;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.client.ChunkRenderTypeSet;
-import net.minecraftforge.client.model.IDynamicBakedModel;
-import net.minecraftforge.client.model.data.ModelData;
-import net.minecraftforge.client.model.data.MultipartModelData;
+import com.gregtechceu.gtceu.compat.client.model.ChunkRenderTypeSet;
+import com.gregtechceu.gtceu.compat.client.model.IDynamicBakedModel;
+import com.gregtechceu.gtceu.compat.client.model.data.ModelData;
+import com.gregtechceu.gtceu.compat.client.model.data.ModelProperty;
+import com.gregtechceu.gtceu.compat.common.util.TriState;
+import com.gregtechceu.gtceu.compat.common.util.strategy.IdentityStrategy;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenCustomHashMap;
@@ -38,6 +40,8 @@ import static com.gregtechceu.gtceu.api.machine.MetaMachine.*;
 
 public class MultiPartBakedModel implements IDynamicBakedModel {
 
+    private static final ModelProperty<Map<BakedModel, ModelData>> MULTI_PART_DATA_PROPERTY = new ModelProperty<>();
+
     private final List<Pair<Predicate<MachineRenderState>, BakedModel>> selectors;
     protected final boolean hasAmbientOcclusion;
     @Getter
@@ -52,20 +56,20 @@ public class MultiPartBakedModel implements IDynamicBakedModel {
     @Getter
     protected final ItemOverrides overrides;
     private final Map<MachineRenderState, BitSet> selectorCache = new Object2ObjectOpenCustomHashMap<>(
-            Util.identityStrategy());
+            IdentityStrategy.IDENTITY);
     private final BakedModel defaultModel;
 
     @SuppressWarnings("deprecation")
     public MultiPartBakedModel(List<Pair<Predicate<MachineRenderState>, BakedModel>> selectors) {
         this.selectors = selectors;
-        BakedModel defaultModel = selectors.iterator().next().getRight();
+        BakedModel defaultModel = selectors.getFirst().getRight();
         this.defaultModel = defaultModel;
         this.hasAmbientOcclusion = defaultModel.useAmbientOcclusion();
         this.isGui3d = defaultModel.isGui3d();
         this.usesBlockLight = defaultModel.usesBlockLight();
         this.particleIcon = defaultModel.getParticleIcon();
         this.transforms = defaultModel.getTransforms();
-        this.overrides = defaultModel.getOverrides();
+        this.overrides = ItemOverrides.EMPTY;
     }
 
     public BitSet getSelectors(@Nullable MachineRenderState state) {
@@ -87,13 +91,13 @@ public class MultiPartBakedModel implements IDynamicBakedModel {
 
     @Override
     public List<BakedQuad> getQuads(@Nullable BlockState state, @Nullable Direction side,
-                                    RandomSource rand, ModelData modelData, @Nullable RenderType renderType) {
+                                    RandomSource rand, ModelData modelData, @Nullable ChunkSectionLayer renderType) {
         return defaultModel.getQuads(state, side, rand, modelData, renderType);
     }
 
     public List<BakedQuad> getMachineQuads(MachineDefinition definition, MachineRenderState renderState,
                                            @Nullable BlockState blockState, @Nullable Direction direction,
-                                           RandomSource random, ModelData modelData, @Nullable RenderType renderType) {
+                                           RandomSource random, ModelData modelData, @Nullable ChunkSectionLayer renderType) {
         if (blockState == null) blockState = definition.defaultBlockState();
 
         BitSet bitset = getSelectors(renderState);
@@ -104,7 +108,7 @@ public class MultiPartBakedModel implements IDynamicBakedModel {
             if (bitset.get(j)) {
                 var model = this.selectors.get(j).getRight();
 
-                ModelData partData = MultipartModelData.resolve(modelData, model);
+                ModelData partData = resolveMultipartData(modelData, model);
                 if (renderType == null || model.getRenderTypes(blockState, random, partData).contains(renderType)) {
                     quads.addAll(model.getQuads(blockState, direction, RandomSource.create(k), partData, renderType));
                 }
@@ -120,7 +124,9 @@ public class MultiPartBakedModel implements IDynamicBakedModel {
         BlockPos pos = modelData.get(GTModelProperties.POS);
 
         var machine = (level == null || pos == null) ? null : MetaMachine.getMachine(level, pos);
-        if (machine == null) return IDynamicBakedModel.super.getRenderTypes(state, rand, modelData);
+        // When machine is null (BE not loaded yet), use the default model's render types
+        // to ensure we still render something instead of being invisible
+        if (machine == null) return defaultModel.getRenderTypes(state, rand, modelData);
 
         var renderTypeSets = new LinkedList<ChunkRenderTypeSet>();
         var selectors = getSelectors(machine.getRenderState());
@@ -128,7 +134,7 @@ public class MultiPartBakedModel implements IDynamicBakedModel {
             if (selectors.get(i)) {
                 BakedModel model = this.selectors.get(i).getRight();
 
-                ModelData partData = MultipartModelData.resolve(modelData, model);
+                ModelData partData = resolveMultipartData(modelData, model);
                 renderTypeSets.add(model.getRenderTypes(state, rand, partData));
             }
         }
@@ -150,31 +156,32 @@ public class MultiPartBakedModel implements IDynamicBakedModel {
 
     public void addMachineModelData(MachineRenderState renderState, BlockAndTintGetter level, BlockPos pos,
                                     BlockState state, ModelData baseData, ModelData.Builder builder) {
-        MultipartModelData.Builder multiPartData = MultipartModelData.builder();
+        // Don't allocate memory if no submodel changes the model data
+        Map<BakedModel, ModelData> dataMap = null;
 
-        var selectors = getSelectors(renderState);
-        for (int i = 0; i < selectors.length(); i++) {
-            if (selectors.get(i)) {
-                BakedModel model = this.selectors.get(i).getRight();
-                multiPartData.with(model, model.getModelData(level, pos, state, baseData));
+        BitSet selected = getSelectors(renderState);
+
+        for (int i = 0; i < selected.length(); ++i) {
+            if (selected.get(i)) {
+                var model = selectors.get(i).getRight();
+                var data = model.getModelData(level, pos, state, baseData);
+
+                if (data != baseData) {
+                    if (dataMap == null)
+                        dataMap = new IdentityHashMap<>();
+
+                    dataMap.put(model, data);
+                }
             }
         }
-        builder.with(MultipartModelData.PROPERTY, multiPartData.build());
+        if (dataMap != null) {
+            builder.with(MULTI_PART_DATA_PROPERTY, dataMap);
+        }
     }
 
     @Override
     public boolean useAmbientOcclusion() {
         return this.hasAmbientOcclusion;
-    }
-
-    @Override
-    public boolean useAmbientOcclusion(BlockState state) {
-        return this.defaultModel.useAmbientOcclusion(state);
-    }
-
-    @Override
-    public boolean useAmbientOcclusion(BlockState state, net.minecraft.client.renderer.RenderType renderType) {
-        return this.defaultModel.useAmbientOcclusion(state, renderType);
     }
 
     @Override
@@ -197,7 +204,7 @@ public class MultiPartBakedModel implements IDynamicBakedModel {
         for (int i = 0; i < selectors.length(); i++) {
             if (selectors.get(i)) {
                 BakedModel model = this.selectors.get(i).getRight();
-                ModelData partData = MultipartModelData.resolve(modelData, model);
+                ModelData partData = resolveMultipartData(modelData, model);
 
                 return model.getParticleIcon(partData);
             }
@@ -205,10 +212,13 @@ public class MultiPartBakedModel implements IDynamicBakedModel {
         return this.defaultModel.getParticleIcon(modelData);
     }
 
-    @Override
-    public BakedModel applyTransform(ItemDisplayContext transformType, PoseStack poseStack,
-                                     boolean applyLeftHandTransform) {
-        return this.defaultModel.applyTransform(transformType, poseStack, applyLeftHandTransform);
+    public static ModelData resolveMultipartData(ModelData modelData, BakedModel model) {
+        var multipartData = modelData.get(MULTI_PART_DATA_PROPERTY);
+        if (multipartData == null) {
+            return modelData;
+        }
+        var partData = multipartData.get(model);
+        return partData != null ? partData : modelData;
     }
 
     public static class Builder {

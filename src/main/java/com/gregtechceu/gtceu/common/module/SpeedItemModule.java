@@ -5,7 +5,7 @@ import com.gregtechceu.gtceu.api.item.module.*;
 import com.gregtechceu.gtceu.api.item.module.ui.ItemModuleSettingsBuilder;
 
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
@@ -16,22 +16,20 @@ import net.minecraft.world.item.ItemStack;
 import brachy.modularui.api.drawable.Text;
 import brachy.modularui.value.sync.PanelSyncManager;
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import lombok.Getter;
 
 import java.util.Objects;
-import java.util.UUID;
 
 public class SpeedItemModule extends TieredItemModule {
 
-    public static final UUID SPEED_UUID = UUID.fromString("2dc2a66a-1e2c-453c-9ce2-cba71bb2e779");
-
-    public SpeedItemModule(ResourceLocation id, int tier) {
+    public SpeedItemModule(Identifier id, int tier) {
         super(id, tier);
     }
 
     @Override
-    public Codec<? extends ModuleData> moduleDataCodec() {
+    public MapCodec<? extends ModuleData> moduleDataCodec() {
         return SpeedModuleData.CODEC;
     }
 
@@ -96,30 +94,29 @@ public class SpeedItemModule extends TieredItemModule {
         boolean active = isEnabled(context) && bonus > 0 && player.isSprinting() &&
                 ArmorUtils.isMovingOnGround(player) && ArmorUtils.useModuleEnergy(context.getAppliedTo(),
                         ArmorUtils.toModuleEnergyCredits(getEnergyCost(context)),
-                        player.level().isClientSide);
+                        player.level().isClientSide());
         if (!active) {
-            attribute.removeModifier(SPEED_UUID);
+            attribute.removeModifier(getId());
             return;
         }
-        var modifier = new AttributeModifier(SPEED_UUID, "Speed Bost", bonus,
-                AttributeModifier.Operation.MULTIPLY_TOTAL);
-        if (!modifier.equals(attribute.getModifier(SPEED_UUID))) attribute.addTransientModifier(modifier);
+        var modifier = new AttributeModifier(getId(), bonus, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
+        if (!modifier.equals(attribute.getModifier(getId()))) attribute.addOrUpdateTransientModifier(modifier);
     }
 
     @Override
     public void onUnequip(ModuleContext context, LivingEntity entity) {
         var attribute = entity.getAttribute(Attributes.MOVEMENT_SPEED);
-        if (attribute != null) attribute.removeModifier(SPEED_UUID);
+        if (attribute != null) attribute.removeModifier(getId());
     }
 
     public static class SpeedModuleData extends ModuleData {
 
         // spotless:off
-        public static final Codec<SpeedModuleData> CODEC = RecordCodecBuilder.create(instance -> baseCodec(instance).and(instance.group(
+        public static final MapCodec<SpeedModuleData> CODEC = RecordCodecBuilder.mapCodec(instance -> baseCodec(instance).and(instance.group(
                 Codec.floatRange(0, 1).optionalFieldOf("strength", 1f).forGetter(SpeedModuleData::getStrength),
                 Codec.BOOL.optionalFieldOf("omnidirectional", true).forGetter(SpeedModuleData::isOmnidirectional)
         )).apply(instance, SpeedModuleData::new));
-        // spotless:on
+        //spotless:on
 
         @Getter
         private final float strength;

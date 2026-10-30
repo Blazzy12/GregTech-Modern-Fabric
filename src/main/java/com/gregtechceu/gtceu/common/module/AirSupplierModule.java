@@ -6,7 +6,7 @@ import com.gregtechceu.gtceu.api.item.module.ItemModule;
 import com.gregtechceu.gtceu.api.item.module.ModuleContext;
 
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 
@@ -16,7 +16,7 @@ public class AirSupplierModule extends ItemModule {
 
     private static final long ENERGY_PER_USE = 128;
 
-    public AirSupplierModule(ResourceLocation id) {
+    public AirSupplierModule(Identifier id) {
         super(id);
     }
 
@@ -27,7 +27,7 @@ public class AirSupplierModule extends ItemModule {
 
     @Override
     public void onArmorTick(ModuleContext moduleContext, LivingEntity entity) {
-        if (!isEnabled(moduleContext) || !(entity instanceof Player player) || player.level().isClientSide) return;
+        if (!isEnabled(moduleContext) || !(entity instanceof Player player) || player.level().isClientSide()) return;
         super.onArmorTick(moduleContext, entity);
         IElectricItem electricItem = GTCapabilityHelper.getElectricItem(moduleContext.getAppliedTo());
         if (electricItem == null) return;

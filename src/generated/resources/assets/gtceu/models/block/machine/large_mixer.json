@@ -9,7 +9,7 @@
       "sky_light": 15
     }
   ],
-  "loader": "gtceu:machine",
+  "fabric:type": "gtceu:machine",
   "machine": "gtceu:large_mixer",
   "texture_overrides": {
     "all": "gtceu:block/casings/gcym/reaction_safe_mixing_casing"

@@ -1,12 +1,12 @@
 {
-  "type": "gtceu:add_table",
+  "type": "neoforge:add_table",
   "conditions": [
     {
       "condition": "gtceu:config_value",
       "config_field": "worldgen.addLoot"
     },
     {
-      "condition": "forge:loot_table_id",
+      "condition": "neoforge:loot_table_id",
       "loot_table_id": "minecraft:chests/village/village_weaponsmith"
     }
   ],

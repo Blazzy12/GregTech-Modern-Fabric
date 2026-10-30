@@ -1,65 +1,70 @@
 package com.gregtechceu.gtceu.api.registry.registrate;
 
 import com.gregtechceu.gtceu.GTCEu;
-import com.gregtechceu.gtceu.api.block.MetaMachineBlock;
-import com.gregtechceu.gtceu.api.data.chemical.material.Material;
-import com.gregtechceu.gtceu.api.item.MetaMachineItem;
+import com.gregtechceu.gtceu.api.block.OreBlock;
+import com.gregtechceu.gtceu.api.cover.CoverDefinition;
+import com.gregtechceu.gtceu.api.data.chemical.Element;
+import com.gregtechceu.gtceu.api.data.chemical.material.MaterialBuilder;
+import com.gregtechceu.gtceu.api.data.chemical.material.info.MaterialIconSet;
+import com.gregtechceu.gtceu.api.data.chemical.material.info.MaterialIconType;
+import com.gregtechceu.gtceu.api.data.tag.TagPrefix;
 import com.gregtechceu.gtceu.api.machine.MachineDefinition;
 import com.gregtechceu.gtceu.api.machine.MachineInstanceFactory;
 import com.gregtechceu.gtceu.api.machine.MetaMachine;
-import com.gregtechceu.gtceu.api.machine.MultiblockMachineDefinition;
 import com.gregtechceu.gtceu.api.machine.multiblock.MultiblockControllerMachine;
-import com.gregtechceu.gtceu.api.registry.registrate.forge.GTFluidBuilder;
+import com.gregtechceu.gtceu.api.recipe.GTRecipeType;
+import com.gregtechceu.gtceu.api.recipe.category.GTRecipeCategory;
+import com.gregtechceu.gtceu.api.registry.GTRegistries;
+import com.gregtechceu.gtceu.api.registry.registrate.builder.*;
+import com.gregtechceu.gtceu.api.registry.registrate.entry.MaterialRegistryEntry;
+import com.gregtechceu.gtceu.client.renderer.cover.ICoverRenderer;
+import com.gregtechceu.gtceu.client.renderer.cover.SimpleCoverRenderer;
 import com.gregtechceu.gtceu.core.mixins.registrate.AbstractRegistrateAccessor;
+import com.gregtechceu.gtceu.integration.recipeviewer.CategoryIcon;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
+import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.CreativeModeTab;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockBehaviour;
-import net.minecraftforge.data.event.GatherDataEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.fml.ModList;
-import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
-import net.minecraftforge.fml.javafmlmod.FMLModContainer;
-import net.minecraftforge.registries.RegisterEvent;
-import net.minecraftforge.registries.RegistryObject;
+import com.gregtechceu.gtceu.compat.bus.EventPriority;
+import com.gregtechceu.gtceu.compat.bus.IEventBus;
+import com.gregtechceu.gtceu.compat.fml.ModContainer;
+import com.gregtechceu.gtceu.compat.fml.ModList;
+import com.gregtechceu.gtceu.compat.fml.event.lifecycle.FMLCommonSetupEvent;
+import com.gregtechceu.gtceu.compat.data.event.GatherDataEvent;
+import com.gregtechceu.gtceu.compat.registries.DeferredHolder;
+import com.gregtechceu.gtceu.compat.registries.RegisterEvent;
+import com.gregtechceu.gtceu.compat.event.BuildCreativeModeTabContentsEvent;
 
 import com.tterrag.registrate.AbstractRegistrate;
 import com.tterrag.registrate.builders.Builder;
 import com.tterrag.registrate.builders.NoConfigBuilder;
-import com.tterrag.registrate.providers.ProviderType;
 import com.tterrag.registrate.util.OneTimeEventReceiver;
 import com.tterrag.registrate.util.entry.ItemEntry;
 import com.tterrag.registrate.util.entry.RegistryEntry;
-import com.tterrag.registrate.util.nullness.NonNullBiConsumer;
 import com.tterrag.registrate.util.nullness.NonNullFunction;
 import com.tterrag.registrate.util.nullness.NonNullSupplier;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import org.jetbrains.annotations.ApiStatus;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.IdentityHashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.BiFunction;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 
-import javax.annotation.ParametersAreNonnullByDefault;
-
-@ParametersAreNonnullByDefault
-@MethodsReturnNonnullByDefault
+@SuppressWarnings("unused")
 public class GTRegistrate extends AbstractRegistrate<GTRegistrate> {
 
     private static final Map<String, GTRegistrate> EXISTING_REGISTRATES = new Object2ObjectOpenHashMap<>();
@@ -70,8 +75,8 @@ public class GTRegistrate extends AbstractRegistrate<GTRegistrate> {
         super(modId);
     }
 
-    public ResourceLocation makeResourceLocation(String path) {
-        return ResourceLocation.fromNamespaceAndPath(this.getModid(), path);
+    public Identifier makeResourceLocation(String path) {
+        return Identifier.fromNamespaceAndPath(this.getModid(), path);
     }
 
     /**
@@ -120,10 +125,7 @@ public class GTRegistrate extends AbstractRegistrate<GTRegistrate> {
         var registrate = new GTRegistrate(modId);
 
         if (registerEvents) {
-            Optional<IEventBus> modEventBus = ModList.get().getModContainerById(modId)
-                    .filter(FMLModContainer.class::isInstance)
-                    .map(FMLModContainer.class::cast)
-                    .map(FMLModContainer::getEventBus);
+            Optional<IEventBus> modEventBus = ModList.get().getModContainerById(modId).map(ModContainer::getEventBus);
             if (requireValidEventBus) {
                 modEventBus.ifPresentOrElse(registrate::registerEventListeners, () -> {
                     String message = "# [GTRegistrate] Failed to register eventListeners for mod " + modId +
@@ -134,7 +136,8 @@ public class GTRegistrate extends AbstractRegistrate<GTRegistrate> {
                     GTCEu.LOGGER.fatal(hashtags);
                 });
             } else {
-                registrate.registerEventListeners(modEventBus.orElse(FMLJavaModLoadingContext.get().getModEventBus()));
+                registrate.registerEventListeners(Objects.requireNonNull(
+                        modEventBus.orElse(com.gregtechceu.gtceu.compat.fml.ModBuses.MOD_BUS)));
             }
         }
         EXISTING_REGISTRATES.put(modId, registrate);
@@ -143,85 +146,140 @@ public class GTRegistrate extends AbstractRegistrate<GTRegistrate> {
 
     @Override
     public GTRegistrate registerEventListeners(IEventBus bus) {
-        if (!registered.getAndSet(true)) {
-            // recreate the super method so we can register the event listener with LOW priority.
-            Consumer<RegisterEvent> onRegister = this::onRegister;
-            Consumer<RegisterEvent> onRegisterLate = this::onRegisterLate;
-            bus.addListener(EventPriority.LOW, onRegister);
-            bus.addListener(EventPriority.LOWEST, onRegisterLate);
+        if (registered.getAndSet(true)) {
+            // early exit if event listeners are already registered
+            return this;
+        }
+        if (this.getModEventBus() == null) {
+            this.setModEventBus(bus);
+        }
+        // recreate the super method so we can register the event listener with LOW priority.
+        Consumer<RegisterEvent> onRegister = this::onRegister;
+        Consumer<RegisterEvent> onRegisterLate = this::onRegisterLate;
+        bus.addListener(EventPriority.LOW, RegisterEvent.class, onRegister);
+        bus.addListener(EventPriority.LOWEST, RegisterEvent.class, onRegisterLate);
 
-            // Fired multiple times when ever tabs need contents rebuilt (changing op tab perms for example)
-            bus.addListener(this::onBuildCreativeModeTabContents);
-            // Register events fire multiple times, so clean them up on common setup
-            OneTimeEventReceiver.addModListener(this, FMLCommonSetupEvent.class, $ -> {
-                OneTimeEventReceiver.unregister(this, onRegister, RegisterEvent.class);
-                OneTimeEventReceiver.unregister(this, onRegisterLate, RegisterEvent.class);
-            });
-            if (((AbstractRegistrateAccessor) this).getDoDatagen().get()) {
-                OneTimeEventReceiver.addModListener(this, GatherDataEvent.class, this::onData);
-            }
+        // Fired multiple times when ever tabs need contents rebuilt (changing op tab perms for example)
+        bus.addListener(BuildCreativeModeTabContentsEvent.class, this::onBuildCreativeModeTabContents);
+        // Register events fire multiple times, so clean them up on common setup
+        OneTimeEventReceiver.addModListener(this, FMLCommonSetupEvent.class, $ -> {
+            OneTimeEventReceiver.unregister(this, onRegister, RegisterEvent.class);
+            OneTimeEventReceiver.unregister(this, onRegisterLate, RegisterEvent.class);
+        });
+        if (((AbstractRegistrateAccessor) this).getDoDatagen().get()) {
+            OneTimeEventReceiver.addModListener(this, GatherDataEvent.class, this::onData);
         }
         return this;
     }
 
-    protected <P> NoConfigBuilder<CreativeModeTab, CreativeModeTab, P> createCreativeModeTab(P parent, String name,
-                                                                                             Consumer<CreativeModeTab.Builder> config) {
-        return this.generic(parent, name, Registries.CREATIVE_MODE_TAB, () -> {
-            var builder = CreativeModeTab.builder()
-                    .icon(() -> getAll(Registries.ITEM).stream().findFirst().map(ItemEntry::cast)
-                            .map(ItemEntry::asStack).orElse(new ItemStack(Items.AIR)));
-            config.accept(builder);
-            return builder.build();
-        });
-    }
+    /// Machine Builders
 
-    public IGTFluidBuilder createFluid(String name, String langKey, Material material, ResourceLocation stillTexture,
-                                       ResourceLocation flowingTexture) {
+    @SuppressWarnings("unchecked")
+    public <MACHINE extends MetaMachine, S extends MachineBuilder<MachineDefinition, MACHINE, S>> S machine(String name,
+                                                                                                            MachineInstanceFactory<MACHINE> blockEntityFactory) {
         return entry(name,
-                callback -> new GTFluidBuilder<>(this, this, material, name, langKey, callback, stillTexture,
-                        flowingTexture, GTFluidBuilder::defaultFluidType).defaultLang().defaultSource()
-                        .setData(ProviderType.LANG, NonNullBiConsumer.noop()));
+                callback -> (S) new MachineBuilder<>(this, name, callback, blockEntityFactory));
     }
 
-    public <DEFINITION extends MachineDefinition,
-            MACHINE extends MetaMachine> MachineBuilder<DEFINITION, MACHINE, ?> machine(String name,
-                                                                                        Function<ResourceLocation, DEFINITION> definitionFactory,
-                                                                                        BiFunction<BlockBehaviour.Properties, DEFINITION, MetaMachineBlock> blockFactory,
-                                                                                        BiFunction<MetaMachineBlock, Item.Properties, MetaMachineItem> itemFactory,
-                                                                                        MachineInstanceFactory<MACHINE> blockEntityFactory) {
-        return new MachineBuilder<>(this, name, definitionFactory,
-                blockFactory, itemFactory, blockEntityFactory);
+    public <MACHINE extends MultiblockControllerMachine> MultiblockMachineBuilder<MACHINE> multiblock(String name,
+                                                                                                      MachineInstanceFactory<MACHINE> blockEntityFactory) {
+        return entry(name, callback -> new MultiblockMachineBuilder<>(this, name, callback, blockEntityFactory));
     }
 
-    public <MACHINE extends MetaMachine> MachineBuilder<MachineDefinition, MACHINE, ?> machine(String name,
-                                                                                               MachineInstanceFactory<MACHINE> blockEntityFactory) {
-        return new MachineBuilder<>(this, name, MachineDefinition::new,
-                MetaMachineBlock::new, MetaMachineItem::new, blockEntityFactory);
+    /// Element Registration
+
+    public RegistryEntry<Element, Element> element(String name, long protons, long neutrons, double halfLifeSeconds,
+                                                   @Nullable String decayTo,
+                                                   String displayName, String symbol, boolean isIsotope) {
+        return simple(name, GTRegistries.Keys.ELEMENT,
+                () -> new Element(protons, neutrons, halfLifeSeconds, decayTo, name, symbol, isIsotope));
     }
 
-    public <MACHINE extends MultiblockControllerMachine> MultiblockMachineBuilder<MultiblockMachineDefinition, MACHINE, ?> multiblock(String name,
-                                                                                                                                      BiFunction<BlockBehaviour.Properties, MultiblockMachineDefinition, MetaMachineBlock> blockFactory,
-                                                                                                                                      BiFunction<MetaMachineBlock, Item.Properties, MetaMachineItem> itemFactory,
-                                                                                                                                      MachineInstanceFactory<MACHINE> blockEntityFactory) {
-        return new MultiblockMachineBuilder<>(this, name,
-                blockFactory, itemFactory, blockEntityFactory);
+    public RegistryEntry<Element, Element> element(String name, long protons, long neutrons,
+                                                   String displayName, String symbol, boolean isIsotope) {
+        return element(name, protons, neutrons, -1, null, displayName, symbol, isIsotope);
     }
 
-    public <MACHINE extends MultiblockControllerMachine> MultiblockMachineBuilder<MultiblockMachineDefinition, MACHINE, ?> multiblock(String name,
-                                                                                                                                      MachineInstanceFactory<MACHINE> blockEntityFactory) {
-        return new MultiblockMachineBuilder<>(this, name, MetaMachineBlock::new, MetaMachineItem::new,
-                blockEntityFactory);
+    public RegistryEntry<Element, Element> element(String name, long protons, long neutrons, double halfLifeSeconds,
+                                                   String displayName, String symbol, boolean isIsotope) {
+        return element(name, protons, neutrons, halfLifeSeconds, null, displayName, symbol, isIsotope);
     }
 
-    public SoundEntryBuilder sound(String name) {
-        return new SoundEntryBuilder(GTCEu.id(name));
+    public RegistryEntry<Element, Element> element(String name, long protons, long neutrons,
+                                                   String displayName, String symbol) {
+        return element(name, protons, neutrons, -1, null, displayName, symbol, false);
     }
 
-    public SoundEntryBuilder sound(ResourceLocation name) {
-        return new SoundEntryBuilder(name);
+    /// Material builder
+
+    public MaterialRegistryEntry material(String name, UnaryOperator<MaterialBuilder> materialBuilderCallback) {
+        return entry(name,
+                callback -> new RegistrateMaterialBuilderWrapper(this, name, callback, materialBuilderCallback))
+                .register();
     }
 
-    // Blocks
+    /// TagPrefix Builder
+
+    public TagPrefixBuilder tagPrefix(String name) {
+        return entry(name, callback -> new TagPrefixBuilder(this, name, callback));
+    }
+
+    public TagPrefixBuilder oreTagPrefix(String name, TagKey<Block> miningToolTag) {
+        return entry(name, callback -> new TagPrefixBuilder(this, name, callback)
+                .defaultTagPath("ores/%s")
+                .prefixOnlyTagPath("ores_in_ground/%s")
+                .unformattedTagPath("ores")
+                .materialIconType(MaterialIconType.ore)
+                .miningToolTag(miningToolTag)
+                .unificationEnabled(true)
+                .blockConstructor(OreBlock::new)
+                .generationCondition(TagPrefix.Conditions.hasOreProperty));
+    }
+
+    /// Material Icon Set registration
+
+    /**
+     * Create a new MaterialIconSet whose parent is {@link MaterialIconSet#DULL}
+     *
+     * @param name the name of the iconset
+     */
+    public RegistryEntry<MaterialIconSet, MaterialIconSet> materialIconSet(String name) {
+        return simple(name, GTRegistries.Keys.MATERIAL_ICON_SET, () -> new MaterialIconSet(makeResourceLocation(name)));
+    }
+
+    public RegistryEntry<MaterialIconSet, MaterialIconSet> materialIconSet(String name,
+                                                                           @Nullable Holder<MaterialIconSet> parentIconSet) {
+        return simple(name, GTRegistries.Keys.MATERIAL_ICON_SET,
+                () -> new MaterialIconSet(makeResourceLocation(name), parentIconSet, parentIconSet == null));
+    }
+
+    /// Cover Registration
+
+    public RegistryEntry<CoverDefinition, CoverDefinition> cover(String name,
+                                                                 CoverDefinition.CoverBehaviourProvider behaviorCreator,
+                                                                 Supplier<Supplier<ICoverRenderer>> coverRenderer) {
+        return simple(name, GTRegistries.Keys.COVER,
+                () -> new CoverDefinition(makeResourceLocation(name), behaviorCreator, coverRenderer));
+    }
+
+    public RegistryEntry<CoverDefinition, CoverDefinition> cover(String name,
+                                                                 CoverDefinition.CoverBehaviourProvider behaviorCreator) {
+        return cover(name, behaviorCreator, () -> () -> new SimpleCoverRenderer(
+                Identifier.fromNamespaceAndPath(getModid(), "block/cover/" + name)));
+    }
+
+    /// Sound Builder
+
+    public SoundEntryBuilder<GTRegistrate> sound(String name) {
+        return sound(this, name);
+    }
+
+    public <P> SoundEntryBuilder<P> sound(P parent, String name) {
+        return entry(name, callback -> new SoundEntryBuilder<>(this, parent, name, callback));
+    }
+
+    /// Block Builder
+
     @Override
     public <T extends Block> GTBlockBuilder<T, GTRegistrate> block(NonNullFunction<BlockBehaviour.Properties, T> factory) {
         return block(this, factory);
@@ -234,46 +292,125 @@ public class GTRegistrate extends AbstractRegistrate<GTRegistrate> {
     }
 
     @Override
-    public <T extends Block, P> GTBlockBuilder<T, P> block(P parent,
+    @SuppressWarnings("NullableProblems")
+    public <T extends Block, P> GTBlockBuilder<T, P> block(@NotNull P parent,
                                                            NonNullFunction<BlockBehaviour.Properties, T> factory) {
         return block(parent, currentName(), factory);
     }
 
     @Override
-    public <T extends Block, P> GTBlockBuilder<T, P> block(P parent, String name,
+    @SuppressWarnings("NullableProblems")
+    public <T extends Block, P> GTBlockBuilder<T, P> block(@NotNull P parent, String name,
                                                            NonNullFunction<BlockBehaviour.Properties, T> factory) {
         return (GTBlockBuilder<T, P>) entry(name,
                 callback -> GTBlockBuilder.create(this, parent, name, callback, factory));
     }
 
-    private @Nullable RegistryEntry<CreativeModeTab> currentTab;
-    private static final Map<RegistryEntry<?>, @Nullable RegistryEntry<CreativeModeTab>> TAB_LOOKUP = new IdentityHashMap<>();
+    /// Recipe Type Builder
 
-    public @Nullable RegistryEntry<CreativeModeTab> creativeModeTab() {
+    public GTRecipeTypeBuilder recipeType(String name, String group, RecipeType<?>... proxyRecipes) {
+        return entry(name, callback -> new GTRecipeTypeBuilder(this, name, callback, group, proxyRecipes));
+    }
+
+    public RegistryEntry<GTRecipeCategory, GTRecipeCategory> recipeCategory(String name,
+                                                                            Supplier<GTRecipeType> recipeType,
+                                                                            @Nullable CategoryIcon icon,
+                                                                            boolean isXEIVisible, String lang) {
+        return generic(name, GTRegistries.Keys.RECIPE_CATEGORY,
+                () -> new GTRecipeCategory(makeResourceLocation(name), recipeType.get())
+                        .setIcon(icon)
+                        .setXEIVisible(isXEIVisible))
+                .lang(GTRecipeCategory::getLanguageKey, lang)
+                .register();
+    }
+
+    public RegistryEntry<GTRecipeCategory, GTRecipeCategory> recipeCategory(String name,
+                                                                            Supplier<GTRecipeType> recipeType,
+                                                                            @Nullable CategoryIcon icon,
+                                                                            boolean isXEIVisible) {
+        return simple(name, GTRegistries.Keys.RECIPE_CATEGORY,
+                () -> new GTRecipeCategory(makeResourceLocation(name), recipeType.get())
+                        .setIcon(icon)
+                        .setXEIVisible(isXEIVisible));
+    }
+
+    public RegistryEntry<GTRecipeCategory, GTRecipeCategory> recipeCategory(String name,
+                                                                            Supplier<GTRecipeType> recipeType,
+                                                                            @Nullable CategoryIcon icon) {
+        return recipeCategory(name, recipeType, icon, true);
+    }
+
+    public RegistryEntry<GTRecipeCategory, GTRecipeCategory> recipeCategory(String name,
+                                                                            Supplier<GTRecipeType> recipeType,
+                                                                            @Nullable CategoryIcon icon, String lang) {
+        return recipeCategory(name, recipeType, icon, true);
+    }
+
+    public RegistryEntry<GTRecipeCategory, GTRecipeCategory> recipeCategory(String name,
+                                                                            Supplier<GTRecipeType> recipeType) {
+        return recipeCategory(name, recipeType, null, true);
+    }
+
+    public RegistryEntry<GTRecipeCategory, GTRecipeCategory> recipeCategory(String name,
+                                                                            Supplier<GTRecipeType> recipeType,
+                                                                            String lang) {
+        return recipeCategory(name, recipeType, null, true);
+    }
+
+    // Medical Conditions
+
+    public MedicalConditionBuilder<GTRegistrate> medicalCondition() {
+        return medicalCondition(this, currentName());
+    }
+
+    public MedicalConditionBuilder<GTRegistrate> medicalCondition(String name) {
+        return medicalCondition(this, name);
+    }
+
+    public <P> MedicalConditionBuilder<P> medicalCondition(P parent) {
+        return medicalCondition(parent, currentName());
+    }
+
+    public <P> MedicalConditionBuilder<P> medicalCondition(P parent, String name) {
+        return entry(name, callback -> new MedicalConditionBuilder<>(this, parent, name, callback));
+    }
+
+    /// Creative Mode Tabs
+
+    private @Nullable RegistryEntry<CreativeModeTab, ? extends CreativeModeTab> currentTab;
+    private static final Map<RegistryEntry<?, ?>, @Nullable RegistryEntry<CreativeModeTab, ? extends CreativeModeTab>> TAB_LOOKUP = new IdentityHashMap<>();
+
+    public @Nullable RegistryEntry<CreativeModeTab, ? extends CreativeModeTab> creativeModeTab() {
         return this.currentTab;
     }
 
-    public void creativeModeTab(Supplier<@Nullable RegistryEntry<CreativeModeTab>> currentTab) {
+    public void creativeModeTab(Supplier<@Nullable RegistryEntry<CreativeModeTab, ? extends CreativeModeTab>> currentTab) {
         this.currentTab = currentTab.get();
     }
 
-    public void creativeModeTab(RegistryEntry<CreativeModeTab> currentTab) {
+    public void resetCreativeModeTab() {
+        this.currentTab = null;
+    }
+
+    public void creativeModeTab(RegistryEntry<CreativeModeTab, ? extends CreativeModeTab> currentTab) {
         this.currentTab = currentTab;
     }
 
-    public boolean isInCreativeTab(RegistryEntry<?> entry, RegistryEntry<CreativeModeTab> tab) {
+    public boolean isInCreativeTab(RegistryEntry<?, ?> entry,
+                                   RegistryEntry<CreativeModeTab, ? extends CreativeModeTab> tab) {
         return TAB_LOOKUP.get(entry) == tab;
     }
 
-    public void setCreativeTab(RegistryEntry<?> entry, @Nullable RegistryEntry<CreativeModeTab> tab) {
+    public void setCreativeTab(RegistryEntry<?, ?> entry,
+                               @Nullable RegistryEntry<CreativeModeTab, ? extends CreativeModeTab> tab) {
         TAB_LOOKUP.put(entry, tab);
     }
 
-    protected <R,
-            T extends R> RegistryEntry<T> accept(String name, ResourceKey<? extends Registry<R>> type,
-                                                 Builder<R, T, ?, ?> builder, NonNullSupplier<? extends T> creator,
-                                                 NonNullFunction<RegistryObject<T>, ? extends RegistryEntry<T>> entryFactory) {
-        RegistryEntry<T> entry = super.accept(name, type, builder, creator, entryFactory);
+    protected <R, T extends R> RegistryEntry<R, T> accept(String name, ResourceKey<? extends Registry<R>> type,
+                                                          Builder<R, T, ?, ?> builder,
+                                                          NonNullSupplier<? extends T> creator,
+                                                          NonNullFunction<DeferredHolder<R, T>, ? extends RegistryEntry<R, T>> entryFactory) {
+        RegistryEntry<R, T> entry = super.accept(name, type, builder, creator, entryFactory);
 
         if (this.currentTab != null) {
             TAB_LOOKUP.put(entry, this.currentTab);
@@ -282,7 +419,20 @@ public class GTRegistrate extends AbstractRegistrate<GTRegistrate> {
         return entry;
     }
 
-    public <P> NoConfigBuilder<CreativeModeTab, CreativeModeTab, P> defaultCreativeTab(P parent, String name,
+    protected <P> NoConfigBuilder<CreativeModeTab, CreativeModeTab, P> createCreativeModeTab(P parent, String name,
+                                                                                             Consumer<CreativeModeTab.Builder> config) {
+        return this.generic(parent, name, Registries.CREATIVE_MODE_TAB, () -> {
+            var builder = net.fabricmc.fabric.api.creativetab.v1.FabricCreativeModeTab.builder()
+                    .icon(() -> getAll(Registries.ITEM).stream().findFirst().map(ItemEntry::cast)
+                            .map(ItemEntry::asStack).orElse(new ItemStack(Items.AIR)));
+            config.accept(builder);
+            return builder.build();
+        });
+    }
+
+    @Override
+    @SuppressWarnings("NullableProblems")
+    public <P> NoConfigBuilder<CreativeModeTab, CreativeModeTab, P> defaultCreativeTab(@NotNull P parent, String name,
                                                                                        Consumer<CreativeModeTab.Builder> config) {
         return createCreativeModeTab(parent, name, config);
     }

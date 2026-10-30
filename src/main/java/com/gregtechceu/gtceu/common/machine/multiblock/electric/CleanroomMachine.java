@@ -43,9 +43,10 @@ import com.gregtechceu.gtceu.data.recipe.CustomTags;
 import com.gregtechceu.gtceu.utils.GTUtil;
 
 import net.minecraft.ChatFormatting;
-import net.minecraft.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import net.minecraft.util.Mth;
@@ -58,6 +59,7 @@ import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 
 import brachy.modularui.api.drawable.Text;
 import brachy.modularui.api.widget.IWidget;
+import brachy.modularui.utils.serialization.network.ByteBufAdapters;
 import brachy.modularui.value.sync.BooleanSyncValue;
 import brachy.modularui.value.sync.GenericSyncValue;
 import brachy.modularui.value.sync.IntSyncValue;
@@ -76,7 +78,6 @@ import java.util.function.Function;
 import javax.annotation.ParametersAreNonnullByDefault;
 
 import static com.gregtechceu.gtceu.api.multiblock.Predicates.*;
-import static com.gregtechceu.gtceu.common.mui.GTByteBufAdapters.COMPONENT;
 
 @ParametersAreNonnullByDefault
 @MethodsReturnNonnullByDefault
@@ -449,14 +450,15 @@ public class CleanroomMachine extends WorkableElectricMultiblockMachine
         syncManager.syncValue("cleanroomTypeIsNull", cleanroomTypeIsNull);
 
         BooleanSyncValue cleanroomProviderTraitIsActive = new BooleanSyncValue(
-                () -> this.cleanroomProviderTrait != null && this.cleanroomProviderTrait.isActive());
+                () -> this.cleanroomProviderTrait.isActive());
         syncManager.syncValue("cleanroomProviderTrait", cleanroomProviderTraitIsActive);
 
         IntSyncValue cleanAmount = new IntSyncValue(() -> this.cleanAmount);
         syncManager.syncValue("cleanAmount", cleanAmount);
 
-        GenericSyncValue<Component> distComponent = GenericSyncValue.builder(Component.class)
-                .adapter(COMPONENT)
+        GenericSyncValue<RegistryFriendlyByteBuf, Component> distComponent = GenericSyncValue
+                .<RegistryFriendlyByteBuf, Component>builder(Component.class)
+                .adapter(ByteBufAdapters.COMPONENT)
                 .getter(() -> Component.translatable("gtceu.multiblock.dimensions.1", bounds.get(3) + bounds.get(4) + 1,
                         bounds.get(1) + 1,
                         bounds.get(4) + bounds.get(5) + 1))

@@ -15,7 +15,6 @@ import com.gregtechceu.gtceu.api.item.tool.GTToolType;
 import com.gregtechceu.gtceu.api.item.tool.ToolHelper;
 import com.gregtechceu.gtceu.api.machine.TickableSubscription;
 import com.gregtechceu.gtceu.api.machine.feature.IDataInfoProvider;
-import com.gregtechceu.gtceu.api.misc.IOFluidHandlerList;
 import com.gregtechceu.gtceu.api.sync_system.annotations.SaveField;
 import com.gregtechceu.gtceu.api.transfer.fluid.CustomFluidTank;
 import com.gregtechceu.gtceu.api.transfer.fluid.IFluidHandlerModifiable;
@@ -41,17 +40,14 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.phys.AABB;
-import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.common.util.LazyOptional;
-import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.capability.IFluidHandler;
+import com.gregtechceu.gtceu.compat.capabilities.Capabilities;
+import com.gregtechceu.gtceu.compat.fluids.FluidStack;
+import com.gregtechceu.gtceu.compat.fluids.capability.IFluidHandler;
 
 import com.mojang.datafixers.util.Pair;
 import org.jetbrains.annotations.NotNull;
@@ -81,8 +77,6 @@ public class FluidPipeBlockEntity extends PipeBlockEntity<FluidPipeType, FluidPi
         super(type, pos, blockState);
         createTanksList();
     }
-
-    public static void onBlockEntityRegister(BlockEntityType<FluidPipeBlockEntity> fluidPipeBlockEntityBlockEntityType) {}
 
     public long getOffsetTimer() {
         return timer + offset;
@@ -126,33 +120,13 @@ public class FluidPipeBlockEntity extends PipeBlockEntity<FluidPipeType, FluidPi
         return fluid -> true;
     }
 
-    @NotNull
-    @Override
-    public <T> LazyOptional<T> getCapability(Capability<T> capability, @Nullable Direction facing) {
-        if (capability == ForgeCapabilities.FLUID_HANDLER) {
-            if (facing != null && isConnected(facing)) {
-                PipeTankList tankList = getTankList(facing);
-                if (tankList == null)
-                    return LazyOptional.empty();
-
-                IOFluidHandlerList list = new IOFluidHandlerList(List.of(tankList), IO.BOTH,
-                        getFluidCapFilter(facing, IO.IN), getFluidCapFilter(facing, IO.OUT));
-                return ForgeCapabilities.FLUID_HANDLER.orEmpty(capability,
-                        LazyOptional.of(() -> list));
-            }
-        } else if (capability == GTCapability.CAPABILITY_COVERABLE) {
-            return GTCapability.CAPABILITY_COVERABLE.orEmpty(capability, LazyOptional.of(this::getCoverContainer));
-        }
-        return super.getCapability(capability, facing);
-    }
-
     public int getCapacityPerTank() {
         return getNodeData().getThroughput() * 20;
     }
 
     public void update() {
         timer++;
-        if (!level.isClientSide && getOffsetTimer() % FREQUENCY == 0) {
+        if (!level.isClientSide() && getOffsetTimer() % FREQUENCY == 0) {
             lastReceivedFrom &= 63;
             if (lastReceivedFrom == 63) {
                 lastReceivedFrom = 0;
@@ -197,10 +171,8 @@ public class FluidPipeBlockEntity extends PipeBlockEntity<FluidPipeType, FluidPi
                 continue;
             }
 
-            BlockEntity neighbor = getNeighbor(facing);
-            if (neighbor == null) continue;
-            IFluidHandler fluidHandler = neighbor.getCapability(ForgeCapabilities.FLUID_HANDLER, facing.getOpposite())
-                    .resolve().orElse(null);
+            IFluidHandler fluidHandler = getLevel().getCapability(Capabilities.FluidHandler.BLOCK,
+                    getBlockPos().relative(facing), facing.getOpposite());
             if (fluidHandler == null) continue;
 
             IFluidHandlerModifiable pipeTank = tank;
@@ -212,8 +184,8 @@ public class FluidPipeBlockEntity extends PipeBlockEntity<FluidPipeType, FluidPi
                 // Shutter covers return null capability when active, so check here to prevent NPE
                 if (pipeTank == null || checkForPumpCover(cover)) continue;
             } else {
-                ICoverable coverable = neighbor.getCapability(GTCapability.CAPABILITY_COVERABLE, facing.getOpposite())
-                        .resolve().orElse(null);
+                ICoverable coverable = getLevel().getCapability(GTCapability.CAPABILITY_COVERABLE,
+                        getBlockPos().relative(facing), facing.getOpposite());
                 if (coverable != null) {
                     cover = coverable.getCoverAtSide(facing.getOpposite());
                     if (checkForPumpCover(cover)) continue;
@@ -491,7 +463,7 @@ public class FluidPipeBlockEntity extends PipeBlockEntity<FluidPipeType, FluidPi
             }
             if (didEmpty) {
                 ToolHelper.onActionDone(player, stack, level, context.getClickLocation());
-                return Pair.of(GTToolType.PLUNGER, InteractionResult.sidedSuccess(isRemote()));
+                return Pair.of(GTToolType.PLUNGER, InteractionResult.SUCCESS);
             }
         }
         return Pair.of(null, InteractionResult.PASS);
@@ -518,7 +490,8 @@ public class FluidPipeBlockEntity extends PipeBlockEntity<FluidPipeType, FluidPi
             BlockPos blockPos = selfPos.relative(side);
             BlockState blockState = world.getBlockState(blockPos);
             if (world.isEmptyBlock(blockPos) ||
-                    blockState.isFlammable(world, blockPos, side.getOpposite())) {
+                    net.fabricmc.fabric.api.registry.FlammableBlockRegistry.getDefaultInstance()
+                            .get(blockState.getBlock()).getBurnOdds() > 0) {
                 world.setBlockAndUpdate(blockPos, Blocks.FIRE.defaultBlockState());
             }
         }
@@ -535,7 +508,7 @@ public class FluidPipeBlockEntity extends PipeBlockEntity<FluidPipeType, FluidPi
                 boolean allTanksEmpty = true;
                 for (int i = 0; i < fluids.length; i++) {
                     if (fluids[i] != null) {
-                        if (fluids[i].getFluid() == null || fluids[i].isEmpty()) {
+                        if (fluids[i].isEmpty()) {
                             continue;
                         }
 
@@ -545,7 +518,7 @@ public class FluidPipeBlockEntity extends PipeBlockEntity<FluidPipeType, FluidPi
                                         .withStyle(ChatFormatting.GREEN),
                                 Component.translatable(FormattingUtil.formatNumbers(getCapacityPerTank()))
                                         .withStyle(ChatFormatting.YELLOW),
-                                fluids[i].getDisplayName().copy()
+                                fluids[i].getHoverName().copy()
                                         .withStyle(ChatFormatting.GOLD)));
                     }
                 }

@@ -1,11 +1,11 @@
 package com.gregtechceu.gtceu.api.item.component;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import com.gregtechceu.gtceu.api.item.armor.ArmorUtils;
 
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -17,7 +17,7 @@ public interface IItemHUDProvider extends IItemComponent {
     /**
      * @return if the HUD needs to be drawn
      */
-    @OnlyIn(Dist.CLIENT)
+    @Environment(EnvType.CLIENT)
     default boolean shouldDrawHUD() {
         return true;
     }
@@ -27,8 +27,8 @@ public interface IItemHUDProvider extends IItemComponent {
      *
      * @param stack the ItemStack to retrieve information from
      */
-    @OnlyIn(Dist.CLIENT)
-    default void drawHUD(ItemStack stack, ArmorUtils.ModularHUD hud, GuiGraphics guiGraphics) {}
+    @Environment(EnvType.CLIENT)
+    default void drawHUD(ItemStack stack, ArmorUtils.ModularHUD hud, GuiGraphicsExtractor guiGraphics) {}
 
     /**
      * Checks and draws the hud for a provider
@@ -37,9 +37,9 @@ public interface IItemHUDProvider extends IItemComponent {
      * @param hud      Hud helper for rendering strings
      * @param stack    the stack the provider should use
      */
-    @OnlyIn(Dist.CLIENT)
+    @Environment(EnvType.CLIENT)
     static void tryDrawHud(@NotNull IItemHUDProvider provider, @NotNull ItemStack stack, ArmorUtils.ModularHUD hud,
-                           GuiGraphics guiGraphics) {
+                           GuiGraphicsExtractor guiGraphics) {
         if (provider.shouldDrawHUD()) provider.drawHUD(stack, hud, guiGraphics);
     }
 }

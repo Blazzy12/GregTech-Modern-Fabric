@@ -1,15 +1,16 @@
 package com.gregtechceu.gtceu.client.model.machine;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
+import net.minecraft.client.renderer.chunk.ChunkSectionLayer;
+
 import com.gregtechceu.gtceu.api.machine.multiblock.MultiblockControllerMachine;
 import com.gregtechceu.gtceu.api.machine.multiblock.part.MultiblockPartMachine;
 
-import net.minecraft.client.renderer.RenderType;
-import net.minecraft.client.renderer.block.model.BakedQuad;
+import com.gregtechceu.gtceu.compat.client.model.BakedQuad;
 import net.minecraft.core.Direction;
 import net.minecraft.util.RandomSource;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.client.model.data.ModelData;
+import com.gregtechceu.gtceu.compat.client.model.data.ModelData;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -21,8 +22,8 @@ public interface IControllerModelRenderer {
     /**
      * Render a specific model for given part.
      */
-    @OnlyIn(Dist.CLIENT)
+    @Environment(EnvType.CLIENT)
     void renderPartModel(List<BakedQuad> quads, MultiblockControllerMachine machine, MultiblockPartMachine part,
                          Direction frontFacing, @Nullable Direction side, RandomSource rand,
-                         @NotNull ModelData modelData, @Nullable RenderType renderType);
+                         @NotNull ModelData modelData, @Nullable ChunkSectionLayer renderType);
 }

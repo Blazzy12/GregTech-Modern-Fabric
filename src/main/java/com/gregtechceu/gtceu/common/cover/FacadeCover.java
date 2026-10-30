@@ -8,7 +8,6 @@ import com.gregtechceu.gtceu.api.sync_system.annotations.SaveField;
 import com.gregtechceu.gtceu.api.sync_system.annotations.SyncToClient;
 import com.gregtechceu.gtceu.common.item.behavior.FacadeItemBehaviour;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerPlayer;
@@ -19,10 +18,6 @@ import net.minecraft.world.level.block.state.BlockState;
 import lombok.Getter;
 import org.jetbrains.annotations.Nullable;
 
-import javax.annotation.ParametersAreNonnullByDefault;
-
-@ParametersAreNonnullByDefault
-@MethodsReturnNonnullByDefault
 public class FacadeCover extends CoverBehavior {
 
     @Getter
@@ -60,7 +55,7 @@ public class FacadeCover extends CoverBehavior {
     }
 
     @Nullable
-    public BlockState getAppearance(BlockState sourceState, BlockPos sourcePos) {
+    public BlockState getAppearance(@Nullable BlockState sourceState, @Nullable BlockPos sourcePos) {
         return facadeState;
     }
 }

@@ -3,24 +3,22 @@
   "dynamic_renders": [
     {
       "type": "gtceu:boiler_multi_parts",
-      "casing_block": {
-        "Name": "gtceu:steam_machine_casing"
-      },
+      "casing_block": "gtceu:steam_machine_casing",
       "firebox_active": {
-        "Name": "gtceu:bronze_firebox_casing",
-        "Properties": {
+        "id": "gtceu:bronze_firebox_casing",
+        "properties": {
           "active": "true"
         }
       },
       "firebox_idle": {
-        "Name": "gtceu:bronze_firebox_casing",
-        "Properties": {
+        "id": "gtceu:bronze_firebox_casing",
+        "properties": {
           "active": "false"
         }
       }
     }
   ],
-  "loader": "gtceu:machine",
+  "fabric:type": "gtceu:machine",
   "machine": "gtceu:steam_oven",
   "texture_overrides": {
     "all": "gtceu:block/casings/solid/machine_casing_bronze_plated_bricks"

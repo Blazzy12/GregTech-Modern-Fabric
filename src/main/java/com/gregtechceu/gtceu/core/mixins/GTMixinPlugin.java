@@ -36,9 +36,15 @@ public class GTMixinPlugin implements IMixinConfigPlugin {
 
         if (OPTIFINE_PRESENT) {
             LOGGER.fatal(
-                    "OptiFine detected. Use of GTCEu with OptiFine is not supported due to its breakage of Forge features.");
+                    "OptiFine detected. Use of GTCEu with OptiFine is not supported due to its breakage of NeoForge features.");
         }
     }
+
+    private static final Set<String> OPTIONAL_MOD_PACKAGES = Set.of("jei", "rei", "emi", "jade", "sodium", "iris",
+            "journeymap", "computercraft");
+    // mixin package -> mod id, where they differ
+    private static final Map<String, String> MOD_IDS = Map.of("xaerominimap", "xaerominimap",
+            "xaeroworldmap", "xaeroworldmap");
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
@@ -50,6 +56,16 @@ public class GTMixinPlugin implements IMixinConfigPlugin {
         }
 
         String mixin = mixinClassName.substring(MIXIN_PACKAGE_ROOT.length());
+
+        // mixins into optional mods live in a package named after the mod
+        int dot = mixin.indexOf('.');
+        if (dot > 0) {
+            String pkg = mixin.substring(0, dot);
+            String modId = MOD_IDS.getOrDefault(pkg, OPTIONAL_MOD_PACKAGES.contains(pkg) ? pkg : null);
+            if (modId != null && !net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded(modId)) {
+                return false;
+            }
+        }
 
         if (!isOptionEnabled(mixin)) {
             return false;

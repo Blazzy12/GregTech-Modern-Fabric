@@ -39,38 +39,18 @@
     {
       "faces": {
         "east": {
-          "forge_data": {
-            "ambient_occlusion": false,
-            "block_light": 15,
-            "sky_light": 15
-          },
           "texture": "#side_overlay",
           "tintindex": 2
         },
         "north": {
-          "forge_data": {
-            "ambient_occlusion": false,
-            "block_light": 15,
-            "sky_light": 15
-          },
           "texture": "#side_overlay",
           "tintindex": 2
         },
         "south": {
-          "forge_data": {
-            "ambient_occlusion": false,
-            "block_light": 15,
-            "sky_light": 15
-          },
           "texture": "#side_overlay",
           "tintindex": 2
         },
         "west": {
-          "forge_data": {
-            "ambient_occlusion": false,
-            "block_light": 15,
-            "sky_light": 15
-          },
           "texture": "#side_overlay",
           "tintindex": 2
         }
@@ -84,7 +64,8 @@
         11.032,
         5.032,
         11.032
-      ]
+      ],
+      "light_emission": 15
     }
   ],
   "render_type": "minecraft:cutout_mipped",

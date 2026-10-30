@@ -3,12 +3,11 @@ package com.gregtechceu.gtceu.api.item.component;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.Item;
+import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.UseAnim;
+import net.minecraft.world.item.ItemUseAnimation;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
@@ -23,31 +22,33 @@ public interface IInteractionItem extends IItemComponent {
         return InteractionResult.PASS;
     }
 
-    default InteractionResultHolder<ItemStack> use(Item item, Level level, Player player, InteractionHand usedHand) {
-        if (item.isEdible()) {
-            ItemStack itemStack = player.getItemInHand(usedHand);
-            if (player.canEat(itemStack.getFoodProperties(player).canAlwaysEat())) {
+    default InteractionResult use(ItemStack item, Level level,
+                                                   Player player, InteractionHand usedHand) {
+        FoodProperties food = item.getFoodProperties(player);
+        if (food != null) {
+            if (player.canEat(food.canAlwaysEat())) {
                 player.startUsingItem(usedHand);
-                return InteractionResultHolder.consume(itemStack);
+                return InteractionResult.CONSUME.heldItemTransformedTo(item);
             } else {
-                return InteractionResultHolder.fail(itemStack);
+                return InteractionResult.FAIL;
             }
         } else {
-            return InteractionResultHolder.pass(player.getItemInHand(usedHand));
+            return InteractionResult.PASS;
         }
     }
 
     default ItemStack finishUsingItem(ItemStack stack, Level level, LivingEntity livingEntity) {
-        return stack.isEdible() ? livingEntity.eat(level, stack) : stack;
+        // 26.x eating goes through the consumable component
+        var consumable = stack.get(net.minecraft.core.component.DataComponents.CONSUMABLE);
+        return consumable != null ? consumable.onConsume(level, livingEntity, stack) : stack;
     }
 
-    default UseAnim getUseAnimation(ItemStack stack) {
-        return stack.getItem().isEdible() ? UseAnim.EAT : UseAnim.NONE;
+    default ItemUseAnimation getUseAnimation(ItemStack stack) {
+        return stack.getFoodProperties(null) != null ? ItemUseAnimation.EAT : ItemUseAnimation.NONE;
     }
 
-    default boolean hurtEnemy(ItemStack stack, LivingEntity target, LivingEntity attacker) {
-        return false;
-    }
+    /** Matches 26.x's {@code Item#hurtEnemy}, which returns nothing. */
+    default void hurtEnemy(ItemStack stack, LivingEntity target, LivingEntity attacker) {}
 
     default InteractionResult interactLivingEntity(ItemStack stack, Player player, LivingEntity interactionTarget,
                                                    InteractionHand usedHand) {
@@ -58,7 +59,7 @@ public interface IInteractionItem extends IItemComponent {
         return false;
     }
 
-    default boolean onEntitySwing(ItemStack stack, LivingEntity entity) {
+    default boolean onEntitySwing(ItemStack stack, LivingEntity entity, InteractionHand hand) {
         return false;
     }
 }

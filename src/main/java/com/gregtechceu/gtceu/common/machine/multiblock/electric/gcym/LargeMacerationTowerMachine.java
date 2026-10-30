@@ -9,10 +9,9 @@ import com.gregtechceu.gtceu.api.multiblock.util.RelativeDirection;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.item.ItemEntity;
-import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.phys.AABB;
-import net.minecraftforge.items.IItemHandler;
-import net.minecraftforge.items.ItemHandlerHelper;
+import com.gregtechceu.gtceu.compat.items.IItemHandler;
+import com.gregtechceu.gtceu.compat.items.ItemHandlerHelper;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -63,9 +62,9 @@ public class LargeMacerationTowerMachine extends WorkableElectricMultiblockMachi
     private void updateBounds() {
         var fl = RelativeDirection.offsetPos(getBlockPos(), getFrontFacing(), getUpwardsFacing(), isFlipped(), 1, 1,
                 -1);
-        var br = RelativeDirection.offsetPos(getBlockPos(), getFrontFacing(), getUpwardsFacing(), isFlipped(), 1, -2,
+        var br = RelativeDirection.offsetPos(getBlockPos(), getFrontFacing(), getUpwardsFacing(), isFlipped(), 2, -2,
                 -4);
-        grindBound = AABB.of(BoundingBox.fromCorners(fl, br));
+        grindBound = AABB.encapsulatingFullBlocks(fl, br);
     }
 
     private void spinWheels() {

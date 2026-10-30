@@ -5,12 +5,10 @@ import com.gregtechceu.gtceu.api.data.chemical.material.Material;
 
 import it.unimi.dsi.fastutil.objects.Reference2LongMap;
 import it.unimi.dsi.fastutil.objects.Reference2LongOpenHashMap;
+import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 
 public class ItemMaterialInfo {
 
@@ -19,11 +17,7 @@ public class ItemMaterialInfo {
     private String toStringValue;
 
     public ItemMaterialInfo(MaterialStack... materialStacks) {
-        var materials = new Reference2LongOpenHashMap<Material>();
-        for (var mat : materialStacks) {
-            materials.addTo(mat.material(), mat.amount());
-        }
-        setSortedMaterials(materials);
+        this(Arrays.asList(materialStacks));
     }
 
     public ItemMaterialInfo(List<MaterialStack> materialStacks) {
@@ -41,8 +35,8 @@ public class ItemMaterialInfo {
     /**
      * Returns the first MaterialStack in the "materials" list
      */
-    public MaterialStack getMaterial() {
-        return sortedMaterials.isEmpty() ? MaterialStack.EMPTY : sortedMaterials.get(0);
+    public @Nullable MaterialStack getMaterial() {
+        return sortedMaterials.isEmpty() ? null : sortedMaterials.getFirst();
     }
 
     /**

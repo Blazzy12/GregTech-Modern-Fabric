@@ -10,11 +10,11 @@ import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
 
-import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -24,14 +24,13 @@ import org.jetbrains.annotations.NotNull;
 public class BiomeCondition extends RecipeCondition<BiomeCondition> {
 
     // spotless:off
-    public static final Codec<BiomeCondition> CODEC = RecordCodecBuilder.create(instance -> RecipeCondition.isReverse(instance).and(
+    public static final MapCodec<BiomeCondition> CODEC = RecordCodecBuilder.mapCodec(instance -> RecipeCondition.isReverse(instance).and(
             ResourceKey.codec(Registries.BIOME).fieldOf("biome").forGetter(val -> val.biome)
     ).apply(instance, BiomeCondition::new));
-    // spotless:on
 
     @Getter
-    private ResourceKey<Biome> biome = ResourceKey.create(Registries.BIOME,
-            ResourceLocation.withDefaultNamespace("dummy"));
+    private ResourceKey<Biome> biome = ResourceKey.create(Registries.BIOME, Identifier.withDefaultNamespace("dummy"));
+    // spotless:on
 
     public BiomeCondition(boolean isReverse, ResourceKey<Biome> biome) {
         super(isReverse);
@@ -44,7 +43,7 @@ public class BiomeCondition extends RecipeCondition<BiomeCondition> {
 
     @Override
     public RecipeConditionType<BiomeCondition> getType() {
-        return GTRecipeConditions.BIOME;
+        return GTRecipeConditions.BIOME.value();
     }
 
     @Override
@@ -55,8 +54,8 @@ public class BiomeCondition extends RecipeCondition<BiomeCondition> {
     @Override
     public Component getTooltips() {
         return Component.translatable("recipe.condition.biome.tooltip",
-                Component.translatableWithFallback(biome.location().toLanguageKey("biome"),
-                        biome.location().toString()));
+                Component.translatableWithFallback(biome.identifier().toLanguageKey("biome"),
+                        biome.identifier().toString()));
     }
 
     @Override

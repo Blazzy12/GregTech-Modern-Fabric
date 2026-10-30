@@ -1,31 +1,34 @@
 package com.gregtechceu.gtceu.api.sound;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 
 import com.google.gson.JsonObject;
+import lombok.Getter;
 
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 
 public abstract class SoundEntry {
 
-    protected ResourceLocation id;
+    @Getter
+    protected Identifier id;
+    @Getter
     protected String subtitle;
     protected SoundSource category;
     protected int attenuationDistance;
 
-    public SoundEntry(ResourceLocation id, String subtitle, SoundSource category, int attenuationDistance) {
+    public SoundEntry(Identifier id, String subtitle, SoundSource category, int attenuationDistance) {
         this.id = id;
         this.subtitle = subtitle;
         this.category = category;
@@ -41,19 +44,11 @@ public abstract class SoundEntry {
     public abstract SoundEvent getMainEvent();
 
     public String getSubtitleKey() {
-        return id.getNamespace() + ".subtitle." + id.getPath();
-    }
-
-    public ResourceLocation getId() {
-        return id;
+        return id.toLanguageKey("subtitle");
     }
 
     public boolean hasSubtitle() {
         return subtitle != null;
-    }
-
-    public String getSubtitle() {
-        return subtitle;
     }
 
     public void playOnServer(Level world, Vec3i pos) {
@@ -97,7 +92,7 @@ public abstract class SoundEntry {
 
     public abstract void playAt(Level world, double x, double y, double z, float volume, float pitch, boolean fade);
 
-    @OnlyIn(Dist.CLIENT)
+    @Environment(EnvType.CLIENT)
     public AutoReleasedSound playAutoReleasedSound(BooleanSupplier predicate, BlockPos pos, boolean loop, int delay,
                                                    float volume, float pitch) {
         var sound = new AutoReleasedSound(this, predicate, pos, loop, delay, volume, pitch);

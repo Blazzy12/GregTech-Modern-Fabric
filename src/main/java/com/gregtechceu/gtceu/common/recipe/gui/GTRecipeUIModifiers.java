@@ -23,7 +23,7 @@ public class GTRecipeUIModifiers {
 
     public static final RecipeUIModifier TEMP_COIL_INFO = (recipe, widget) -> {
         if (recipe.data.contains("ebf_temp")) {
-            int temp = recipe.data.getInt("ebf_temp");
+            int temp = recipe.data.getIntOr("ebf_temp", 0);
 
             widget.textComponents.child(new TextWidget<>(
                     Text.lang("gtceu.recipe.temperature", FormattingUtil.formatTemperature(temp))));
@@ -34,7 +34,7 @@ public class GTRecipeUIModifiers {
 
             if (requiredCoil != null && requiredCoil.getMaterial() != null) {
                 coilRow.child(new TextWidget<>(Text.lang("gtceu.recipe.coil.tier",
-                        Component.translatable(requiredCoil.getMaterial().getUnlocalizedName())
+                        Component.translatable(requiredCoil.getMaterial().value().getUnlocalizedName())
                                 .getString())));
             }
 
@@ -60,7 +60,7 @@ public class GTRecipeUIModifiers {
                     row.child(RecipeViewerSlotWidget.create(ItemStack.class)
                             .marginLeft(2)
                             .recipeSlotRole(RecipeSlotRole.CATALYST)
-                            .value(researchItem.getDataItem()));
+                            .value(researchItem.dataItem()));
                 }
                 widget.child(row.name("research_info"));
             }

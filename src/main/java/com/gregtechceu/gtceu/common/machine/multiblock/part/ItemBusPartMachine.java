@@ -14,7 +14,6 @@ import com.gregtechceu.gtceu.api.sync_system.annotations.SaveField;
 import com.gregtechceu.gtceu.api.sync_system.annotations.SyncToClient;
 import com.gregtechceu.gtceu.common.data.GTMachines;
 import com.gregtechceu.gtceu.common.machine.trait.ProgrammableCircuitSlotTrait;
-import com.gregtechceu.gtceu.common.mui.GTMuiWidgets;
 import com.gregtechceu.gtceu.utils.ExtendedUseOnContext;
 import com.gregtechceu.gtceu.utils.GTTransferUtils;
 import com.gregtechceu.gtceu.utils.ISubscription;
@@ -28,11 +27,9 @@ import net.minecraft.world.level.block.state.BlockState;
 
 import brachy.modularui.factory.PosGuiData;
 import brachy.modularui.screen.UISettings;
-import brachy.modularui.utils.Alignment;
 import brachy.modularui.value.sync.PanelSyncManager;
 import brachy.modularui.value.sync.SyncHandlers;
 import brachy.modularui.widget.ParentWidget;
-import brachy.modularui.widgets.layout.Flow;
 import brachy.modularui.widgets.layout.Grid;
 import brachy.modularui.widgets.slot.ItemSlot;
 import brachy.modularui.widgets.slot.SlotGroup;
@@ -214,7 +211,7 @@ public class ItemBusPartMachine extends TieredIOPartMachine
         if (io == IO.BOTH) return InteractionResult.PASS;
         if (context.getPlayer().isShiftKeyDown()) {
             if (swapIO()) {
-                return InteractionResult.sidedSuccess(isRemote());
+                return InteractionResult.SUCCESS;
             }
         }
         return InteractionResult.PASS;
@@ -224,9 +221,9 @@ public class ItemBusPartMachine extends TieredIOPartMachine
         BlockPos blockPos = getBlockPos();
         MachineDefinition newDefinition = null;
         if (io == IO.IN) {
-            newDefinition = GTMachines.ITEM_EXPORT_BUS[this.getTier()];
+            newDefinition = GTMachines.ITEM_EXPORT_BUS[this.getTier()].value();
         } else if (io == IO.OUT) {
-            newDefinition = GTMachines.ITEM_IMPORT_BUS[this.getTier()];
+            newDefinition = GTMachines.ITEM_IMPORT_BUS[this.getTier()].value();
         }
 
         if (newDefinition == null) return false;
@@ -256,29 +253,21 @@ public class ItemBusPartMachine extends TieredIOPartMachine
         int rowSize = (int) Math.sqrt(getInventorySize(tier));
 
         SlotGroup group = new SlotGroup("item_inv", rowSize, 0, true);
-        Grid grid = new Grid()
+        mainWidget.child(new Grid()
                 .coverChildren()
+                .center()
                 .margin(7, 5)
                 .gridOfSizeHeight(rowSize * rowSize, rowSize, (x, y, index) -> new ItemSlot()
                         .slot(SyncHandlers.itemSlot(inventory.storage, index)
                                 .slotGroup(group)
                                 .changeListener((oldStack, newStack, client, init) -> {
-                                    if (ItemStack.isSameItem(oldStack, newStack)) {
-                                        inventory.onContentsChanged();
-                                    }
+                                    // TODO uncomment once mui updated
+                                    /*
+                                     * if (ItemStack.isSameItem(oldStack, newStack)) {
+                                     * inventory.onContentsChanged();
+                                     * }
+                                     */
                                 })
-                                .accessibility(inventory.handlerIO.support(IO.IN), true)));
-
-        if (io == IO.OUT) {
-            Flow filterRow = Flow.row().width(9 * 18).coverChildrenHeight().childPadding(2);
-            mainWidget.child(Flow.col()
-                    .coverChildren()
-                    .center()
-                    .crossAxisAlignment(Alignment.CrossAxis.CENTER)
-                    .child(grid)
-                    .child(GTMuiWidgets.createFilterRow(filterRow, filterHandler, guiData, syncManager, settings)));
-        } else {
-            mainWidget.child(grid.center());
-        }
+                                .accessibility(inventory.handlerIO.support(IO.IN), true))));
     }
 }

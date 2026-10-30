@@ -11,7 +11,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ChunkSource;
-import net.minecraft.world.level.chunk.ChunkStatus;
+import net.minecraft.world.level.chunk.status.ChunkStatus;
 
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -135,7 +135,7 @@ public class NetworkBuilder extends Thread {
             if (this.world instanceof ServerLevel serverLevel) {
                 serverLevel.setChunkForced(x, z, true);
                 // add loaded chunk to list to unload it later
-                this.loadedChunks.add(ChunkPos.asLong(x, z));
+                this.loadedChunks.add(ChunkPos.pack(x, z));
             }
             chunk = chunkProvider.getChunk(x, z, ChunkStatus.FULL, true);
         }

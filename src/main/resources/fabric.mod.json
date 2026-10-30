@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "id": "gtceu",
+  "version": "${version}",
+  "name": "GregTech CEu",
+  "description": "GregTech CE Unofficial, ported to Fabric 26.3",
+  "license": "LGPL-3.0",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.gregtechceu.gtceu.GTCEuFabric"
+    ],
+    "client": [
+      "com.gregtechceu.gtceu.client.GTCEuClient"
+    ],
+    "jei_mod_plugin": [
+      "com.gregtechceu.gtceu.integration.recipeviewer.jei.GTJEIPlugin",
+      "brachy.modularui.integration.jei.ModularUIJeiPlugin"
+    ],
+    "jade": [
+      "com.gregtechceu.gtceu.integration.jade.GTJadePlugin"
+    ],
+    "journeymap": [
+      "com.gregtechceu.gtceu.integration.map.journeymap.GTJourneyMapPlugin"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.20.1",
+    "minecraft": "~26.3",
+    "java": ">=25",
+    "fabric-api": "*"
+  },
+  "mixins": [
+    "gtceu.mixins.json",
+    "modularui.mixins.json"
+  ],
+  "accessWidener": "gtceu.classtweaker",
+  "suggests": {
+    "jei": "*",
+    "jade": "*"
+  }
+}

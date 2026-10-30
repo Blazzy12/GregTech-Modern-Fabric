@@ -1,5 +1,9 @@
 package com.gregtechceu.gtceu.client.renderer.monitor;
 
+import com.gregtechceu.gtceu.compat.client.render.CompatRender;
+
+import net.minecraft.util.LightCoordsUtil;
+
 import com.gregtechceu.gtceu.api.placeholder.GraphicsComponent;
 import com.gregtechceu.gtceu.api.placeholder.MultiLineComponent;
 import com.gregtechceu.gtceu.common.machine.multiblock.electric.CentralMonitorMachine;
@@ -7,8 +11,7 @@ import com.gregtechceu.gtceu.common.machine.multiblock.electric.monitor.MonitorG
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.renderer.LightTexture;
-import net.minecraft.client.renderer.MultiBufferSource;
+import com.gregtechceu.gtceu.compat.client.render.MultiBufferSource;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
@@ -31,7 +34,7 @@ public class MonitorTextRenderer implements IMonitorRenderer {
     public void render(CentralMonitorMachine machine, MonitorGroup group, float partialTick, PoseStack poseStack,
                        MultiBufferSource buffer, int packedLight, int packedOverlay) {
         if (group.isEmpty()) return;
-        BlockPos rel = group.getRow(0, machine::toRelative).get(0);
+        BlockPos rel = group.getRow(0, machine::toRelative).getFirst();
         int row = 0;
         int columns = group.getRow(0, machine::toRelative).size();
         poseStack.translate(rel.getX(), rel.getY(), rel.getZ());
@@ -65,23 +68,17 @@ public class MonitorTextRenderer implements IMonitorRenderer {
                         y -= 144;
                         poseStack.translate(-rel.getX() / (TEXT_SCALE * scale), -rel.getY() / (TEXT_SCALE * scale),
                                 -rel.getZ() / (TEXT_SCALE * scale));
-                        rel = group.getRow(row, machine::toRelative).get(0);
+                        rel = group.getRow(row, machine::toRelative).getFirst();
                         poseStack.translate(rel.getX() / (TEXT_SCALE * scale), rel.getY() / (TEXT_SCALE * scale),
                                 rel.getZ() / (TEXT_SCALE * scale));
                     } catch (IndexOutOfBoundsException e) {
                         return;
                     }
                 }
-                Minecraft.getInstance().font.drawInBatch(
-                        line,
-                        9, y,
-                        0xFFFFFF,
-                        false,
-                        poseStack.last().pose(),
-                        buffer,
+                CompatRender.drawText(Minecraft.getInstance().font, line, 9, y, 0xFFFFFF, false, poseStack, buffer,
                         Font.DisplayMode.NORMAL,
                         0,
-                        LightTexture.FULL_BRIGHT);
+                        LightCoordsUtil.FULL_BRIGHT);
                 y += Minecraft.getInstance().font.lineHeight * scale;
                 didAnything = true;
             }

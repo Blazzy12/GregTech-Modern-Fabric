@@ -11,7 +11,7 @@ import com.gregtechceu.gtceu.common.recipe.gui.GTRecipeUIModifiers;
 
 import net.minecraft.network.chat.Component;
 
-import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -21,7 +21,7 @@ import org.jetbrains.annotations.NotNull;
 public class ResearchCondition extends RecipeCondition<ResearchCondition> {
 
     // spotless:off
-    public static final Codec<ResearchCondition> CODEC = RecordCodecBuilder.create(instance -> RecipeCondition.isReverse(instance).and(
+    public static final MapCodec<ResearchCondition> CODEC = RecordCodecBuilder.mapCodec(instance -> RecipeCondition.isReverse(instance).and(
             ResearchData.CODEC.fieldOf("research").forGetter(ResearchCondition::getData)
     ).apply(instance, ResearchCondition::new));
     // spotless:on
@@ -40,7 +40,7 @@ public class ResearchCondition extends RecipeCondition<ResearchCondition> {
 
     @Override
     public RecipeConditionType<ResearchCondition> getType() {
-        return GTRecipeConditions.RESEARCH;
+        return GTRecipeConditions.RESEARCH.value();
     }
 
     @Override

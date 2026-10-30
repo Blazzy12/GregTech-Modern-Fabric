@@ -1,5 +1,7 @@
 package com.gregtechceu.gtceu.api.mui.modular_item;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import com.gregtechceu.gtceu.api.capability.GTCapabilityHelper;
 import com.gregtechceu.gtceu.api.item.module.*;
 import com.gregtechceu.gtceu.api.mui.GTGuiScreen;
@@ -10,7 +12,6 @@ import net.minecraft.world.item.ItemStack;
 
 import brachy.modularui.api.IPanelHandler;
 import brachy.modularui.api.IUIHolder;
-import brachy.modularui.api.drawable.IDrawable;
 import brachy.modularui.api.drawable.Text;
 import brachy.modularui.factory.PlayerInventoryGuiData;
 import brachy.modularui.screen.ModularPanel;
@@ -74,7 +75,7 @@ public class ModularItemManagerUI implements IUIHolder<PlayerInventoryGuiData<?>
                 .horizontalCenter()
                 .coverChildren()
                 .padding(6)
-                .child(GTMuiWidgets.createTitleBar(IDrawable.EMPTY.asIcon(), "Modules", 250,
+                .child(GTMuiWidgets.createTitleBar(null, "Modules", 250,
                         GTGuiTextures.BACKGROUND))
                 .child(moduleList);
     }
@@ -102,12 +103,13 @@ public class ModularItemManagerUI implements IUIHolder<PlayerInventoryGuiData<?>
                         .margin(4)
                         .coverChildren()
                         .crossAxisAlignment(Alignment.CrossAxis.START)
-                        .childIf(moduleItem.isEmpty(),
+                        .childIf(moduleItem == null || moduleItem.isEmpty(),
                                 () -> new TextWidget<>(Text.dynamic(() -> module.getDisplayName(appliedModule)))
                                         .scale(0.75f)
                                         .horizontalCenter()
                                         .paddingBottom(2))
-                        .childIf(!moduleItem.isEmpty(), () -> {
+                        .childIf(moduleItem != null && !moduleItem.isEmpty(), () -> {
+                            assert moduleItem != null;
                             return Flow.row()
                                     .coverChildren()
                                     .padding(4)
@@ -129,6 +131,7 @@ public class ModularItemManagerUI implements IUIHolder<PlayerInventoryGuiData<?>
                         .children(module.getSettings(appliedModule, psm, index)));
     }
 
+    @Environment(EnvType.CLIENT)
     @Override
     public ModularScreen createScreen(PlayerInventoryGuiData<?> data, ModularPanel<?> mainPanel) {
         return new GTGuiScreen(mainPanel);

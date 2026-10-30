@@ -1,5 +1,9 @@
 package com.gregtechceu.gtceu.common.recipe.type;
 
+import net.minecraft.world.item.crafting.PlacementInfo;
+import net.minecraft.world.item.crafting.RecipeBookCategory;
+
+import com.gregtechceu.gtceu.api.GTValues;
 import com.gregtechceu.gtceu.api.capability.GTCapabilityHelper;
 import com.gregtechceu.gtceu.api.item.module.IModularItem;
 import com.gregtechceu.gtceu.api.item.module.ItemModule;
@@ -7,49 +11,61 @@ import com.gregtechceu.gtceu.api.registry.GTRegistries;
 import com.gregtechceu.gtceu.common.data.GTItems;
 import com.gregtechceu.gtceu.common.data.GTRecipeTypes;
 
-import net.minecraft.core.RegistryAccess;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.util.GsonHelper;
+import net.minecraft.core.Holder;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.core.registries.codec.RegistryFixedCodec;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.items.wrapper.RecipeWrapper;
+import com.gregtechceu.gtceu.compat.items.wrapper.RecipeWrapper;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonPrimitive;
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
 import lombok.Getter;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 public class EquipmentFoundryRecipe implements Recipe<RecipeWrapper> {
 
-    @Getter
-    private final ResourceLocation id;
+    // spotless:off
+    public static final MapCodec<EquipmentFoundryRecipe> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
+            Ingredient.CODEC.fieldOf("equipment").forGetter(EquipmentFoundryRecipe::getEquipment),
+            TierEntry.CODEC.listOf(0, GTValues.TIER_COUNT).fieldOf("entries").forGetter(EquipmentFoundryRecipe::getEntries)
+    ).apply(instance, EquipmentFoundryRecipe::new));
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, EquipmentFoundryRecipe> STREAM_CODEC = StreamCodec.composite(
+            Ingredient.CONTENTS_STREAM_CODEC, EquipmentFoundryRecipe::getEquipment,
+            TierEntry.STREAM_CODEC.apply(ByteBufCodecs.list()), EquipmentFoundryRecipe::getEntries,
+            EquipmentFoundryRecipe::new
+    );
+
+    public static final RecipeSerializer<EquipmentFoundryRecipe> SERIALIZER = new RecipeSerializer<>(CODEC,
+            STREAM_CODEC);
+    //spotless:on
+
     @Getter
     private final Ingredient equipment;
     @Getter
     private final List<TierEntry> entries;
 
-    public EquipmentFoundryRecipe(ResourceLocation id, Ingredient equipment, List<TierEntry> entries) {
+    public EquipmentFoundryRecipe(Ingredient equipment, List<TierEntry> entries) {
         if (entries.isEmpty())
             throw new IllegalArgumentException("Equipment foundry recipe must have at least one entry");
 
-        this.id = id;
         this.entries = entries;
         this.equipment = equipment;
     }
 
-    public EquipmentFoundryRecipe(ResourceLocation id, Ingredient equipment, @Nullable Ingredient[] moduleIngredients,
-                                  @Nullable ItemModule[] modules) {
+    public EquipmentFoundryRecipe(Ingredient equipment, @Nullable Ingredient[] moduleIngredients,
+                                  @Nullable Holder<ItemModule>[] modules) {
         if (moduleIngredients.length != modules.length)
             throw new IllegalArgumentException("Ingredient and module array length must match");
 
@@ -65,7 +81,6 @@ public class EquipmentFoundryRecipe implements Recipe<RecipeWrapper> {
             throw new IllegalArgumentException("Equipment foundry recipe must have at least one entry");
         }
 
-        this.id = id;
         this.equipment = equipment;
         this.entries = entries;
     }
@@ -80,7 +95,7 @@ public class EquipmentFoundryRecipe implements Recipe<RecipeWrapper> {
 
         for (var entry : entries) {
             Ingredient ingredient = entry.ingredient();
-            ItemModule moduleToApply = entry.moduleForTier();
+            ItemModule moduleToApply = entry.moduleForTier().value();
             if (ingredient.test(itemToApply)) {
                 IModularItem modularItem = GTCapabilityHelper.getModularItem(equipmentItem);
                 if (modularItem == null) continue;
@@ -92,7 +107,7 @@ public class EquipmentFoundryRecipe implements Recipe<RecipeWrapper> {
     }
 
     @Override
-    public ItemStack assemble(RecipeWrapper container, RegistryAccess registryAccess) {
+    public ItemStack assemble(RecipeWrapper container) {
         ItemStack applyTo = container.getItem(0);
         ItemStack ingredient = container.getItem(1);
         applyToItem(applyTo, ingredient, 0);
@@ -103,7 +118,7 @@ public class EquipmentFoundryRecipe implements Recipe<RecipeWrapper> {
         if (!equipment.test(equipmentItem)) return;
         for (var entry : entries) {
             Ingredient ingredient = entry.ingredient();
-            ItemModule moduleToApply = entry.moduleForTier();
+            ItemModule moduleToApply = entry.moduleForTier().value();
             if (ingredient.test(itemToApply)) {
                 IModularItem modularItem = GTCapabilityHelper.getModularItem(equipmentItem);
                 if (modularItem == null) continue;
@@ -113,76 +128,61 @@ public class EquipmentFoundryRecipe implements Recipe<RecipeWrapper> {
         }
     }
 
-    @Override
-    public boolean canCraftInDimensions(int width, int height) {
-        return true;
-    }
 
-    @Override
-    public ItemStack getResultItem(RegistryAccess registryAccess) {
+    public ItemStack getResultItem() {
         return GTItems.QUANTUM_CHESTPLATE.asStack();
     }
 
     @Override
-    public RecipeSerializer<?> getSerializer() {
-        return GTRecipeTypes.EQUIPMENT_FOUNDRY_SERIALIZER.get();
+    public RecipeSerializer<EquipmentFoundryRecipe> getSerializer() {
+        return SERIALIZER;
     }
 
     @Override
-    public RecipeType<?> getType() {
-        return GTRecipeTypes.EQUIPMENT_FOUNDRY_RECIPES.get();
+    @SuppressWarnings("unchecked")
+    public RecipeType<EquipmentFoundryRecipe> getType() {
+        return (RecipeType<EquipmentFoundryRecipe>) GTRecipeTypes.EQUIPMENT_FOUNDRY_RECIPES.get();
     }
 
-    public record TierEntry(Ingredient ingredient, ItemModule moduleForTier) {}
-
-    public static class Serializer implements RecipeSerializer<EquipmentFoundryRecipe> {
-
-        public static void toJson(JsonObject json, EquipmentFoundryRecipe recipe) {
-            json.add("equipment", recipe.equipment.toJson());
-
-            JsonArray entryArr = new JsonArray();
-            for (var entry : recipe.entries) {
-                var obj = new JsonObject();
-                obj.add("ingredient", entry.ingredient.toJson());
-                obj.add("module", new JsonPrimitive(entry.moduleForTier.getId().toString()));
-                entryArr.add(obj);
-            }
-            json.add("entries", entryArr);
-        }
-
-        public EquipmentFoundryRecipe fromJson(ResourceLocation recipeId, JsonObject json) {
-            Ingredient equipment = Ingredient.fromJson(GsonHelper.getAsJsonObject(json, "equipment"), false);
-
-            JsonArray entryArr = json.getAsJsonArray("entries");
-            List<TierEntry> entries = new ArrayList<>();
-
-            for (JsonElement entry : entryArr) {
-                var obj = entry.getAsJsonObject();
-                Ingredient ing = Ingredient.fromJson(obj.get("ingredient"));
-                ItemModule module = Objects.requireNonNull(GTRegistries.ITEM_MODULES
-                        .get(ResourceLocation.parse(obj.getAsJsonPrimitive("module").getAsString())));
-                entries.add(new TierEntry(ing, module));
-            }
-
-            return new EquipmentFoundryRecipe(recipeId, equipment, entries);
-        }
-
-        public EquipmentFoundryRecipe fromNetwork(ResourceLocation recipeId, FriendlyByteBuf buffer) {
-            Ingredient equipment = Ingredient.fromNetwork(buffer);
-            List<TierEntry> entries = buffer.readList(b -> {
-                Ingredient ing = Ingredient.fromNetwork(b);
-                ItemModule moduleType = GTRegistries.ITEM_MODULES.get(buffer.readResourceLocation());
-                return new TierEntry(ing, Objects.requireNonNull(moduleType));
-            });
-            return new EquipmentFoundryRecipe(recipeId, equipment, entries);
-        }
-
-        public void toNetwork(FriendlyByteBuf buffer, EquipmentFoundryRecipe recipe) {
-            recipe.equipment.toNetwork(buffer);
-            buffer.writeCollection(recipe.entries, (b, v) -> {
-                v.ingredient.toNetwork(b);
-                b.writeResourceLocation(v.moduleForTier.getId());
-            });
-        }
+    @Override
+    public boolean isSpecial() {
+        return true;
     }
+
+    @Override
+    public boolean showNotification() {
+        return false;
+    }
+
+    @Override
+    public String group() {
+        return "";
+    }
+
+    @Override
+    public PlacementInfo placementInfo() {
+        return PlacementInfo.NOT_PLACEABLE;
+    }
+
+    @Override
+    public RecipeBookCategory recipeBookCategory() {
+        return com.gregtechceu.gtceu.common.data.GTRecipeBookCategories.MACHINE;
+    }
+
+    public record TierEntry(Ingredient ingredient, Holder<ItemModule> moduleForTier) {
+
+        // spotless:off
+        public static final Codec<TierEntry> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+                Ingredient.CODEC.fieldOf("ingredient").forGetter(TierEntry::ingredient),
+                RegistryFixedCodec.create(GTRegistries.Keys.ITEM_MODULE).fieldOf("module").forGetter(TierEntry::moduleForTier)
+        ).apply(instance, TierEntry::new));
+
+        public static final StreamCodec<RegistryFriendlyByteBuf, TierEntry> STREAM_CODEC = StreamCodec.composite(
+                Ingredient.CONTENTS_STREAM_CODEC, TierEntry::ingredient,
+                ByteBufCodecs.holderRegistry(GTRegistries.Keys.ITEM_MODULE), TierEntry::moduleForTier,
+                TierEntry::new
+        );
+        //spotless:on
+    }
+
 }

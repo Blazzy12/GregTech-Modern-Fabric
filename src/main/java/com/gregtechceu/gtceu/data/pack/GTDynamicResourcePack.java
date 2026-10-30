@@ -1,104 +1,105 @@
 package com.gregtechceu.gtceu.data.pack;
 
+import com.gregtechceu.gtceu.compat.client.color.ColorHandlers;
+
+import com.google.gson.JsonObject;
+
+import com.google.gson.JsonArray;
+
 import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.api.addon.AddonFinder;
-import com.gregtechceu.gtceu.api.addon.IGTAddon;
 import com.gregtechceu.gtceu.config.ConfigHolder;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
 import net.minecraft.SharedConstants;
 import net.minecraft.client.renderer.texture.atlas.SpriteSource;
 import net.minecraft.client.renderer.texture.atlas.SpriteSources;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.data.models.blockstates.BlockStateGenerator;
+import com.gregtechceu.gtceu.compat.data.models.blockstates.BlockStateGenerator;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.FileToIdConverter;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.packs.PackLocationInfo;
 import net.minecraft.server.packs.PackResources;
 import net.minecraft.server.packs.PackType;
-import net.minecraft.server.packs.metadata.MetadataSectionSerializer;
+import net.minecraft.server.packs.metadata.MetadataSectionType;
+import net.minecraft.util.InclusiveRange;
 import net.minecraft.server.packs.metadata.pack.PackMetadataSection;
 import net.minecraft.server.packs.resources.IoSupplier;
-import net.minecraftforge.client.model.generators.BlockModelBuilder;
-import net.minecraftforge.client.model.generators.ItemModelBuilder;
-import net.minecraftforge.client.model.generators.ModelBuilder;
+import com.gregtechceu.gtceu.compat.client.model.generators.BlockModelBuilder;
+import com.gregtechceu.gtceu.compat.client.model.generators.ItemModelBuilder;
+import com.gregtechceu.gtceu.compat.client.model.generators.ModelBuilder;
 
 import com.google.common.collect.Sets;
 import com.google.gson.JsonElement;
 import com.mojang.serialization.JsonOps;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectSet;
-import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
-
-import javax.annotation.ParametersAreNonnullByDefault;
 
 import static com.gregtechceu.gtceu.data.pack.GTDynamicDataPack.writeJson;
 
-@MethodsReturnNonnullByDefault
-@ParametersAreNonnullByDefault
 public class GTDynamicResourcePack implements PackResources {
 
     protected static final ObjectSet<String> CLIENT_DOMAINS = new ObjectOpenHashSet<>();
     protected static final GTDynamicPackContents CONTENTS = new GTDynamicPackContents();
 
     private static final FileToIdConverter ATLAS_ID_CONVERTER = FileToIdConverter.json("atlases");
+    public static final FileToIdConverter TEXTURE_ID_CONVERTER = SpriteSource.TEXTURE_ID_CONVERTER;
     public static final FileToIdConverter BLOCKSTATE_ID_CONVERTER = FileToIdConverter.json("blockstates");
     public static final FileToIdConverter MODEL_ID_CONVERTER = FileToIdConverter.json("models");
-    public static final FileToIdConverter TEXTURE_ID_CONVERTER = new FileToIdConverter("textures", ".png");
 
-    private final String name;
+    private final PackLocationInfo info;
 
     static {
-        CLIENT_DOMAINS.addAll(Sets.newHashSet(GTCEu.MOD_ID, "minecraft", "forge", "c"));
+        CLIENT_DOMAINS.addAll(Sets.newHashSet(GTCEu.MOD_ID, "minecraft", "neoforge", "c", "kubejs"));
     }
 
-    public GTDynamicResourcePack(String name) {
-        this(name, AddonFinder.getAddons().stream().map(IGTAddon::addonModId).collect(Collectors.toSet()));
+    public GTDynamicResourcePack(PackLocationInfo info) {
+        this(info, AddonFinder.getAddons().keySet());
     }
 
-    public GTDynamicResourcePack(String name, Collection<String> domains) {
-        this.name = name;
+    public GTDynamicResourcePack(PackLocationInfo info, Collection<String> domains) {
+        this.info = info;
         CLIENT_DOMAINS.addAll(domains);
+    }
+
+    public static void addNamespace(String namespace) {
+        CLIENT_DOMAINS.add(namespace);
     }
 
     public static void clearClient() {
         CONTENTS.clearData();
     }
 
-    public static void addResource(ResourceLocation location, JsonElement obj) {
+    public static void addResource(Identifier location, JsonElement obj) {
         addResource(location, obj.toString().getBytes(StandardCharsets.UTF_8));
     }
 
-    public static void addResource(ResourceLocation location, byte[] data) {
+    public static void addResource(Identifier location, byte[] data) {
         if (ConfigHolder.INSTANCE.dev.dumpAssets) {
             Path parent = GTCEu.GTCEU_FOLDER.resolve("dumped/assets");
-            writeJson(location, null, parent, data);
+            writeJson(location, parent, data);
         }
         CONTENTS.addToData(location, data);
     }
 
-    public static void addBlockModel(ResourceLocation loc, JsonElement obj) {
+    public static void addBlockModel(Identifier loc, JsonElement obj) {
         if (!loc.getPath().startsWith("block/")) {
             loc = loc.withPrefix("block/");
         }
         addModel(loc, obj);
     }
 
-    public static void addBlockModel(ResourceLocation loc, Supplier<JsonElement> obj) {
+    public static void addBlockModel(Identifier loc, Supplier<JsonElement> obj) {
         addBlockModel(loc, obj.get());
     }
 
@@ -106,27 +107,71 @@ public class GTDynamicResourcePack implements PackResources {
         addBlockModel(builder.getLocation(), builder.toJson());
     }
 
-    public static void addItemModel(ResourceLocation loc, JsonElement obj) {
+    public static final FileToIdConverter ITEM_DEFINITION_ID_CONVERTER = FileToIdConverter.json("items");
+
+    /**
+     * Adds an item model, and the 26.x item definition ({@code items/<id>.json}) that uses it with GregTech's legacy
+     * item colours as tints.
+     */
+    public static void addItemModel(Identifier loc, JsonElement obj) {
+        Identifier itemId = loc.getPath().startsWith("item/") ? loc.withPath(loc.getPath().substring(5)) : loc;
         if (!loc.getPath().startsWith("item/")) {
             loc = loc.withPrefix("item/");
         }
         addModel(loc, obj);
+        addItemDefinition(itemId, loc);
+    }
+
+    /** @return the blockstate JSON of a block with one model for all states */
+    public static JsonObject simpleBlockState(Identifier modelId) {
+        JsonObject variant = new JsonObject();
+        variant.addProperty("model", modelId.toString());
+        JsonObject variants = new JsonObject();
+        variants.add("", variant);
+        JsonObject state = new JsonObject();
+        state.add("variants", variants);
+        return state;
+    }
+
+    /** @return a model JSON that only has a parent */
+    public static JsonObject delegatedModel(Identifier parent) {
+        JsonObject model = new JsonObject();
+        model.addProperty("parent", parent.toString());
+        return model;
+    }
+
+    /** Adds an item definition that shows a model, tinted by the item's registered colour. */
+    public static void addItemDefinition(Identifier itemId, Identifier modelId) {
+        JsonObject model = new JsonObject();
+        model.addProperty("type", "minecraft:model");
+        model.addProperty("model", modelId.toString());
+        JsonArray tints = new JsonArray();
+        for (int i = 0; i < ColorHandlers.BLOCK_TINT_LAYERS; i++) {
+            JsonObject tint = new JsonObject();
+            tint.addProperty("type", ColorHandlers.LEGACY_ITEM_TINT.toString());
+            tint.addProperty("index", i);
+            tints.add(tint);
+        }
+        model.add("tints", tints);
+        JsonObject definition = new JsonObject();
+        definition.add("model", model);
+        addResource(ITEM_DEFINITION_ID_CONVERTER.idToFile(itemId), definition);
     }
 
     public static void addItemModel(ItemModelBuilder builder) {
         addItemModel(builder.getLocation(), builder.toJson());
     }
 
-    public static void addItemModel(ResourceLocation loc, Supplier<JsonElement> obj) {
+    public static void addItemModel(Identifier loc, Supplier<JsonElement> obj) {
         addItemModel(loc, obj.get());
     }
 
-    public static void addModel(ResourceLocation loc, JsonElement obj) {
+    public static void addModel(Identifier loc, JsonElement obj) {
         loc = MODEL_ID_CONVERTER.idToFile(loc);
         addResource(loc, obj);
     }
 
-    public static void addModel(ResourceLocation loc, Supplier<JsonElement> obj) {
+    public static void addModel(Identifier loc, Supplier<JsonElement> obj) {
         addModel(loc, obj.get());
     }
 
@@ -134,12 +179,12 @@ public class GTDynamicResourcePack implements PackResources {
         addModel(builder.getLocation(), builder.toJson());
     }
 
-    public static void addBlockState(ResourceLocation loc, JsonElement stateJson) {
+    public static void addBlockState(Identifier loc, JsonElement stateJson) {
         loc = BLOCKSTATE_ID_CONVERTER.idToFile(loc);
         addResource(loc, stateJson);
     }
 
-    public static void addBlockState(ResourceLocation loc, Supplier<JsonElement> generator) {
+    public static void addBlockState(Identifier loc, Supplier<JsonElement> generator) {
         addBlockState(loc, generator.get());
     }
 
@@ -147,58 +192,19 @@ public class GTDynamicResourcePack implements PackResources {
         addBlockState(BuiltInRegistries.BLOCK.getKey(generator.getBlock()), generator.get());
     }
 
-    public static void addAtlasSpriteSource(ResourceLocation atlasLoc, SpriteSource source) {
+    public static void addAtlasSpriteSource(Identifier atlasLoc, SpriteSource source) {
         addAtlasSpriteSourceList(atlasLoc, Collections.singletonList(source));
     }
 
-    public static void addAtlasSpriteSourceList(ResourceLocation loc, List<SpriteSource> sources) {
+    public static void addAtlasSpriteSourceList(Identifier loc, List<SpriteSource> sources) {
         loc = ATLAS_ID_CONVERTER.idToFile(loc);
         JsonElement sourceJson = SpriteSources.FILE_CODEC.encodeStart(JsonOps.INSTANCE, sources)
-                .getOrThrow(false, error -> GTCEu.LOGGER.error("Failed to encode atlas sprite source. {}", error));
+                .getOrThrow();
         addResource(loc, sourceJson);
     }
 
-    public static void addBlockTexture(ResourceLocation loc, byte[] data) {
-        ResourceLocation l = getTextureLocation("block", loc);
-        if (ConfigHolder.INSTANCE.dev.dumpAssets) {
-            Path parent = GTCEu.GTCEU_FOLDER.resolve("dumped/assets");
-            writeByteArray(l, null, parent, data);
-        }
-        CONTENTS.addToData(l, data);
-    }
-
-    public static void addItemTexture(ResourceLocation loc, byte[] data) {
-        ResourceLocation l = getTextureLocation("item", loc);
-        if (ConfigHolder.INSTANCE.dev.dumpAssets) {
-            Path parent = GTCEu.GTCEU_FOLDER.resolve("dumped/assets");
-            writeByteArray(l, null, parent, data);
-        }
-        CONTENTS.addToData(l, data);
-    }
-
-    @ApiStatus.Internal
-    public static void writeByteArray(ResourceLocation id, @Nullable String subdir, Path parent, byte[] data) {
-        try {
-            Path file;
-            if (subdir != null) {
-                // assume PNG
-                file = parent.resolve(id.getNamespace()).resolve(subdir).resolve(id.getPath() + ".png");
-            } else {
-                // assume the file type is also appended if a full path is given.
-                file = parent.resolve(id.getNamespace()).resolve(id.getPath());
-            }
-            Files.createDirectories(file.getParent());
-            try (OutputStream output = Files.newOutputStream(file)) {
-                output.write(data);
-            }
-        } catch (IOException e) {
-            GTCEu.LOGGER.error("Failed to write JSON export for file {}", id, e);
-        }
-    }
-
-    @Nullable
     @Override
-    public IoSupplier<InputStream> getRootResource(String... elements) {
+    public @Nullable IoSupplier<InputStream> getRootResource(String... elements) {
         if (elements.length > 0 && elements[0].equals("pack.png")) {
             return () -> GTCEu.class.getResourceAsStream("/icon.png");
         }
@@ -206,7 +212,7 @@ public class GTDynamicResourcePack implements PackResources {
     }
 
     @Override
-    public @Nullable IoSupplier<InputStream> getResource(PackType type, ResourceLocation location) {
+    public @Nullable IoSupplier<InputStream> getResource(PackType type, Identifier location) {
         if (type == PackType.CLIENT_RESOURCES) {
             return CONTENTS.getResource(location);
         }
@@ -226,34 +232,22 @@ public class GTDynamicResourcePack implements PackResources {
     }
 
     @SuppressWarnings("unchecked")
-    @Nullable
     @Override
-    public <T> T getMetadataSection(MetadataSectionSerializer<T> metaReader) {
-        if (metaReader == PackMetadataSection.TYPE) {
+    public @Nullable <T> T getMetadataSection(MetadataSectionType<T> metaReader) {
+        if (metaReader == PackMetadataSection.forPackType(PackType.CLIENT_RESOURCES)) {
             return (T) new PackMetadataSection(Component.literal("GTCEu dynamic assets"),
-                    SharedConstants.getCurrentVersion().getPackVersion(PackType.CLIENT_RESOURCES));
+                    new InclusiveRange<>(SharedConstants.getCurrentVersion().packVersion(PackType.CLIENT_RESOURCES)));
         }
         return null;
     }
 
     @Override
-    public String packId() {
-        return this.name;
-    }
-
-    public boolean isBuiltin() {
-        return true;
+    public PackLocationInfo location() {
+        return info;
     }
 
     @Override
     public void close() {
         // NOOP
-    }
-
-    public static ResourceLocation getTextureLocation(@Nullable String path, ResourceLocation textureId) {
-        if (path == null) {
-            return TEXTURE_ID_CONVERTER.idToFile(textureId);
-        }
-        return TEXTURE_ID_CONVERTER.idToFile(textureId.withPrefix(path + "/"));
     }
 }

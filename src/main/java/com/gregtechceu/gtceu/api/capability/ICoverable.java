@@ -1,11 +1,14 @@
 package com.gregtechceu.gtceu.api.capability;
 
+import com.gregtechceu.gtceu.core.fabric.ItemStackNbt;
+
 import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.api.blockentity.ICopyable;
 import com.gregtechceu.gtceu.api.blockentity.IGregtechBlockEntity;
 import com.gregtechceu.gtceu.api.blockentity.ITickSubscription;
 import com.gregtechceu.gtceu.api.cover.CoverBehavior;
 import com.gregtechceu.gtceu.api.cover.CoverDefinition;
+import com.gregtechceu.gtceu.api.item.tool.ToolHelper;
 import com.gregtechceu.gtceu.api.machine.TickableSubscription;
 import com.gregtechceu.gtceu.api.registry.GTRegistries;
 import com.gregtechceu.gtceu.api.sync_system.managed.ISyncManaged;
@@ -15,12 +18,13 @@ import com.gregtechceu.gtceu.utils.GTUtil;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.BlockAndTintGetter;
+import net.minecraft.client.renderer.block.BlockAndTintGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
@@ -29,7 +33,7 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
-import net.minecraftforge.items.IItemHandlerModifiable;
+import com.gregtechceu.gtceu.compat.items.IItemHandlerModifiable;
 
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.NotNull;
@@ -99,13 +103,13 @@ public interface ICoverable extends ITickSubscription, ISyncManaged, ICopyable {
     IFluidHandlerModifiable getFluidHandlerCap(@Nullable Direction side, boolean useCoverCapability);
 
     /**
-     * Its an internal method, you should never call it yourself.
+     * Internal method, do not call yourself.
      * <br>
      * Use {@link ICoverable#removeCover(boolean, Direction, Player)} and
      * {@link ICoverable#placeCoverOnSide(Direction, ItemStack, CoverDefinition, ServerPlayer)} instead
      * 
-     * @param coverBehavior
-     * @param side
+     * @param coverBehavior the cover to set, or {@code null} to remove an existing cover
+     * @param side          the side to set the cover for
      */
     @ApiStatus.Internal
     void setCoverAtSide(@Nullable CoverBehavior coverBehavior, Direction side);
@@ -203,7 +207,7 @@ public interface ICoverable extends ITickSubscription, ISyncManaged, ICopyable {
     }
 
     default boolean isRemote() {
-        return getLevel() == null ? GTCEu.isClientThread() : getLevel().isClientSide;
+        return getLevel() == null ? GTCEu.isClientThread() : getLevel().isClientSide();
     }
 
     default VoxelShape[] addCoverCollisionBoundingBox() {
@@ -240,11 +244,11 @@ public interface ICoverable extends ITickSubscription, ISyncManaged, ICopyable {
 
     @Nullable
     static Direction rayTraceCoverableSide(ICoverable coverable, Player player) {
-        BlockHitResult rayTrace = (BlockHitResult) player.pick(player.getBlockReach(), 0, false);
-        if (rayTrace.getType() == HitResult.Type.MISS) {
+        HitResult rayTrace = ToolHelper.getPlayerDefaultRaytrace(player);
+        if (rayTrace.getType() != HitResult.Type.BLOCK) {
             return null;
         }
-        return traceCoverSide(rayTrace);
+        return traceCoverSide((BlockHitResult) rayTrace);
     }
 
     default boolean hasDynamicCovers() {
@@ -293,7 +297,7 @@ public interface ICoverable extends ITickSubscription, ISyncManaged, ICopyable {
     }
 
     @Nullable
-    default BlockState getBlockAppearance(BlockState state, BlockAndTintGetter level, BlockPos pos, Direction side,
+    default BlockState getBlockAppearance(BlockState state, net.minecraft.world.level.BlockAndLightGetter level, BlockPos pos, Direction side,
                                           BlockState sourceState, BlockPos sourcePos) {
         if (hasCover(side)) {
             return getCoverAtSide(side).getAppearance(sourceState, sourcePos);
@@ -304,8 +308,8 @@ public interface ICoverable extends ITickSubscription, ISyncManaged, ICopyable {
     private CompoundTag createCoverConfigTag(@Nullable CoverBehavior cover) {
         if (cover == null) return new CompoundTag();
         var tag = new CompoundTag();
-        tag.putString("id", GTRegistries.COVERS.getKey(cover.coverDefinition).toString());
-        tag.put("item", cover.getAttachItem().serializeNBT());
+        tag.putString("id", cover.coverDefinition.getId().toString());
+        tag.put("item", ItemStackNbt.save(cover.getAttachItem(), getLevel().registryAccess()));
         var dataTag = new CompoundTag();
         cover.copyConfig(dataTag);
         tag.put("data", dataTag);
@@ -314,15 +318,16 @@ public interface ICoverable extends ITickSubscription, ISyncManaged, ICopyable {
 
     private void applyCoverConfigTag(ServerPlayer player, Direction dir, CompoundTag tag) {
         if (tag.isEmpty()) return;
-        var def = GTRegistries.COVERS.get(ResourceLocation.parse(tag.getString("id")));
-        ItemStack stack = ItemStack.of(tag.getCompound("item"));
-        if (def == null) return;
+        var def = getLevel().registryAccess()
+                .get(ResourceKey.create(GTRegistries.Keys.COVER, Identifier.parse(tag.getStringOr("id", ""))));
+        ItemStack stack = ItemStackNbt.parseOptional(getLevel().registryAccess(), tag.getCompoundOrEmpty("item"));
+        if (def.isEmpty()) return;
 
-        placeCoverOnSide(dir, stack, def, player);
+        placeCoverOnSide(dir, stack, def.get().value(), player);
 
         CoverBehavior placedCover = getCoverAtSide(dir);
         if (placedCover != null && tag.contains("data") && !tag.getCompound("data").isEmpty())
-            placedCover.pasteConfig(player, tag.getCompound("data"));
+            placedCover.pasteConfig(player, tag.getCompoundOrEmpty("data"));
     }
 
     @Override
@@ -339,7 +344,7 @@ public interface ICoverable extends ITickSubscription, ISyncManaged, ICopyable {
         }
 
         for (Direction dir : GTUtil.DIRECTIONS) {
-            applyCoverConfigTag(player, dir, tag.getCompound(dir.getName()));
+            applyCoverConfigTag(player, dir, tag.getCompoundOrEmpty(dir.getName()));
         }
     }
 

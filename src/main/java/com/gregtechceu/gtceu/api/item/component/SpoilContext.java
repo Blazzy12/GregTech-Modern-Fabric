@@ -3,30 +3,39 @@ package com.gregtechceu.gtceu.api.item.component;
 import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.api.machine.MetaMachine;
 import com.gregtechceu.gtceu.api.transfer.item.CustomItemStackHandler;
+import com.gregtechceu.gtceu.utils.EntitySlotsInvWrapper;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.UUIDUtil;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.items.IItemHandler;
-import net.minecraftforge.server.ServerLifecycleHooks;
+import com.gregtechceu.gtceu.compat.capabilities.Capabilities;
+import com.gregtechceu.gtceu.compat.items.IItemHandler;
+import com.gregtechceu.gtceu.compat.server.ServerLifecycleHooks;
 
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
+import io.netty.buffer.ByteBuf;
 import lombok.With;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 
 /**
  * This class represents the environment in which an item spoils, for example,
@@ -43,6 +52,20 @@ public record SpoilContext(@Nullable Level level,
                            @Nullable CompoundTag itemHandlerData,
                            int slot) {
 
+    // spotless:off
+    public static final Codec<SpoilContext> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+            Level.RESOURCE_KEY_CODEC.optionalFieldOf("dimension").forGetter(ctx -> ctx.level == null ? Optional.empty() : Optional.of(ctx.level.dimension())),
+            BlockPos.CODEC.optionalFieldOf("pos").forGetter(ctx -> Optional.ofNullable(ctx.pos)),
+            UUIDUtil.CODEC.optionalFieldOf("entity").forGetter(ctx -> ctx.entity == null ? Optional.empty() : Optional.of(ctx.entity.getUUID())),
+            Identifier.CODEC.optionalFieldOf("item_handler").forGetter(ctx -> ctx.itemHandlerSource == null ? Optional.empty() : Optional.of(ctx.itemHandlerSource.getId())),
+            CompoundTag.CODEC.optionalFieldOf("item_handler_data").forGetter(ctx -> Optional.ofNullable(ctx.itemHandlerData)),
+            Codec.INT.optionalFieldOf("slot", -1).forGetter(SpoilContext::slot)
+    ).apply(instance, SpoilContext::build));
+    // spotless:on
+
+    public static final StreamCodec<ByteBuf, SpoilContext> STREAM_CODEC = ByteBufCodecs.COMPOUND_TAG
+            .map(SpoilContext::deserializeNBT, SpoilContext::serializeNBT);
+
     /**
      * @return the {@link Level} used to determine time to calculate spoilage progress (using
      *         {@link Level#getGameTime()}).
@@ -52,6 +75,18 @@ public record SpoilContext(@Nullable Level level,
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
         if (server == null) return null;
         return server.overworld();
+    }
+
+    @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
+    private static SpoilContext build(Optional<ResourceKey<Level>> dimension, Optional<BlockPos> pos,
+                                      Optional<UUID> entityId,
+                                      Optional<Identifier> itemHandlerSourceId,
+                                      Optional<CompoundTag> itemHandlerData, int slot) {
+        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        ServerLevel level = server == null || dimension.isEmpty() ? null : server.getLevel(dimension.get());
+        return new SpoilContext(level, pos.orElse(null),
+                level != null && entityId.isPresent() ? level.getEntity(entityId.get()) : null,
+                itemHandlerSourceId.map(ItemHandlerSource::getById).orElse(null), itemHandlerData.orElse(null), slot);
     }
 
     public SpoilContext() {
@@ -66,8 +101,8 @@ public record SpoilContext(@Nullable Level level,
         this(level, pos, null, null, null, -1);
     }
 
-    public SpoilContext(@NotNull Entity entity) {
-        this(entity.level(), entity.blockPosition(), entity, null, null, -1);
+    public SpoilContext(@NotNull Entity entity, int slot) {
+        this(entity.level(), entity.blockPosition(), entity, ItemHandlerSource.ENTITY_INVENTORY, null, slot);
     }
 
     public SpoilContext(@NotNull Player player, int slot) {
@@ -94,14 +129,16 @@ public record SpoilContext(@Nullable Level level,
     }
 
     public SpoilContext withItemHandlerSide(Direction side) {
-        if (side == null) return this.withItemHandlerSource(ItemHandlerSource.BLOCK_CAPABILITY);
-        return this.withItemHandlerSource(ItemHandlerSource.BLOCK_CAPABILITY)
-                .withItemHandlerData("side", StringTag.valueOf(side.getSerializedName()));
+        SpoilContext self = this.withItemHandlerSource(ItemHandlerSource.BLOCK_CAPABILITY);
+        if (side != null) {
+            self = self.withItemHandlerData("side", StringTag.valueOf(side.getSerializedName()));
+        }
+        return self;
     }
 
     public CompoundTag serializeNBT() {
         CompoundTag tag = new CompoundTag();
-        if (level != null) tag.putString("level", level.dimensionTypeId().location().toString());
+        if (level != null) tag.putString("level", level.dimension().identifier().toString());
         if (pos != null) tag.putLong("pos", pos.asLong());
         if (entity != null) tag.putInt("entity", entity.getId());
         if (slot != -1) tag.putInt("slot", slot);
@@ -115,23 +152,23 @@ public record SpoilContext(@Nullable Level level,
         if (tag.contains("level")) {
             ctx = ctx.withLevel(ServerLifecycleHooks.getCurrentServer().getLevel(ResourceKey.create(
                     Registries.DIMENSION,
-                    new ResourceLocation(tag.getString("level")))));
+                    Identifier.parse(tag.getStringOr("level", "")))));
         }
         if (tag.contains("pos")) {
-            ctx = ctx.withPos(BlockPos.of(tag.getLong("pos")));
+            ctx = ctx.withPos(BlockPos.of(tag.getLongOr("pos", 0L)));
         }
         if (tag.contains("entity") && ctx.level != null) {
-            ctx = ctx.withEntity(ctx.level.getEntity(tag.getInt("entity")));
+            ctx = ctx.withEntity(ctx.level.getEntity(tag.getIntOr("entity", 0)));
         }
         if (tag.contains("slot")) {
-            ctx = ctx.withSlot(tag.getInt("slot"));
+            ctx = ctx.withSlot(tag.getIntOr("slot", 0));
         }
         if (tag.contains("handlerSource")) {
             ctx = ctx.withItemHandlerSource(
-                    ItemHandlerSource.getById(new ResourceLocation(tag.getString("handlerSource"))));
+                    ItemHandlerSource.getById(Identifier.parse(tag.getStringOr("handlerSource", ""))));
         }
         if (tag.contains("handlerData")) {
-            ctx = ctx.withItemHandlerData(tag.getCompound("handlerData"));
+            ctx = ctx.withItemHandlerData(tag.getCompoundOrEmpty("handlerData"));
         }
         return ctx;
     }
@@ -145,25 +182,24 @@ public record SpoilContext(@Nullable Level level,
      */
     public static abstract class ItemHandlerSource {
 
-        private static final Map<ResourceLocation, ItemHandlerSource> HANDLER_SOURCES = new HashMap<>();
+        private static final Map<Identifier, ItemHandlerSource> HANDLER_SOURCES = new HashMap<>();
 
         /**
          * Represents getting an item handler as a capability of a block, with an optional "side" key in
          * {@link SpoilContext#itemHandlerData}
          */
-        public static final ItemHandlerSource BLOCK_CAPABILITY = new ItemHandlerSource(GTCEu.id("block_cap")) {
+        public static final ItemHandlerSource BLOCK_CAPABILITY = new ItemHandlerSource(GTCEu.id("block_capability")) {
 
             @Override
             protected @Nullable IItemHandler getHandler(SpoilContext ctx) {
-                if (ctx.level() == null || ctx.pos() == null || ctx.itemHandlerData() == null) return null;
+                if (ctx.level() == null || ctx.pos() == null) return null;
                 CompoundTag tag = ctx.itemHandlerData();
-                BlockEntity blockEntity = ctx.level().getBlockEntity(ctx.pos());
-                if (blockEntity == null) return null;
-                if (!tag.contains("side"))
-                    return blockEntity.getCapability(ForgeCapabilities.ITEM_HANDLER, null).resolve().orElse(null);
-                return blockEntity
-                        .getCapability(ForgeCapabilities.ITEM_HANDLER, Direction.byName(tag.getString("side")))
-                        .resolve().orElse(null);
+                if (tag != null && tag.get("side") instanceof net.minecraft.nbt.StringTag) {
+                    return ctx.level().getCapability(Capabilities.ItemHandler.BLOCK, ctx.pos(),
+                            Direction.byName(tag.getStringOr("side", "")));
+                } else {
+                    return ctx.level().getCapability(Capabilities.ItemHandler.BLOCK, ctx.pos(), null);
+                }
             }
         };
 
@@ -176,23 +212,36 @@ public record SpoilContext(@Nullable Level level,
             @Override
             protected @Nullable IItemHandler getHandler(SpoilContext ctx) {
                 if (ctx.entity instanceof Player player) {
-                    return new CustomItemStackHandler(player.getInventory().items);
+                    return new CustomItemStackHandler(player.getInventory().getNonEquipmentItems());
                 } else return null;
             }
         };
 
-        private static ItemHandlerSource getById(ResourceLocation id) {
+        public static final ItemHandlerSource ENTITY_INVENTORY = new ItemHandlerSource(GTCEu.id("entity_inventory")) {
+
+            @Override
+            protected @Nullable IItemHandler getHandler(SpoilContext ctx) {
+                if (ctx.entity != null) {
+                    IItemHandler handler = ctx.entity.getCapability(Capabilities.ItemHandler.ENTITY);
+                    if (handler != null) return handler;
+                    return new EntitySlotsInvWrapper(ctx.entity);
+                }
+                return null;
+            }
+        };
+
+        private static ItemHandlerSource getById(Identifier id) {
             return HANDLER_SOURCES.get(id);
         }
 
-        private final ResourceLocation id;
+        private final Identifier id;
 
-        public ItemHandlerSource(ResourceLocation id) {
+        public ItemHandlerSource(Identifier id) {
             this.id = id;
             HANDLER_SOURCES.put(id, this);
         }
 
-        private ResourceLocation getId() {
+        private Identifier getId() {
             return id;
         }
 

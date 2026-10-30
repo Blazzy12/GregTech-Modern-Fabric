@@ -1,25 +1,25 @@
 package com.gregtechceu.gtceu.client.particle;
 
+import com.gregtechceu.gtceu.compat.client.render.MultiBufferSource;
+import com.gregtechceu.gtceu.compat.client.render.RecordingBufferSource;
+
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.client.renderer.texture.TextureAtlas;
+
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
+import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
+import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
+
 import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.client.bloom.EffectRenderContext;
 import com.gregtechceu.gtceu.client.bloom.IRenderSetup;
 
-import net.minecraft.ChatFormatting;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
-import net.minecraftforge.client.event.CustomizeGuiOverlayEvent;
-import net.minecraftforge.client.event.RenderLevelStageEvent;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.level.LevelEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.BufferBuilder;
-import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.Tesselator;
+import com.mojang.blaze3d.vertex.*;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import org.jetbrains.annotations.Nullable;
 
@@ -117,102 +117,63 @@ public final class GTParticleManager {
         this.depthDisabledParticles.clear();
     }
 
-    @SubscribeEvent(priority = EventPriority.HIGH)
-    public void renderParticles(RenderLevelStageEvent event) {
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_PARTICLES) return;
+    /** Registers the tick and render hooks. */
+    public static void init() {
+        LevelRenderEvents.COLLECT_SUBMITS.register(INSTANCE::renderParticles);
+        ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            if (!client.isPaused() && client.level != null) {
+                INSTANCE.updateEffects();
+            }
+        });
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> INSTANCE.clearAllEffects(true));
+    }
+
+    private final RecordingBufferSource buffers = new RecordingBufferSource();
+
+    private void renderParticles(LevelRenderContext event) {
         if (this.depthEnabledParticles.isEmpty() && this.depthDisabledParticles.isEmpty()) return;
 
-        Camera camera = event.getCamera();
-
-        PoseStack poseStack = event.getPoseStack();
-        poseStack.pushPose();
-        poseStack.translate(-camera.getPosition().x, -camera.getPosition().y, -camera.getPosition().z);
-
+        Minecraft mc = Minecraft.getInstance();
+        Camera camera = mc.gameRenderer.mainCamera();
         EffectRenderContext instance = EffectRenderContext.getInstance()
-                .update(camera, event.getFrustum(), event.getPartialTick());
+                .update(camera, event.levelState().cameraRenderState.cullFrustum,
+                        mc.getDeltaTracker().getGameTimeDeltaPartialTick(false));
 
-        if (!this.depthDisabledParticles.isEmpty()) {
-            RenderSystem.depthMask(false);
-            renderParticlesInLayer(poseStack, this.depthDisabledParticles, instance);
-            RenderSystem.depthMask(true);
-        }
-        renderParticlesInLayer(poseStack, this.depthEnabledParticles, instance);
+        PoseStack poseStack = new PoseStack();
+        poseStack.translate(-camera.position().x, -camera.position().y, -camera.position().z);
 
-        poseStack.popPose();
+        buffers.clear();
+        // depth-disabled particles used to be drawn without writing depth; translucent render types don't either
+        renderParticlesInLayer(poseStack, this.depthDisabledParticles, instance, buffers);
+        renderParticlesInLayer(poseStack, this.depthEnabledParticles, instance, buffers);
+        buffers.submit(event.poseStack(), event.submitNodeCollector());
     }
 
     private static void renderParticlesInLayer(PoseStack poseStack,
                                                Map<@Nullable IRenderSetup, Queue<GTParticle>> renderQueue,
-                                               EffectRenderContext context) {
+                                               EffectRenderContext context, MultiBufferSource buffers) {
         for (var entry : renderQueue.entrySet()) {
             Queue<GTParticle> particles = entry.getValue();
             if (particles.isEmpty()) continue;
 
             IRenderSetup handler = entry.getKey();
-            boolean initialized = false;
+            VertexConsumer buffer = null;
 
-            BufferBuilder buffer = Tesselator.getInstance().getBuilder();
             for (GTParticle particle : particles) {
                 if (!particle.shouldRender(context)) {
                     continue;
                 }
                 try {
-                    if (!initialized) {
-                        initialized = true;
-                        if (handler != null) {
-                            handler.preDraw(buffer);
-                        }
+                    if (buffer == null) {
+                        buffer = buffers.getBuffer(handler != null ? handler.getRenderType() :
+                                RenderTypes.entityTranslucentEmissive(TextureAtlas.LOCATION_PARTICLES));
                     }
                     particle.renderParticle(poseStack, buffer, context);
-
                 } catch (Throwable throwable) {
                     GTCEu.LOGGER.error("Particle render error: {}", particle, throwable);
                     particle.setExpired();
                 }
             }
-            if (initialized && handler != null) {
-                handler.postDraw(buffer);
-            }
-        }
-    }
-
-    @SubscribeEvent
-    public void clientTick(TickEvent.ClientTickEvent event) {
-        if (event.phase != TickEvent.Phase.END || Minecraft.getInstance().isPaused()) {
-            return;
-        }
-        if (Minecraft.getInstance().level != null) {
-            INSTANCE.updateEffects();
-        }
-    }
-
-    @SubscribeEvent
-    public void onClientLevelLoad(LevelEvent.Load event) {
-        if (!(event.getLevel() instanceof ClientLevel newLevel)) {
-            return;
-        }
-        ClientLevel oldLevel = Minecraft.getInstance().level;
-        if (oldLevel != newLevel) {
-            this.clearAllEffects(oldLevel != null);
-        }
-    }
-
-    @SubscribeEvent
-    public void onClientLogout(ClientPlayerNetworkEvent.LoggingOut event) {
-        if (event.getPlayer() != null) {
-            this.clearAllEffects(true);
-        }
-    }
-
-    @SubscribeEvent
-    public void debugOverlay(CustomizeGuiOverlayEvent.DebugText event) {
-        List<String> gameInfo = event.getLeft();
-        if (gameInfo.size() >= 5) {
-            String countStatsLine = gameInfo.get(4);
-            countStatsLine += ". " + ChatFormatting.GOLD +
-                    "P-BACK: " + count(this.depthEnabledParticles) +
-                    " P-FRONT: " + count(this.depthDisabledParticles);
-            gameInfo.set(4, countStatsLine);
         }
     }
 

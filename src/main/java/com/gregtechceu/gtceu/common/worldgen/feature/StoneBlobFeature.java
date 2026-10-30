@@ -1,5 +1,7 @@
 package com.gregtechceu.gtceu.common.worldgen.feature;
 
+import com.mojang.serialization.MapCodec;
+import net.minecraft.world.level.chunk.ChunkGenerator;
 import com.gregtechceu.gtceu.common.worldgen.feature.configurations.StoneBlobConfiguration;
 
 import net.minecraft.core.BlockPos;
@@ -12,23 +14,24 @@ import net.minecraft.world.level.chunk.BulkSectionAccess;
 import net.minecraft.world.level.chunk.LevelChunkSection;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
-import net.minecraft.world.level.levelgen.feature.configurations.OreConfiguration;
+import net.minecraft.world.level.levelgen.feature.BlockReplacement;
 
 import java.util.function.Function;
 
-public class StoneBlobFeature extends Feature<StoneBlobConfiguration> {
+public record StoneBlobFeature(StoneBlobConfiguration config) implements Feature {
 
-    public StoneBlobFeature() {
-        super(StoneBlobConfiguration.CODEC);
+    public static final MapCodec<StoneBlobFeature> CODEC = StoneBlobConfiguration.CODEC.xmap(StoneBlobFeature::new, StoneBlobFeature::config);
+
+
+    @Override
+    public MapCodec<StoneBlobFeature> codec() {
+        return CODEC;
     }
 
     @Override
-    public boolean place(FeaturePlaceContext<StoneBlobConfiguration> context) {
-        RandomSource random = context.random();
+    public boolean place(WorldGenLevel level, ChunkGenerator chunkGenerator, RandomSource random, BlockPos origin) {
+        var context = new GTFeaturePlaceContext<>(level, chunkGenerator, random, origin, config);
         BlockPos blockpos = context.origin();
-        WorldGenLevel level = context.level();
-        StoneBlobConfiguration config = context.config();
 
         int placedAmount = 0;
         int size = config.size().sample(random);
@@ -83,9 +86,9 @@ public class StoneBlobFeature extends Feature<StoneBlobConfiguration> {
                         if (!canPlaceOre(blockstate, bulkSectionAccess::getBlockState, random, config.state(),
                                 mutablePos))
                             continue;
-                        if (config.state().state.isAir())
+                        if (config.state().state().isAir())
                             continue;
-                        levelchunksection.setBlockState(sectionX, sectionY, sectionZ, config.state().state, false);
+                        levelchunksection.setBlockState(sectionX, sectionY, sectionZ, config.state().state(), false);
                         ++placedAmount;
                     }
                 }
@@ -96,11 +99,11 @@ public class StoneBlobFeature extends Feature<StoneBlobConfiguration> {
     }
 
     public boolean canPlaceOre(BlockState state, Function<BlockPos, BlockState> adjacentStateAccessor,
-                               RandomSource random, OreConfiguration.TargetBlockState targetState,
+                               RandomSource random, BlockReplacement targetState,
                                BlockPos.MutableBlockPos mutablePos) {
-        if (!targetState.target.test(state, random))
+        if (!targetState.target().test(state, mutablePos, random))
             return false;
 
-        return !isAdjacentToAir(adjacentStateAccessor, mutablePos);
+        return !net.minecraft.world.level.levelgen.feature.AbstractOreFeature.isAdjacentToAir(adjacentStateAccessor, mutablePos);
     }
 }

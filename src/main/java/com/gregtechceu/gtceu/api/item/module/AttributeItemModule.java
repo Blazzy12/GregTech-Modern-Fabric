@@ -2,7 +2,8 @@ package com.gregtechceu.gtceu.api.item.module;
 
 import com.gregtechceu.gtceu.api.item.module.ui.ItemModuleSettingsBuilder;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.core.Holder;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.Attribute;
@@ -12,6 +13,7 @@ import net.minecraft.world.item.ItemStack;
 import brachy.modularui.api.drawable.Text;
 import brachy.modularui.value.sync.PanelSyncManager;
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import lombok.Getter;
 import org.jetbrains.annotations.Nullable;
@@ -20,12 +22,12 @@ import java.util.Objects;
 
 public abstract class AttributeItemModule extends ItemModule {
 
-    public AttributeItemModule(ResourceLocation id) {
+    public AttributeItemModule(Identifier id) {
         super(id);
     }
 
     @Override
-    public Codec<? extends ModuleData> moduleDataCodec() {
+    public MapCodec<? extends ModuleData> moduleDataCodec() {
         return AttributeModuleData.CODEC;
     }
 
@@ -39,21 +41,8 @@ public abstract class AttributeItemModule extends ItemModule {
         return new AttributeModuleData(slot, module, moduleStack, getMaxAttributeAmount());
     }
 
-    public @Nullable AttributeModifier getModifierToAdd(ModuleContext moduleContext) {
-        if (!isEnabled(moduleContext)) return null;
-        if (!moduleContext.getData(AttributeModuleData.class).isKeepActive()) return null;
-
-        return applySettingsToModifier(moduleContext,
-                getAttributeModifier(moduleContext));
-    }
-
-    protected double getNeutralModifier(ModuleContext moduleContext) {
-        return 0;
-    }
-
     public double getMinModifier(ModuleContext moduleContext) {
-        AttributeModifier attributeModifier = getAttributeModifier(moduleContext);
-        double original = attributeModifier.getAmount();
+        double original = getMaxAttributeAmount();
         double neutral = getNeutralModifier(moduleContext);
         return Math.min(neutral, original);
     }
@@ -64,9 +53,12 @@ public abstract class AttributeItemModule extends ItemModule {
         return Math.max(neutral, original);
     }
 
-    protected AttributeModifier applySettingsToModifier(ModuleContext moduleContext, AttributeModifier modifier) {
+    public @Nullable AttributeModifier getModifierToAdd(ModuleContext moduleContext) {
+        if (!isEnabled(moduleContext)) return null;
+        if (!moduleContext.getData(AttributeModuleData.class).isKeepActive()) return null;
+
         double modifiedAmount = getModifier(moduleContext);
-        return new AttributeModifier(modifier.getId(), modifier.getName(), modifiedAmount, modifier.getOperation());
+        return new AttributeModifier(getId(), modifiedAmount, getModifierOperation());
     }
 
     public double getModifier(ModuleContext moduleContext) {
@@ -83,9 +75,9 @@ public abstract class AttributeItemModule extends ItemModule {
     }
 
     protected String getSliderString(ModuleContext moduleContext, double value) {
-        return switch (getAttributeModifier(moduleContext).getOperation()) {
-            case ADDITION -> "+%.2f".formatted(value);
-            case MULTIPLY_BASE, MULTIPLY_TOTAL -> "+%.2f%%".formatted(value * 100);
+        return switch (getModifierOperation()) {
+            case ADD_VALUE -> "+%.2f".formatted(value);
+            case ADD_MULTIPLIED_BASE, ADD_MULTIPLIED_TOTAL -> "+%.2f%%".formatted(value * 100);
         };
     }
 
@@ -99,11 +91,15 @@ public abstract class AttributeItemModule extends ItemModule {
                         x -> getSliderString(moduleContext, x));
     }
 
-    public abstract Attribute getAttribute(ModuleContext moduleContext);
+    public abstract Holder<Attribute> getAttribute(ModuleContext moduleContext);
 
     public abstract double getMaxAttributeAmount();
 
-    public abstract AttributeModifier getAttributeModifier(ModuleContext moduleContext);
+    public abstract AttributeModifier.Operation getModifierOperation();
+
+    protected double getNeutralModifier(ModuleContext moduleContext) {
+        return 0;
+    }
 
     /**
      * Called each tick while the item module is equipped, to determine if the attribute should be active.
@@ -122,11 +118,11 @@ public abstract class AttributeItemModule extends ItemModule {
     public static class AttributeModuleData extends ModuleData {
 
         // spotless:off
-        public static final Codec<AttributeModuleData> CODEC = RecordCodecBuilder.create(instance -> baseCodec(instance).and(instance.group(
+        public static final MapCodec<AttributeModuleData> CODEC = RecordCodecBuilder.mapCodec(instance -> baseCodec(instance).and(instance.group(
                 Codec.DOUBLE.fieldOf("modifier_amount").forGetter(AttributeModuleData::getModifierAmount),
                 Codec.BOOL.fieldOf("keep_active").forGetter(AttributeModuleData::isKeepActive)
         )).apply(instance, AttributeModuleData::new));
-        // spotless:on
+        //spotless:on
 
         @Getter
         private final double modifierAmount;
@@ -151,8 +147,8 @@ public abstract class AttributeItemModule extends ItemModule {
         }
 
         @Override
-        public ModuleData withEnabled(boolean enabled) {
-            return new AttributeModuleData(slot, module, moduleItem, enabled, modifierAmount, keepActive);
+        public ModuleData copy() {
+            return new AttributeModuleData(slot, module, moduleItem.copy(), enabled, modifierAmount, keepActive);
         }
 
         @Override
@@ -160,14 +156,13 @@ public abstract class AttributeItemModule extends ItemModule {
             return new AttributeModuleData(slot, module, moduleItem, enabled, modifierAmount, keepActive);
         }
 
-        public AttributeModuleData withKeepActive(boolean keepActive) {
+        @Override
+        public ModuleData withEnabled(boolean enabled) {
             return new AttributeModuleData(slot, module, moduleItem, enabled, modifierAmount, keepActive);
         }
 
-        @Override
-        public ModuleData copy() {
-            return new AttributeModuleData(slot, module, moduleItem.copy(), enabled,
-                    modifierAmount, keepActive);
+        public AttributeModuleData withKeepActive(boolean keepActive) {
+            return new AttributeModuleData(slot, module, moduleItem, enabled, modifierAmount, keepActive);
         }
 
         @Override

@@ -7,7 +7,7 @@ import com.gregtechceu.gtceu.api.sync_system.data_transformers.ValueTransformers
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -226,7 +226,7 @@ public final class MachineTraitHolder {
             var traitHolder = Objects.requireNonNull(context.currentValue());
             var compoundTag = (CompoundTag) tag;
 
-            for (var key : compoundTag.getAllKeys()) {
+            for (var key : compoundTag.keySet()) {
                 var trait = traitHolder.getPersistentTrait(key);
                 if (trait == null) {
                     GTCEu.LOGGER.warn("Attempted to deserialise syncable trait '{}', but no syncable trait has that ID",
@@ -234,14 +234,14 @@ public final class MachineTraitHolder {
                     continue;
                 }
 
-                trait.getSyncDataHolder().deserializeNBT(context.lookup(), compoundTag.getCompound(key));
+                trait.getSyncDataHolder().deserializeNBT(context.lookup(), compoundTag.getCompoundOrEmpty(key));
             }
 
             return traitHolder;
         }
 
         @Override
-        public void writeToPacket(FriendlyByteBuf buf, MachineTraitHolder value,
+        public void writeToPacket(RegistryFriendlyByteBuf buf, MachineTraitHolder value,
                                   TransformerContext<MachineTraitHolder> context) {
             buf.writeVarInt(value.traitsToSave.size());
             value.traitsToSave.forEach((name, trait) -> {
@@ -252,7 +252,7 @@ public final class MachineTraitHolder {
         }
 
         @Override
-        public @Nullable MachineTraitHolder readFromPacket(FriendlyByteBuf buf,
+        public @Nullable MachineTraitHolder readFromPacket(RegistryFriendlyByteBuf buf,
                                                            TransformerContext<MachineTraitHolder> context) {
             var traitHolder = Objects.requireNonNull(context.currentValue());
             int length = buf.readVarInt();

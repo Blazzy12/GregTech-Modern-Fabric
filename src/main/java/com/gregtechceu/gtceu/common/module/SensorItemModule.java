@@ -3,11 +3,11 @@ package com.gregtechceu.gtceu.common.module;
 import com.gregtechceu.gtceu.api.item.module.TieredItemModule;
 
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 public class SensorItemModule extends TieredItemModule {
 
-    public SensorItemModule(ResourceLocation id, int tier) {
+    public SensorItemModule(Identifier id, int tier) {
         super(id, tier);
     }
 

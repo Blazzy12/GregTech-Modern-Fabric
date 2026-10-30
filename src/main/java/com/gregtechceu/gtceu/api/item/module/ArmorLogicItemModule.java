@@ -5,8 +5,8 @@ import com.gregtechceu.gtceu.api.item.armor.IArmorLogic;
 import com.gregtechceu.gtceu.api.item.component.IItemHUDProvider;
 import com.gregtechceu.gtceu.common.item.armor.IJetpack;
 
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 
@@ -14,7 +14,7 @@ import org.jetbrains.annotations.Nullable;
 
 public abstract class ArmorLogicItemModule extends ItemModule implements IHUDProviderItemModule {
 
-    public ArmorLogicItemModule(ResourceLocation id) {
+    public ArmorLogicItemModule(Identifier id) {
         super(id);
     }
 
@@ -67,7 +67,7 @@ public abstract class ArmorLogicItemModule extends ItemModule implements IHUDPro
     }
 
     @Override
-    public void drawHUD(ModuleContext moduleContext, ArmorUtils.ModularHUD hud, GuiGraphics graphics) {
+    public void drawHUD(ModuleContext moduleContext, ArmorUtils.ModularHUD hud, GuiGraphicsExtractor graphics) {
         if (getArmorLogic(moduleContext) instanceof IItemHUDProvider provider) {
             IItemHUDProvider.tryDrawHud(provider, moduleContext.getAppliedTo(), hud, graphics);
         }

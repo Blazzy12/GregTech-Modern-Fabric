@@ -4,14 +4,16 @@ import com.gregtechceu.gtceu.api.GTValues;
 import com.gregtechceu.gtceu.api.capability.GTCapabilityHelper;
 import com.gregtechceu.gtceu.api.item.armor.ArmorUtils;
 
+import net.minecraft.core.Holder;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 
 import lombok.Getter;
 import lombok.Setter;
 import org.jetbrains.annotations.ApiStatus;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Locale;
 
@@ -21,11 +23,11 @@ public abstract class TieredAttributeItemModule extends AttributeItemModule impl
     private final int tier;
     @Getter
     @Setter(onMethod_ = @ApiStatus.Internal)
-    private ItemModule[] otherTierModules;
+    private @Nullable Holder<ItemModule>[] otherTierModules;
 
-    private final ResourceLocation baseLocation;
+    private final Identifier baseLocation;
 
-    public TieredAttributeItemModule(ResourceLocation id, int tier) {
+    public TieredAttributeItemModule(Identifier id, int tier) {
         super(id);
         this.tier = tier;
         this.baseLocation = getId().withPath(p -> p.replaceFirst(GTValues.VN[tier].toLowerCase(Locale.ROOT) + "_", ""));
@@ -33,9 +35,12 @@ public abstract class TieredAttributeItemModule extends AttributeItemModule impl
 
     @Override
     public boolean canApplyTo(ItemStack stack) {
-        IModularItem modularItem = GTCapabilityHelper.getModularItem(stack);
-        if (modularItem == null) return false;
-        for (ItemModule module : otherTierModules) if (modularItem.getModuleContext(module) != null) return false;
+        IModularItem modular = GTCapabilityHelper.getModularItem(stack);
+        if (modular == null) return false;
+        for (Holder<ItemModule> module : otherTierModules) {
+            if (module == null) continue;
+            if (modular.getModuleContext(module.value()) != null) return false;
+        }
         return super.canApplyTo(stack);
     }
 
@@ -58,7 +63,7 @@ public abstract class TieredAttributeItemModule extends AttributeItemModule impl
         double cost = getEnergyCost(context);
         if (consume && cost > 0) cost = Math.max(0.25, cost);
         return ArmorUtils.useModuleEnergy(context.getAppliedTo(), ArmorUtils.toModuleEnergyCredits(cost),
-                entity.level().isClientSide || !consume);
+                entity.level().isClientSide() || !consume);
     }
 
     @Override

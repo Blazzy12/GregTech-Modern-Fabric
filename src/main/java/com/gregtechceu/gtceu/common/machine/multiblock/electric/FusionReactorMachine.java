@@ -27,7 +27,7 @@ import com.gregtechceu.gtceu.common.block.FusionCasingBlock;
 import com.gregtechceu.gtceu.utils.FormattingUtil;
 import com.gregtechceu.gtceu.utils.GTUtil;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.block.Block;
 
@@ -184,12 +184,12 @@ public class FusionReactorMachine extends WorkableElectricMultiblockMachine impl
         }
         if (RecipeHelper.getRecipeEUtTier(recipe) > fusionReactorMachine.getTier() ||
                 !recipe.data.contains("eu_to_start") ||
-                recipe.data.getLong("eu_to_start") > fusionReactorMachine.energyContainer.getEnergyCapacity()) {
+                recipe.data.getLongOr("eu_to_start", 0L) > fusionReactorMachine.energyContainer.getEnergyCapacity()) {
             return ModifierFunction
                     .cancel(Component.translatable("gtceu.recipe_modifier.insufficient_eu_to_start_fusion"));
         }
 
-        long heatDiff = recipe.data.getLong("eu_to_start") - fusionReactorMachine.heat;
+        long heatDiff = recipe.data.getLongOr("eu_to_start", 0L) - fusionReactorMachine.heat;
 
         // if the stored heat is >= required energy, recipe is okay to run
         if (heatDiff <= 0) {
@@ -213,7 +213,7 @@ public class FusionReactorMachine extends WorkableElectricMultiblockMachine impl
         GTRecipe recipe = recipeLogic.getLastUnrolledRecipe();
         assert recipe != null;
         if (recipe.data.contains("eu_to_start")) {
-            long heatDiff = recipe.data.getLong("eu_to_start") - this.heat;
+            long heatDiff = recipe.data.getLongOr("eu_to_start", 0L) - this.heat;
             // if the remaining energy needed is more than stored, do not run
             if (heatDiff > 0) {
                 recipeLogic.setWaiting(Component.translatable("gtceu.recipe_logic.insufficient_fuel"));
@@ -232,7 +232,7 @@ public class FusionReactorMachine extends WorkableElectricMultiblockMachine impl
         if (color == -1) {
             if (!recipe.getOutputContents(FluidRecipeCapability.CAP).isEmpty()) {
                 var stack = FluidRecipeCapability.CAP
-                        .of(recipe.getOutputContents(FluidRecipeCapability.CAP).get(0).content()).getStacks()[0];
+                        .of(recipe.getOutputContents(FluidRecipeCapability.CAP).getFirst().content()).getFluids()[0];
                 int newColor = 0xFF000000 | GTUtil.getFluidColor(stack);
                 if (!Objects.equals(color, newColor)) {
                     color = newColor;
@@ -286,7 +286,7 @@ public class FusionReactorMachine extends WorkableElectricMultiblockMachine impl
     // ******** GUI *********//
 
     public static void addEUToStartLabel(GTRecipe recipe, GTRecipeViewerWidget widget) {
-        long euToStart = recipe.data.getLong("eu_to_start");
+        long euToStart = recipe.data.getLongOr("eu_to_start", 0L);
         if (euToStart <= 0) return;
         int recipeTier = RecipeHelper.getPreOCRecipeEuTier(recipe);
         int fusionTier = findCeilingTier(euToStart);

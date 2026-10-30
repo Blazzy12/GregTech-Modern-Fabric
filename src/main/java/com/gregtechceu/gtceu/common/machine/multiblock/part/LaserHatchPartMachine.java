@@ -18,9 +18,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import javax.annotation.ParametersAreNonnullByDefault;
-
-@ParametersAreNonnullByDefault
 public class LaserHatchPartMachine extends TieredIOPartMachine implements IDataInfoProvider {
 
     @SaveField

@@ -1,9 +1,9 @@
 package com.gregtechceu.gtceu.api.mui;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import com.gregtechceu.gtceu.common.mui.GTGuiTheme;
 
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 
 import brachy.modularui.screen.ModularPanel;
 import brachy.modularui.screen.ModularScreen;
@@ -11,7 +11,7 @@ import org.jetbrains.annotations.NotNull;
 
 import static com.gregtechceu.gtceu.GTCEu.MOD_ID;
 
-@OnlyIn(Dist.CLIENT)
+@Environment(EnvType.CLIENT)
 public class GTGuiScreen extends ModularScreen {
 
     public GTGuiScreen(@NotNull ModularPanel<?> mainPanel) {

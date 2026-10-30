@@ -5,10 +5,12 @@ import com.gregtechceu.gtceu.api.cover.CoverBehavior;
 import com.gregtechceu.gtceu.api.cover.CoverDefinition;
 import com.gregtechceu.gtceu.api.machine.feature.IDataStickInteractable;
 import com.gregtechceu.gtceu.api.placeholder.IPlaceholderInfoProviderCover;
+import com.gregtechceu.gtceu.common.data.item.GTDataComponents;
+import com.gregtechceu.gtceu.utils.GlobalPosWithRot;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
 import net.minecraft.core.Direction;
-import net.minecraft.network.chat.ComponentContents;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
@@ -34,18 +36,15 @@ public class WirelessTransmitterCover extends CoverBehavior
     public WirelessTransmitterCover(CoverDefinition definition, ICoverable coverHolder, Direction attachedSide) {
         super(definition, coverHolder, attachedSide);
         for (int i = 0; i < 100; i++) {
-            createDisplayTargetBuffer.add(MutableComponent.create(ComponentContents.EMPTY));
-            computerCraftTextBuffer.add(MutableComponent.create(ComponentContents.EMPTY));
+            createDisplayTargetBuffer.add(Component.empty());
+            computerCraftTextBuffer.add(Component.empty());
         }
     }
 
     @Override
     public InteractionResult onDataStickUse(Player player, ItemStack dataStick) {
-        dataStick.getOrCreateTag().putInt("targetX", coverHolder.getBlockPos().getX());
-        dataStick.getOrCreateTag().putInt("targetY", coverHolder.getBlockPos().getY());
-        dataStick.getOrCreateTag().putInt("targetZ", coverHolder.getBlockPos().getZ());
-        dataStick.getOrCreateTag().putString("face", attachedSide.getName());
-        dataStick.getOrCreateTag().putString("dim", coverHolder.getLevel().dimension().location().toString());
+        dataStick.set(GTDataComponents.MONITOR_TARGET,
+                new GlobalPosWithRot(coverHolder.getBlockPos(), attachedSide, coverHolder.getLevel().dimension()));
         return InteractionResult.SUCCESS;
     }
 

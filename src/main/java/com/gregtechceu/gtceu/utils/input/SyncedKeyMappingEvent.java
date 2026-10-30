@@ -1,7 +1,7 @@
 package com.gregtechceu.gtceu.utils.input;
 
-import net.minecraftforge.eventbus.api.Event;
-import net.minecraftforge.fml.event.IModBusEvent;
+import com.gregtechceu.gtceu.compat.bus.Event;
+import com.gregtechceu.gtceu.compat.fml.event.IModBusEvent;
 
 /**
  * Event to register {@link SyncedKeyMapping}s in.

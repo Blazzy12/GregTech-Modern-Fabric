@@ -6,8 +6,9 @@ import com.gregtechceu.gtceu.api.cover.CoverDefinition;
 import com.gregtechceu.gtceu.api.item.IComponentItem;
 import com.gregtechceu.gtceu.api.item.component.IInteractionItem;
 import com.gregtechceu.gtceu.api.item.component.IItemComponent;
-import com.gregtechceu.gtceu.api.item.tool.GTToolType;
+import com.gregtechceu.gtceu.common.data.item.GTItemAbilities;
 
+import net.minecraft.core.Holder;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.Item;
@@ -19,7 +20,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 
-public record CoverPlaceBehavior(CoverDefinition coverDefinition) implements IInteractionItem {
+public record CoverPlaceBehavior(Holder<CoverDefinition> coverDefinition) implements IInteractionItem {
 
     @Override
     public InteractionResult onItemUseFirst(ItemStack itemStack, UseOnContext context) {
@@ -31,9 +32,10 @@ public record CoverPlaceBehavior(CoverDefinition coverDefinition) implements IIn
         if (coverable != null) {
             var coverSide = ICoverable.rayTraceCoverableSide(coverable, player);
             if (coverSide != null && coverable.getCoverAtSide(coverSide) == null &&
-                    coverable.canPlaceCoverOnSide(coverDefinition, coverSide)) {
+                    coverable.canPlaceCoverOnSide(coverDefinition.value(), coverSide)) {
                 if (player instanceof ServerPlayer serverPlayer) {
-                    boolean result = coverable.placeCoverOnSide(coverSide, itemStack, coverDefinition, serverPlayer);
+                    boolean result = coverable.placeCoverOnSide(coverSide, itemStack, coverDefinition.value(),
+                            serverPlayer);
                     if (result && !player.isCreative()) {
                         itemStack.shrink(1);
                     }
@@ -50,17 +52,18 @@ public record CoverPlaceBehavior(CoverDefinition coverDefinition) implements IIn
         Item item = itemStack.getItem();
         if (item instanceof IComponentItem componentItem) {
             for (IItemComponent component : componentItem.getComponents()) {
-                if (component instanceof CoverPlaceBehavior placeBehavior) {
-                    if (canPlaceCover == null || canPlaceCover.test(placeBehavior.coverDefinition)) {
+                if (component instanceof CoverPlaceBehavior(Holder<CoverDefinition> definition)) {
+                    if (canPlaceCover == null || canPlaceCover.test(definition.value())) {
                         return true;
                     }
                 }
             }
-        } else if (GTToolType.CROWBAR.matchTags.stream().anyMatch(itemStack::is) ||
-                GTToolType.SOFT_MALLET.matchTags.stream().anyMatch(itemStack::is) ||
-                GTToolType.SCREWDRIVER.matchTags.stream().anyMatch(itemStack::is)) {
-                    return hasCoverSupplier == null || hasCoverSupplier.getAsBoolean();
-                }
+            // spotless:off
+        } else if (itemStack.canPerformAction(GTItemAbilities.INTERACT_WITH_COVER) ||
+                itemStack.canPerformAction(GTItemAbilities.CROWBAR_REMOVE_COVER)) {
+            return hasCoverSupplier == null || hasCoverSupplier.getAsBoolean();
+        }
+        // spotless:on
         return false;
     }
 }

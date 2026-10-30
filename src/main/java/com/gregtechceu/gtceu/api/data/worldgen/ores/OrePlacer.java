@@ -2,7 +2,6 @@ package com.gregtechceu.gtceu.api.data.worldgen.ores;
 
 import com.gregtechceu.gtceu.config.ConfigHolder;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.util.RandomSource;
@@ -22,7 +21,6 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import javax.annotation.Nullable;
-import javax.annotation.ParametersAreNonnullByDefault;
 
 /**
  * Responsible for placing ores of surrounding veins for the current chunk.
@@ -31,8 +29,6 @@ import javax.annotation.ParametersAreNonnullByDefault;
  * Surrounding veins are resolved from the {@link OreGenCache} and placed using each block position's
  * {@link OreBlockPlacer}.
  */
-@MethodsReturnNonnullByDefault
-@ParametersAreNonnullByDefault
 public class OrePlacer {
 
     @Getter
@@ -48,7 +44,7 @@ public class OrePlacer {
     public void placeOres(WorldGenLevel level, ChunkGenerator chunkGenerator, ChunkAccess chunk) {
         if (!ConfigHolder.INSTANCE.dev.doSuperflatOres && chunkGenerator instanceof FlatLevelSource) return;
 
-        var random = new XoroshiroRandomSource(level.getSeed() ^ chunk.getPos().toLong());
+        var random = new XoroshiroRandomSource(level.getSeed() ^ chunk.getPos().pack());
         var generatedVeins = oreGenCache.consumeChunkVeins(level, chunkGenerator, chunk);
         var generatedIndicators = oreGenCache.consumeChunkIndicators(level, chunkGenerator, chunk);
 
@@ -75,7 +71,7 @@ public class OrePlacer {
                         SectionPos.sectionRelative(pos.getY()),
                         SectionPos.sectionRelative(pos.getZ()));
 
-                if (layerTarget.test(blockState, random))
+                if (layerTarget.test(blockState, pos, random))
                     placer.placeBlock(access, section);
             });
         }));

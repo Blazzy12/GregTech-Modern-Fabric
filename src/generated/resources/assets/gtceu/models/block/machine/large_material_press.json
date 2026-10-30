@@ -1,6 +1,6 @@
 {
   "parent": "minecraft:block/block",
-  "loader": "gtceu:machine",
+  "fabric:type": "gtceu:machine",
   "machine": "gtceu:large_material_press",
   "texture_overrides": {
     "all": "gtceu:block/casings/gcym/stress_proof_casing"

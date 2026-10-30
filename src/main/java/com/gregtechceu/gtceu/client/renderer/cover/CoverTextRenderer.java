@@ -1,11 +1,14 @@
 package com.gregtechceu.gtceu.client.renderer.cover;
 
+import com.gregtechceu.gtceu.compat.client.render.CompatRender;
+
+import net.minecraft.util.LightCoordsUtil;
+
 import com.gregtechceu.gtceu.api.machine.MetaMachine;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.renderer.LightTexture;
-import net.minecraft.client.renderer.MultiBufferSource;
+import com.gregtechceu.gtceu.compat.client.render.MultiBufferSource;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
@@ -37,16 +40,10 @@ public class CoverTextRenderer implements IDynamicCoverRenderer {
             boolean didAnything = false;
             for (FormattedCharSequence line : Minecraft.getInstance().font.split(s, 90)) {
                 if (y >= 90) return;
-                Minecraft.getInstance().font.drawInBatch(
-                        line,
-                        0, y,
-                        0x72e500,
-                        false,
-                        poseStack.last().pose(),
-                        buffer,
+                CompatRender.drawText(Minecraft.getInstance().font, line, 0, y, 0x72e500, false, poseStack, buffer,
                         Font.DisplayMode.NORMAL,
                         0,
-                        LightTexture.FULL_BRIGHT);
+                        LightCoordsUtil.FULL_BRIGHT);
                 y += Minecraft.getInstance().font.lineHeight;
                 didAnything = true;
             }

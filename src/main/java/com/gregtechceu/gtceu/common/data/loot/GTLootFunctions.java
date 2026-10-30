@@ -1,22 +1,24 @@
 package com.gregtechceu.gtceu.common.data.loot;
 
+import com.mojang.serialization.MapCodec;
+import net.minecraft.world.level.storage.loot.functions.LootItemFunction;
+
 import com.gregtechceu.gtceu.GTCEu;
-import com.gregtechceu.gtceu.api.loot.serializer.CodecBasedSerializer;
 import com.gregtechceu.gtceu.common.loot.function.SetEUChargeFunction;
 
 import net.minecraft.core.registries.Registries;
-import net.minecraft.world.level.storage.loot.functions.LootItemFunctionType;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.registries.DeferredRegister;
-import net.minecraftforge.registries.RegistryObject;
+import com.gregtechceu.gtceu.compat.bus.IEventBus;
+import com.gregtechceu.gtceu.compat.registries.DeferredHolder;
+import com.gregtechceu.gtceu.compat.registries.DeferredRegister;
 
 public class GTLootFunctions {
     // spotless:off
 
-    public static final DeferredRegister<LootItemFunctionType> LOOT_FUNCTION_TYPES = DeferredRegister.create(Registries.LOOT_FUNCTION_TYPE, GTCEu.MOD_ID);
+    public static final DeferredRegister<MapCodec<? extends LootItemFunction>> LOOT_FUNCTION_TYPES = DeferredRegister.create(Registries.LOOT_FUNCTION_TYPE, GTCEu.MOD_ID);
 
 
-    public static final RegistryObject<LootItemFunctionType> SET_EU_CHARGE = LOOT_FUNCTION_TYPES.register("set_eu_charge", () -> new LootItemFunctionType(new CodecBasedSerializer<>(SetEUChargeFunction.CODEC)));
+    // 26.x loot function types are just their codecs
+    public static final DeferredHolder<MapCodec<? extends LootItemFunction>, MapCodec<SetEUChargeFunction>> SET_EU_CHARGE = LOOT_FUNCTION_TYPES.register("set_eu_charge", () -> SetEUChargeFunction.CODEC);
 
     // spotless:on
 

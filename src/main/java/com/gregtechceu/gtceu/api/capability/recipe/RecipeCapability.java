@@ -1,6 +1,5 @@
 package com.gregtechceu.gtceu.api.capability.recipe;
 
-import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.api.machine.MetaMachine;
 import com.gregtechceu.gtceu.api.machine.trait.notifiable.NotifiableRecipeHandlerTrait;
 import com.gregtechceu.gtceu.api.recipe.GTRecipe;
@@ -11,16 +10,23 @@ import com.gregtechceu.gtceu.api.recipe.lookup.ingredient.AbstractMapIngredient;
 import com.gregtechceu.gtceu.api.registry.GTRegistries;
 import com.gregtechceu.gtceu.utils.codec.DispatchedMapCodec;
 
+import net.minecraft.core.Holder;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.core.RegistryAccess;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.Tag;
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
+import com.gregtechceu.gtceu.compat.network.connection.ConnectionType;
 
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.DataResult;
 import io.netty.buffer.Unpooled;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import lombok.Getter;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Unmodifiable;
 
@@ -32,37 +38,30 @@ import java.util.function.Function;
  */
 public abstract class RecipeCapability<T> {
 
-    public static final Codec<RecipeCapability<?>> DIRECT_CODEC = GTRegistries.RECIPE_CAPABILITIES.codec();
+    // spotless:off
     public static final Codec<Map<RecipeCapability<?>, List<Content>>> CODEC = new DispatchedMapCodec<>(
-            RecipeCapability.DIRECT_CODEC,
+            GTRegistries.RECIPE_CAPABILITIES.byNameCodec(),
             RecipeCapability::contentCodec);
     public static final Codec<Map<RecipeCapability<?>, List<?>>> INGREDIENT_CODEC = new DispatchedMapCodec<>(
-            RecipeCapability.DIRECT_CODEC,
+            GTRegistries.RECIPE_CAPABILITIES.byNameCodec(),
             RecipeCapability::ingredientCodec);
     public static final Comparator<RecipeCapability<?>> COMPARATOR = Comparator.comparingInt(o -> o.sortIndex);
+    // spotless:on
 
-    public final ResourceLocation id;
+    @Getter
+    public final Identifier id;
     public final int color;
     public final boolean doRenderSlot;
     public final int sortIndex;
     public final IContentSerializer<T> serializer;
 
-    protected RecipeCapability(ResourceLocation id, int color, boolean doRenderSlot, int sortIndex,
+    protected RecipeCapability(Identifier id, int color, boolean doRenderSlot, int sortIndex,
                                IContentSerializer<T> serializer) {
         this.id = id;
         this.color = color;
         this.doRenderSlot = doRenderSlot;
         this.sortIndex = sortIndex;
         this.serializer = serializer;
-    }
-
-    /**
-     * @deprecated Use {@link #RecipeCapability(ResourceLocation, int, boolean, int, IContentSerializer)}
-     */
-    @Deprecated(forRemoval = true, since = "8.0.0")
-    protected RecipeCapability(String name, int color, boolean doRenderSlot, int sortIndex,
-                               IContentSerializer<T> serializer) {
-        this(GTCEu.id(name), color, doRenderSlot, sortIndex, serializer);
     }
 
     public static Codec<List<Content>> contentCodec(RecipeCapability<?> capability) {
@@ -73,15 +72,12 @@ public abstract class RecipeCapability<T> {
         return Content.ingredientCodec(capability).listOf().xmap(ArrayList::new, Function.identity());
     }
 
-    public Tag contentToNbt(Object value) {
-        return this.serializer.toNbt(this.of(value));
-    }
-
     /**
      * deep copy of this content. recipe need it for searching and such things
      */
     public T copyInner(T content) {
-        FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
+        RegistryFriendlyByteBuf buf = new RegistryFriendlyByteBuf(Unpooled.buffer(),
+                RegistryAccess.fromRegistryOfRegistries(BuiltInRegistries.REGISTRY));
         serializer.toNetwork(buf, content);
         return serializer.fromNetwork(buf);
     }
@@ -110,6 +106,14 @@ public abstract class RecipeCapability<T> {
         return serializer.of(o);
     }
 
+    public T fromNbt(Tag tag, HolderLookup.Provider provider) {
+        return serializer.fromNbt(tag, provider);
+    }
+
+    public Tag toNbt(Object content, HolderLookup.Provider provider) {
+        return serializer.toNbt(of(content), provider);
+    }
+
     public String slotName(IO io) {
         return "%s_%s".formatted(id, io.name().toLowerCase(Locale.ROOT));
     }
@@ -119,7 +123,7 @@ public abstract class RecipeCapability<T> {
     }
 
     public MutableComponent getName() {
-        return Component.translatable("recipe.capability.%s.name".formatted(id.getPath()));
+        return Component.translatable(id.toLanguageKey("recipe_capability"));
     }
 
     public MutableComponent getColoredName() {
@@ -187,6 +191,12 @@ public abstract class RecipeCapability<T> {
 
     public boolean isTickSlot(int index, IO io, GTRecipe recipe) {
         return index >= (io == IO.IN ? recipe.getInputContents(this) : recipe.getOutputContents(this)).size();
+    }
+
+    private static DataResult<Holder.Reference<RecipeCapability<?>>> safeReference(Holder<RecipeCapability<?>> value) {
+        return value instanceof Holder.Reference<RecipeCapability<?>> reference ?
+                DataResult.success(reference) : DataResult.error(
+                        () -> "Unregistered holder in " + GTRegistries.Keys.RECIPE_CAPABILITY + ": " + value);
     }
 
     /**

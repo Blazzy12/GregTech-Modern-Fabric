@@ -16,7 +16,6 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.storage.loot.LootContext;
 import net.minecraft.world.level.storage.loot.LootParams;
-import net.minecraft.world.level.storage.loot.functions.ApplyBonusCount;
 import net.minecraft.world.level.storage.loot.functions.LootItemFunction;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 
@@ -62,8 +61,8 @@ public class LargeMinerLogic extends MinerLogic {
             Direction dir = super.getDir();
             ServerLevel world = (ServerLevel) this.getMachine().getLevel();
             ChunkAccess origin = world.getChunk(pos);
-            ChunkPos startPos = (world.getChunk(origin.getPos().x - currentRadius / CHUNK_LENGTH,
-                    origin.getPos().z - currentRadius / CHUNK_LENGTH)).getPos();
+            ChunkPos startPos = (world.getChunk(origin.getPos().x() - currentRadius / CHUNK_LENGTH,
+                    origin.getPos().z() - currentRadius / CHUNK_LENGTH)).getPos();
             x = startPos.getMinBlockX();
             if (dir == Direction.UP) {
                 y = pos.getY() + 1;
@@ -127,15 +126,16 @@ public class LargeMinerLogic extends MinerLogic {
         }
         ServerLevel level = builder.getLevel();
 
+        var fortuneHolder = level.registryAccess().getOrThrow(Enchantments.FORTUNE);
         ItemStack fortunePick = this.pickaxeTool.copy();
-        fortunePick.enchant(Enchantments.BLOCK_FORTUNE, getDropCountMultiplier());
+        fortunePick.enchant(fortuneHolder, getDropCountMultiplier());
 
-        LootItemFunction fortuneDropMultiplier = ApplyBonusCount.addOreBonusCount(Enchantments.BLOCK_FORTUNE).build();
+        LootItemFunction fortuneDropMultiplier = ToolHelper.getOrInitOreDropMultiplier(level.registryAccess());
         LootContext lootContext = ToolHelper.createBlockLootContext(level, blockState,
                 builder.withParameter(LootContextParams.TOOL, fortunePick));
 
         for (ItemStack outputStack : outputs) {
-            if (ChemicalHelper.getPrefix(outputStack.getItem()) == TagPrefix.crushed) {
+            if (ChemicalHelper.getPrefix(outputStack.getItem()) == TagPrefix.crushed.value()) {
                 outputStack = fortuneDropMultiplier.apply(outputStack.copy(), lootContext);
             }
             blockDrops.add(outputStack);

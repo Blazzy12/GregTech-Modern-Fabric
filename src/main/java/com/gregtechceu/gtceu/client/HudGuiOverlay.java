@@ -1,5 +1,9 @@
 package com.gregtechceu.gtceu.client;
 
+import net.minecraft.core.component.DataComponents;
+
+import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElement;
+
 import com.gregtechceu.gtceu.api.capability.GTCapabilityHelper;
 import com.gregtechceu.gtceu.api.item.ComponentItem;
 import com.gregtechceu.gtceu.api.item.armor.ArmorComponentItem;
@@ -10,32 +14,28 @@ import com.gregtechceu.gtceu.api.item.module.IHUDProviderItemModule;
 import com.gregtechceu.gtceu.common.module.BatteryItemModule;
 
 import net.minecraft.ChatFormatting;
+import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
-import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ArmorItem;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.client.gui.overlay.ForgeGui;
-import net.minecraftforge.client.gui.overlay.IGuiOverlay;
 
 import lombok.NoArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 
 @NoArgsConstructor
-public class HudGuiOverlay implements IGuiOverlay {
+public class HudGuiOverlay implements HudElement {
 
     @Override
-    public void render(ForgeGui forgeGui, GuiGraphics guiGraphics, float partialTick, int screenWidth,
-                       int screenHeight) {
+    public void extractRenderState(GuiGraphicsExtractor guiGraphics, DeltaTracker tracker) {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.isWindowActive() && mc.level != null && mc.player != null && !mc.options.renderDebug &&
-                !mc.options.hideGui) {
+        // HUD elements aren't drawn while the GUI is hidden
+        if (mc.isWindowActive() && mc.level != null && !mc.getDebugOverlay().showDebugScreen()) {
 
             ArmorUtils.ModularHUD hudStrings = new ArmorUtils.ModularHUD();
 
@@ -71,7 +71,7 @@ public class HudGuiOverlay implements IGuiOverlay {
                 continue;
             }
             hasBattery = true;
-            int percent = (int) Mth.clamp(100.0 * electric.getCharge() / electric.getMaxCharge(), 0, 100);
+            int percent = (int) Math.clamp(100.0 * electric.getCharge() / electric.getMaxCharge(), 0, 100);
             var color = percent >= 75 ? ChatFormatting.GREEN :
                     percent >= 50 ? ChatFormatting.YELLOW :
                             percent >= 25 ? ChatFormatting.GOLD :
@@ -91,7 +91,7 @@ public class HudGuiOverlay implements IGuiOverlay {
     }
 
     private static void renderHUDMetaArmor(@NotNull ItemStack stack, ArmorUtils.ModularHUD hudStrings,
-                                           GuiGraphics guiGraphics) {
+                                           GuiGraphicsExtractor guiGraphics) {
         if (stack.getItem() instanceof ArmorComponentItem valueItem) {
             if (valueItem.getArmorLogic() instanceof IItemHUDProvider provider) {
                 IItemHUDProvider.tryDrawHud(provider, stack, hudStrings, guiGraphics);
@@ -109,8 +109,8 @@ public class HudGuiOverlay implements IGuiOverlay {
     }
 
     private static void renderHUDMetaItem(@NotNull ItemStack stack, ArmorUtils.ModularHUD hudStrings,
-                                          GuiGraphics guiGraphics) {
-        if (stack.getItem() instanceof ArmorItem) return;
+                                          GuiGraphicsExtractor guiGraphics) {
+        if (stack.has(DataComponents.EQUIPPABLE)) return;
         if (stack.getItem() instanceof ComponentItem valueItem) {
             for (IItemComponent behaviour : valueItem.getComponents()) {
                 if (behaviour instanceof IItemHUDProvider provider) {

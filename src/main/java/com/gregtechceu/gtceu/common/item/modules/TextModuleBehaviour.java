@@ -8,32 +8,28 @@ import com.gregtechceu.gtceu.api.placeholder.PlaceholderContext;
 import com.gregtechceu.gtceu.api.placeholder.PlaceholderHandler;
 import com.gregtechceu.gtceu.client.renderer.monitor.IMonitorRenderer;
 import com.gregtechceu.gtceu.client.renderer.monitor.MonitorTextRenderer;
+import com.gregtechceu.gtceu.common.data.item.GTDataComponents;
+import com.gregtechceu.gtceu.common.item.datacomponents.TextLineList;
 import com.gregtechceu.gtceu.common.machine.multiblock.electric.CentralMonitorMachine;
 import com.gregtechceu.gtceu.common.machine.multiblock.electric.monitor.MonitorGroup;
-import com.gregtechceu.gtceu.common.mui.GTGuiTextures;
 
 import net.minecraft.ChatFormatting;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.StringTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.level.Level;
 
 import brachy.modularui.api.IPanelHandler;
 import brachy.modularui.value.sync.*;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
 public class TextModuleBehaviour implements IMonitorModuleItem, IAddInformation {
 
     private PlaceholderContext getContext(ItemStack stack, CentralMonitorMachine machine, MonitorGroup group) {
-        if (!stack.getOrCreateTag().contains("placeholderUUID")) {
-            stack.getOrCreateTag().putUUID("placeholderUUID", UUID.randomUUID());
-        }
         return new PlaceholderContext(
                 group.getTargetLevel(machine.getLevel()),
                 group.getTarget(machine.getLevel()),
@@ -42,14 +38,17 @@ public class TextModuleBehaviour implements IMonitorModuleItem, IAddInformation 
                 group.getTargetCover(machine.getLevel()),
                 group,
                 null,
-                stack.getOrCreateTag().getUUID("placeholderUUID"));
+                stack.get(GTDataComponents.PLACEHOLDER_UUID));
     }
 
     private void updateText(ItemStack stack, CentralMonitorMachine machine, MonitorGroup group) {
+        if (!stack.has(GTDataComponents.PLACEHOLDER_UUID)) {
+            stack.set(GTDataComponents.PLACEHOLDER_UUID, UUID.randomUUID());
+        }
         MultiLineComponent text = PlaceholderHandler.processPlaceholders(
-                getPlaceholderText(stack), getContext(stack, machine, group));
-        stack.getOrCreateTag().put("text",
-                text.withStyle(style -> style.withFont(GTGuiTextures.MONOCRAFT_FONT)).toTag());
+                getPlaceholderText(stack),
+                getContext(stack, machine, group));
+        stack.update(GTDataComponents.TEXT_LINE_LIST, TextLineList.EMPTY, lines -> lines.withLines(text.toImmutable()));
     }
 
     @Override
@@ -92,50 +91,51 @@ public class TextModuleBehaviour implements IMonitorModuleItem, IAddInformation 
     }
 
     public MultiLineComponent getText(ItemStack stack) {
-        return MultiLineComponent.fromTag(stack.getOrCreateTag().get("text"));
+        return MultiLineComponent.of(stack.getOrDefault(GTDataComponents.TEXT_LINE_LIST, TextLineList.EMPTY).lines());
     }
 
     public double getScale(ItemStack stack) {
-        if (!stack.getOrCreateTag().contains("scale"))
-            return 1;
-        return Math.max(stack.getOrCreateTag().getDouble("scale"), .0001);
+        return Math.max(stack.getOrDefault(GTDataComponents.TEXT_LINE_LIST, TextLineList.EMPTY).scale(), .0001f);
     }
 
     public void setScale(ItemStack stack, double scale) {
-        stack.getOrCreateTag().putDouble("scale", scale);
+        stack.update(GTDataComponents.TEXT_LINE_LIST, TextLineList.EMPTY, lines -> lines.withScale(scale));
     }
 
     public void setPaused(ItemStack stack, boolean paused) {
-        stack.getOrCreateTag().putBoolean("paused", paused);
+        stack.update(GTDataComponents.TEXT_LINE_LIST, TextLineList.EMPTY, lines -> lines.withPaused(paused));
     }
 
     public boolean isPaused(ItemStack stack) {
-        if (stack.getOrCreateTag().contains("paused"))
-            return stack.getOrCreateTag().getBoolean("paused");
-        else return false;
+        return stack.getOrDefault(GTDataComponents.TEXT_LINE_LIST, TextLineList.EMPTY).paused();
     }
 
     public void setPlaceholderText(ItemStack stack, String text) {
-        ListTag listTag = new ListTag();
-        for (String line : text.split("\n")) listTag.add(StringTag.valueOf(line.replaceAll("\r", "")));
-        stack.getOrCreateTag().put("formatStringLines", listTag);
+        List<Component> lines = Arrays.stream(text.split("\n"))
+                .map(Component::literal)
+                .map(Component.class::cast)
+                .toList();
+        stack.update(GTDataComponents.FORMAT_STRING_LIST, TextLineList.EMPTY,
+                formatStringList -> formatStringList.withLines(lines));
     }
 
     public String getPlaceholderText(ItemStack stack) {
         StringBuilder formatStringLines = new StringBuilder();
-        ListTag tag = stack.getOrCreateTag().getList("formatStringLines", StringTag.TAG_STRING);
-        for (Tag value : tag) {
-            formatStringLines.append(value.getAsString()).append('\n');
+        List<Component> lines = stack.getOrDefault(GTDataComponents.FORMAT_STRING_LIST, TextLineList.EMPTY).lines();
+        for (Component line : lines) {
+            formatStringLines.append(line.getString()).append('\n');
         }
         return formatStringLines.toString();
     }
 
     @Override
-    public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltipComponents,
+    public void appendHoverText(ItemStack stack, @Nullable Item.TooltipContext context,
+                                List<Component> tooltipComponents,
                                 TooltipFlag isAdvanced) {
         if (isAdvanced.isAdvanced()) {
             tooltipComponents.add(Component.literal("Placeholder text:").withStyle(ChatFormatting.GOLD));
-            tooltipComponents.addAll(MultiLineComponent.literal(getPlaceholderText(stack)));
+            tooltipComponents
+                    .addAll(stack.getOrDefault(GTDataComponents.FORMAT_STRING_LIST, TextLineList.EMPTY).lines());
             tooltipComponents.add(Component.literal("Processed text:").withStyle(ChatFormatting.GOLD));
             tooltipComponents.addAll(getText(stack));
             tooltipComponents.add(Component.literal("Graphics components:").withStyle(ChatFormatting.GOLD));

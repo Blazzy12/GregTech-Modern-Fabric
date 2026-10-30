@@ -1,5 +1,7 @@
 package com.gregtechceu.gtceu.api.placeholder;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.api.placeholder.exceptions.PlaceholderException;
 import com.gregtechceu.gtceu.api.placeholder.exceptions.UnclosedBracketException;
@@ -9,17 +11,16 @@ import com.gregtechceu.gtceu.api.registry.GTRegistries;
 import com.gregtechceu.gtceu.client.renderer.monitor.IMonitorRenderer;
 import com.gregtechceu.gtceu.common.mui.widgets.textfield.CodeEditorWidget;
 import com.gregtechceu.gtceu.data.lang.LangHandler;
+import com.gregtechceu.gtceu.utils.FormattingUtil;
 import com.gregtechceu.gtceu.utils.GTUtil;
 
 import net.minecraft.ChatFormatting;
-import net.minecraft.MethodsReturnNonnullByDefault;
-import net.minecraft.ResourceLocationException;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
+import net.minecraft.IdentifierException;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.*;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
+import net.minecraft.resources.ResourceKey;
 
 import brachy.modularui.api.IPanelHandler;
 import brachy.modularui.api.drawable.IDrawable;
@@ -37,7 +38,6 @@ import brachy.modularui.widgets.*;
 import brachy.modularui.widgets.layout.Flow;
 import brachy.modularui.widgets.slot.ItemSlot;
 import brachy.modularui.widgets.textfield.TextFieldWidget;
-import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
@@ -61,30 +61,18 @@ public class PlaceholderHandler {
             List.of("\\\\.", "\\{", "\\}", " ", "\"", "\\['", "'\\]"),
             TokenFormatter::new);
 
-    @OnlyIn(Dist.CLIENT)
+    @Environment(EnvType.CLIENT)
     private static final class RendererHolder {
 
         public static final Map<String, IPlaceholderRenderer> renderers = new HashMap<>();
     }
 
-    public static void addPlaceholder(Placeholder placeholder) {
-        GTRegistries.PLACEHOLDERS.register(placeholder.getId(), placeholder);
-    }
-
-    public static void addOrOverridePlaceholder(Placeholder placeholder) {
-        GTRegistries.PLACEHOLDERS.registerOrOverride(placeholder.getId(), placeholder);
-    }
-
-    public static @Nullable Placeholder getPlaceholder(String str) {
-        return GTRegistries.PLACEHOLDERS.get(toId(str));
-    }
-
-    @OnlyIn(Dist.CLIENT)
+    @Environment(EnvType.CLIENT)
     public static void addRenderer(String id, IPlaceholderRenderer renderer) {
         RendererHolder.renderers.put(id, renderer);
     }
 
-    @OnlyIn(Dist.CLIENT)
+    @Environment(EnvType.CLIENT)
     public static @Nullable IMonitorRenderer getRenderer(String id, CompoundTag renderData) {
         if (!RendererHolder.renderers.containsKey(id)) {
             GTCEu.LOGGER.warn("Attempt to access a placeholder renderer that doesn't exist ({})", id);
@@ -100,28 +88,32 @@ public class PlaceholderHandler {
                         packedLight, packedOverlay, tag);
     }
 
-    public static @Nullable ResourceLocation toId(String placeholder) {
+    public static @Nullable ResourceKey<Placeholder> toId(String placeholder) {
         try {
-            return GTCEu.id(placeholder);
-        } catch (ResourceLocationException e) {
+            return ResourceKey.create(GTRegistries.Keys.PLACEHOLDER,
+                    GTCEu.id(FormattingUtil.toLowerCaseUnderscore(placeholder)));
+        } catch (IdentifierException e) {
             return null;
         }
     }
 
     public static MultiLineComponent processPlaceholder(List<MultiLineComponent> placeholder,
-                                                        @Nullable PlaceholderContext context) throws PlaceholderException {
-        if (!GTRegistries.PLACEHOLDERS.containsKey(toId(placeholder.get(0).toString())))
-            throw new UnknownPlaceholderException(placeholder.get(0).toString());
-        if (context != null && context.level().isClientSide &&
-                !GTRegistries.PLACEHOLDERS.get(toId(placeholder.get(0).toString())).isView())
+                                                        PlaceholderContext context) throws PlaceholderException {
+        var id = toId(placeholder.getFirst().toString());
+        if (id == null) throw new UnknownPlaceholderException(placeholder.getFirst().toString());
+        var holder = context.holderLookup().get(id);
+        if (holder.isEmpty()) throw new UnknownPlaceholderException(placeholder.getFirst().toString());
+        if (context.level().isClientSide() &&
+                !holder.get().value().isView())
             GTCEu.LOGGER.warn("Placeholder processing is running on client instead of server!");
-        return GTRegistries.PLACEHOLDERS.get(toId(placeholder.get(0).toString())).apply(context,
+        return holder.get().value().apply(context,
                 placeholder.subList(1, placeholder.size()));
     }
 
-    public static MultiLineComponent processPlaceholders(String s, @Nullable PlaceholderContext ctx) {
+    public static MultiLineComponent processPlaceholders(String s, PlaceholderContext ctx) {
+        if (ctx.level().isClientSide())
+            GTCEu.LOGGER.warn("Placeholder processing is running on client instead of server!");
         List<Exception> exceptions = new ArrayList<>();
-        Object2IntOpenHashMap<String> indices = new Object2IntOpenHashMap<>();
         boolean escape = false;
         boolean escapeNext = false;
         boolean literalEscape = false;
@@ -146,32 +138,32 @@ public class PlaceholderHandler {
                     exceptions.add(new UnexpectedBracketException());
                 }
                 symbol++;
-                GTUtil.getLast(stack.peek()).append(c);
+                stack.peek().getLast().append(c);
                 prev = c;
                 continue;
-            } else if (prev == '\'') GTUtil.getLast(stack.peek()).append('\'');
+            } else if (prev == '\'') stack.peek().getLast().append('\'');
             if (escape || ((literalEscape || singleEscapes > 0) && c != LITERAL_ESCAPE && c != SINGLE_ESCAPE)) {
                 if (c == ESCAPED_NEWLINE && !literalEscape && singleEscapes == 0) {
-                    GTUtil.getLast(stack.peek()).appendNewline();
+                    stack.peek().getLast().appendNewline();
                     line++;
                     lineBeginningWhitespace = true;
                     symbol = 0;
                 } else if (c != NEWLINE) {
                     lineBeginningWhitespace = false;
-                    GTUtil.getLast(stack.peek()).append(c);
+                    stack.peek().getLast().append(c);
                 } else lineBeginningWhitespace = false;
             } else {
                 switch (c) {
                     case ESCAPE -> escapeNext = true;
                     case LITERAL_ESCAPE -> literalEscape = !literalEscape;
                     case NEWLINE -> {
-                        GTUtil.getLast(stack.peek()).appendNewline();
+                        stack.peek().getLast().appendNewline();
                         line++;
                         lineBeginningWhitespace = true;
                         symbol = 0;
                     }
                     case ARG_SEPARATOR -> {
-                        if (stack.size() == 1) GTUtil.getLast(stack.peek()).append(c);
+                        if (stack.size() == 1) stack.peek().getLast().append(c);
                         else if (!lineBeginningWhitespace) stack.peek().add(MultiLineComponent.empty());
                     }
                     case PLACEHOLDER_BEGIN -> {
@@ -185,7 +177,7 @@ public class PlaceholderHandler {
                             if (stack.isEmpty()) throw new UnexpectedBracketException();
                             MultiLineComponent result = processPlaceholder(placeholder, ctx);
                             if (result.isIgnoreSpaces() || stack.size() == 1) {
-                                GTUtil.getLast(stack.peek()).append(result);
+                                stack.peek().getLast().append(result);
                             } else {
                                 for (int i = 0; i < result.size(); i++) {
                                     MutableComponent component = result.get(i);
@@ -193,18 +185,18 @@ public class PlaceholderHandler {
                                         String[] split = string.split(String.valueOf(ARG_SEPARATOR));
                                         for (int j = 0; j < split.length; j++) {
                                             String idk = split[j];
-                                            GTUtil.getLast(stack.peek())
+                                            stack.peek().getLast()
                                                     .append(MultiLineComponent.literal(idk).withStyle(style));
                                             if (j == split.length - 1) continue;
                                             if (stack.size() == 1) {
-                                                GTUtil.getLast(stack.peek()).append(ARG_SEPARATOR);
+                                                stack.peek().getLast().append(ARG_SEPARATOR);
                                             } else {
                                                 stack.peek().add(MultiLineComponent.empty());
                                             }
                                         }
                                         return Optional.empty();
                                     }, component.getStyle());
-                                    if (i != result.size() - 1) GTUtil.getLast(stack.peek()).appendNewline();
+                                    if (i != result.size() - 1) stack.peek().getLast().appendNewline();
                                 }
                             }
                         } catch (PlaceholderException e) {
@@ -214,7 +206,7 @@ public class PlaceholderHandler {
                     }
                     default -> {
                         lineBeginningWhitespace = false;
-                        if (c != SINGLE_ESCAPE) GTUtil.getLast(stack.peek()).append(c);
+                        if (c != SINGLE_ESCAPE) stack.peek().getLast().append(c);
                     }
                 }
                 if (stack.isEmpty()) break;
@@ -232,7 +224,7 @@ public class PlaceholderHandler {
         if (exceptions.isEmpty()) {
             MultiLineComponent out = stack.peek().stream().reduce(MultiLineComponent.empty(),
                     MultiLineComponent::append);
-            if (out.toTag().toString().length() > 16000) return MultiLineComponent.literal("Output too long");
+            if (out.toString().length() > 16000) return MultiLineComponent.literal("Output too long");
             return out;
         }
         MultiLineComponent out = MultiLineComponent.empty();
@@ -339,13 +331,13 @@ public class PlaceholderHandler {
                                 .paddingBottom(5)
                                 .excludeAreaInRecipeViewer()
                                 .fullHeight()
-                                .children(GTRegistries.PLACEHOLDERS.values()
-                                        .stream()
-                                        .map(Placeholder::getName)
+                                .children(GTRegistries.PLACEHOLDERS.listElements()
+                                        .map(h -> h.key().identifier())
                                         .sorted()
                                         .map(s -> (IWidget) Flow.row()
                                                 .coverChildren()
-                                                .child(new TextWidget<>(s).center())
+                                                .child(new TextWidget<>(s.toString().replaceAll("gtceu:", ""))
+                                                        .center())
                                                 .tooltip(new RichTooltip()
                                                         .addDrawableLines(LangHandler
                                                                 .getSingleOrMultiLang("gtceu.placeholder_info." + s)
@@ -393,7 +385,7 @@ public class PlaceholderHandler {
         private int ifDepth = 0;
 
         @Override
-        public Component apply(String s, @Nullable PlaceholderContext ctx) {
+        public Component apply(String s, PlaceholderContext ctx) {
             if (s.equals("\0")) {
                 if (unclosedBrackets > 0) {
                     onEncounteredError();
@@ -401,9 +393,7 @@ public class PlaceholderHandler {
                             .withUnderlined(true)
                             .withInsertion("")
                             .withColor(0xFF0000)
-                            .withHoverEvent(new HoverEvent(
-                                    HoverEvent.Action.SHOW_TEXT,
-                                    unclosedBrackets == 1 ?
+                            .withHoverEvent(new HoverEvent.ShowText(unclosedBrackets == 1 ?
                                             Component.translatable("gtceu.placeholder_editor.unclosed_bracket") :
                                             Component.translatable("gtceu.placeholder_editor.unclosed_brackets",
                                                     unclosedBrackets))));
@@ -414,9 +404,7 @@ public class PlaceholderHandler {
                             .withUnderlined(true)
                             .withInsertion("")
                             .withColor(0xFF0000)
-                            .withHoverEvent(new HoverEvent(
-                                    HoverEvent.Action.SHOW_TEXT,
-                                    unclosedSingleEscapes == 1 ?
+                            .withHoverEvent(new HoverEvent.ShowText(unclosedSingleEscapes == 1 ?
                                             Component.translatable("gtceu.placeholder_editor.unclosed_escape") :
                                             Component.translatable("gtceu.placeholder_editor.unclosed_escapes",
                                                     unclosedBrackets))));
@@ -451,9 +439,7 @@ public class PlaceholderHandler {
                         onEncounteredError();
                         return Component.literal(s).withStyle(Style.EMPTY
                                 .withColor(0xFF0000)
-                                .withHoverEvent(new HoverEvent(
-                                        HoverEvent.Action.SHOW_TEXT,
-                                        Component.translatable("gtceu.placeholder_editor.extra_closing_bracket"))));
+                                .withHoverEvent(new HoverEvent.ShowText(Component.translatable("gtceu.placeholder_editor.extra_closing_bracket"))));
                     }
                     return Component.literal(s).withStyle(ChatFormatting.GOLD);
                 }
@@ -471,9 +457,7 @@ public class PlaceholderHandler {
                         onEncounteredError();
                         return Component.literal(s).withStyle(Style.EMPTY
                                 .withColor(0xFF0000)
-                                .withHoverEvent(new HoverEvent(
-                                        HoverEvent.Action.SHOW_TEXT,
-                                        Component.translatable("gtceu.placeholder_editor.extra_closing_bracket"))));
+                                .withHoverEvent(new HoverEvent.ShowText(Component.translatable("gtceu.placeholder_editor.extra_closing_bracket"))));
                     }
                     everything.append(s);
                     if (!openPlaceholders.empty()) {
@@ -482,17 +466,17 @@ public class PlaceholderHandler {
                         openPlaceholders.pop();
                     }
                     if (!pureStarts.empty()) {
-                        String result = processPlaceholders(everything.substring(pureStarts.peek()), ctx)
-                                .toString()
-                                .replaceAll("\\n", "\\\\n");
+                        String result = ctx == null ? null :
+                                processPlaceholders(everything.substring(pureStarts.peek()), ctx)
+                                        .toString()
+                                        .replaceAll("\\n", "\\\\n");
                         int popped = pureStarts.peek();
                         pureStarts.pop();
-                        viewStarts.pop();
-                        if (!everything.substring(popped).contains(" ")) return Component.literal(s);
+                        if (!viewStarts.empty()) viewStarts.pop();
+                        if (result == null || !everything.substring(popped).contains(" "))
+                            return Component.literal(s);
                         return Component.literal(s)
-                                .withStyle(style -> style.withHoverEvent(new HoverEvent(
-                                        HoverEvent.Action.SHOW_TEXT,
-                                        Component.translatable("gtceu.placeholder_editor.constant_value", result)))
+                                .withStyle(style -> style.withHoverEvent(new HoverEvent.ShowText(Component.translatable("gtceu.placeholder_editor.constant_value", result)))
                                         .withInsertion(""));
                     }
                     if (!viewStarts.empty()) viewStarts.pop();
@@ -501,32 +485,41 @@ public class PlaceholderHandler {
             }
             if (prevOpenBracket) {
                 prevOpenBracket = false;
-                ResourceLocation id = toId(s);
-                if (id != null && GTRegistries.PLACEHOLDERS.containsKey(id)) {
-                    if (GTRegistries.PLACEHOLDERS.get(id).isPure()) {
+                ResourceKey<Placeholder> id = toId(s);
+
+                if (id == null) {
+                    onEncounteredError();
+                    return Component.literal(s).withStyle(Style.EMPTY
+                            .withColor(0xFF0000)
+                            .withHoverEvent(new HoverEvent.ShowText(Component.translatable("gtceu.placeholder_editor.no_placeholder",
+                                            s.replaceAll("\\n", "\\\\n")))));
+                }
+
+                var holder = ctx != null && ctx.holderLookup() != null ?
+                        ctx.holderLookup().get(id) :
+                        GTRegistries.PLACEHOLDERS.get(id);
+                if (holder.isPresent()) {
+                    var placeholder = holder.get().value();
+                    if (placeholder.isPure()) {
                         pureStarts.push(everything.length() - 1);
                     } else pureStarts.clear();
-                    if (GTRegistries.PLACEHOLDERS.get(id).isView()) {
+                    if (placeholder.isView()) {
                         viewStarts.push(everything.length() - 1);
                     } else viewStarts.clear();
                     everything.append(s);
                     openPlaceholders.push(s);
                     if (s.equals("if")) ifDepth++;
-                    else if (ifDepth > 0 && !GTRegistries.PLACEHOLDERS.get(id).isView()) {
+                    else if (ifDepth > 0 && !placeholder.isView()) {
                         return Component.literal(s)
                                 .withStyle(ChatFormatting.BLUE, ChatFormatting.UNDERLINE)
-                                .withStyle(style -> style.withHoverEvent(new HoverEvent(
-                                        HoverEvent.Action.SHOW_TEXT,
-                                        Component.translatable("gtceu.placeholder_editor.write_in_if"))));
+                                .withStyle(style -> style.withHoverEvent(new HoverEvent.ShowText(Component.translatable("gtceu.placeholder_editor.write_in_if"))));
                     }
                     return Component.literal(s).withStyle(ChatFormatting.BLUE);
                 } else {
                     onEncounteredError();
                     return Component.literal(s).withStyle(Style.EMPTY
                             .withColor(0xFF0000)
-                            .withHoverEvent(new HoverEvent(
-                                    HoverEvent.Action.SHOW_TEXT,
-                                    Component.translatable("gtceu.placeholder_editor.no_placeholder",
+                            .withHoverEvent(new HoverEvent.ShowText(Component.translatable("gtceu.placeholder_editor.no_placeholder",
                                             s.replaceAll("\\n", "\\\\n")))));
                 }
             }

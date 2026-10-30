@@ -2,15 +2,17 @@ package com.gregtechceu.gtceu.common.module;
 
 import com.gregtechceu.gtceu.api.GTValues;
 import com.gregtechceu.gtceu.api.capability.GTCapabilityHelper;
+import com.gregtechceu.gtceu.api.item.datacomponents.GTArmor;
 import com.gregtechceu.gtceu.api.item.module.ArmorLogicItemModule;
 import com.gregtechceu.gtceu.api.item.module.ITieredItemModule;
 import com.gregtechceu.gtceu.api.item.module.ModuleContext;
 import com.gregtechceu.gtceu.api.item.module.ui.ItemModuleSettingsBuilder;
+import com.gregtechceu.gtceu.common.data.item.GTDataComponents;
 import com.gregtechceu.gtceu.common.item.armor.Jetpack;
 import com.gregtechceu.gtceu.config.ConfigHolder;
 
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 
@@ -24,7 +26,7 @@ public class JetpackModule extends ArmorLogicItemModule implements ITieredItemMo
             1_000_000L * (long) Math.max(1, Math.pow(4, ConfigHolder.INSTANCE.tools.voltageTierImpeller - 2)),
             ConfigHolder.INSTANCE.tools.voltageTierImpeller);
 
-    public JetpackModule(ResourceLocation id) {
+    public JetpackModule(Identifier id) {
         super(id);
     }
 
@@ -71,7 +73,9 @@ public class JetpackModule extends ArmorLogicItemModule implements ITieredItemMo
     public ItemModuleSettingsBuilder getSettings(ModuleContext moduleContext, PanelSyncManager psm, int id) {
         return super.getSettings(moduleContext, psm, id)
                 .bool(Text.lang("gui.gtceu.item_module.hover_mode"),
-                        () -> moduleContext.getAppliedTo().getOrCreateTag().getBoolean("hover"),
-                        b -> moduleContext.getAppliedTo().getOrCreateTag().putBoolean("hover", b));
+                        () -> moduleContext.getAppliedTo().getOrDefault(GTDataComponents.ARMOR_DATA, GTArmor.EMPTY)
+                                .hover(),
+                        b -> moduleContext.getAppliedTo().update(GTDataComponents.ARMOR_DATA, GTArmor.EMPTY,
+                                v -> v.setHover(b)));
     }
 }

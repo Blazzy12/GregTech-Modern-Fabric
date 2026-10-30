@@ -1,6 +1,7 @@
 package com.gregtechceu.gtceu.common.item.behavior;
 
-import com.gregtechceu.gtceu.GTCEu;
+import net.minecraft.world.InteractionResult;
+
 import com.gregtechceu.gtceu.api.GTValues;
 import com.gregtechceu.gtceu.api.capability.GTCapabilityHelper;
 import com.gregtechceu.gtceu.api.capability.IElectricItem;
@@ -12,16 +13,19 @@ import com.gregtechceu.gtceu.api.item.component.IInteractionItem;
 import com.gregtechceu.gtceu.api.item.component.IItemLifeCycle;
 import com.gregtechceu.gtceu.api.mui.IItemUIHolder;
 import com.gregtechceu.gtceu.common.data.GTItems;
+import com.gregtechceu.gtceu.common.data.item.GTDataComponents;
 import com.gregtechceu.gtceu.common.mui.GTGuiTextures;
 import com.gregtechceu.gtceu.common.mui.widgets.textfield.TextEditorWidget;
 import com.gregtechceu.gtceu.data.lang.LangHandler;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.ExperienceOrb;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -32,15 +36,14 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.entity.item.ItemTossEvent;
-import net.minecraftforge.event.entity.player.PlayerXpEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
+import com.gregtechceu.gtceu.compat.bus.SubscribeEvent;
+import com.gregtechceu.gtceu.compat.common.NeoForge;
+import com.gregtechceu.gtceu.compat.event.entity.item.ItemTossEvent;
+import com.gregtechceu.gtceu.compat.event.entity.player.PlayerXpEvent;
 
 import brachy.modularui.api.drawable.Text;
 import brachy.modularui.drawable.ItemDrawable;
 import brachy.modularui.factory.PlayerInventoryGuiData;
-import brachy.modularui.factory.UIFactories;
 import brachy.modularui.screen.ModularPanel;
 import brachy.modularui.screen.RichTooltip;
 import brachy.modularui.screen.UISettings;
@@ -54,10 +57,13 @@ import brachy.modularui.widgets.layout.Flow;
 import brachy.modularui.widgets.layout.Grid;
 import brachy.modularui.widgets.slot.ModularSlot;
 import brachy.modularui.widgets.slot.PhantomItemSlot;
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
 import com.tterrag.registrate.util.entry.ItemEntry;
+import io.netty.buffer.ByteBuf;
+import lombok.NonNull;
+import org.apache.commons.lang3.mutable.MutableBoolean;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-import top.theillusivec4.curios.api.CuriosApi;
 
 import java.util.EnumMap;
 import java.util.List;
@@ -65,46 +71,44 @@ import java.util.Map;
 
 public class ItemMagnetBehavior implements IInteractionItem, IItemLifeCycle, IAddInformation, IItemUIHolder {
 
-    public static final String FILTER_TAG = "MagnetFilter";
-    public static final String FILTER_ORDINAL_TAG = "FilterOrdinal";
-
     private final int range;
     private final long energyDraw;
 
     public ItemMagnetBehavior(int range) {
         this.range = range;
         this.energyDraw = GTValues.V[range > 8 ? GTValues.HV : GTValues.LV];
-        MinecraftForge.EVENT_BUS.register(this);
+    }
+
+    static {
+        NeoForge.EVENT_BUS.register(ItemMagnetBehavior.class);
     }
 
     @Override
     public ModularPanel<?> buildUI(PlayerInventoryGuiData<?> data, PanelSyncManager syncManager, UISettings settings) {
         ItemStack held = data.getUsedItemStack();
-        CompoundTag heldTag = held.getOrCreateTag();
+        MagnetComponent magnetData = held.getOrDefault(GTDataComponents.MAGNET, MagnetComponent.EMPTY);
+        FilterMode selectedFilter = magnetData.filterType();
 
-        FilterMode selectedFilterMode = FilterMode.get(heldTag.getInt(FILTER_ORDINAL_TAG));
-        Map<FilterMode, ItemStack> stacks = new EnumMap<>(FilterMode.class);
-        CompoundTag startFilterTag = heldTag.getCompound(FILTER_TAG).copy();
-        for (FilterMode filterMode : FilterMode.values()) {
-            ItemStack stack = filterMode.getFilter(held);
-            stack.setTag(startFilterTag.copy());
-            stacks.put(filterMode, stack);
+        Map<FilterMode, Filter<ItemStack>> filters = new EnumMap<>(FilterMode.class);
+        for (FilterMode mode : FilterMode.values()) {
+            Filter<ItemStack> filter = mode.loadFilter(held);
+            filters.put(mode, filter);
         }
 
         EnumSyncValue<FilterMode> filterSync = new EnumSyncValue<>(FilterMode.class,
-                () -> FilterMode.get(data.getUsedItemStack().getOrCreateTag().getInt(FILTER_ORDINAL_TAG)),
-                filterMode -> data.getUsedItemStack().getOrCreateTag().putInt(FILTER_ORDINAL_TAG, filterMode.ordinal()))
+                () -> held.getOrDefault(GTDataComponents.MAGNET, MagnetComponent.EMPTY).filterType(),
+                filter -> held.set(GTDataComponents.MAGNET, new MagnetComponent(magnetData.active, filter)))
                 .allowC2S();
 
         PagedWidget<?> pages = new PagedWidget<>()
                 .left((176 - 150) / 2)
                 .top((60 - 55) / 2 + 15)
                 .size(150, 55)
-                .initialPage(selectedFilterMode.ordinal())
+                .initialPage(selectedFilter.ordinal())
                 .addPage(createSimpleFilterPage(
-                        (SimpleItemFilter) Filters.loadItemFilter(stacks.get(FilterMode.SIMPLE))))
+                        (SimpleItemFilter) filters.get(FilterMode.SIMPLE)))
                 .addPage(createTagFilterPage(
-                        (TagFilter<ItemStack, Item>) Filters.loadItemFilter(stacks.get(FilterMode.TAG))));
+                        (TagFilter<ItemStack, Item>) filters.get(FilterMode.TAG)));
         pages.onUpdateListener(widget -> {
             int selected = filterSync.getIntValue();
             if (selected != widget.getCurrentPageIndex()) {
@@ -113,10 +117,10 @@ public class ItemMagnetBehavior implements IInteractionItem, IItemLifeCycle, IAd
         });
 
         syncManager.addCloseListener(player -> {
-            ItemStack stack = data.getUsedItemStack();
-            CompoundTag tag = stack.getOrCreateTag();
-            FilterMode selected = FilterMode.get(tag.getInt(FILTER_ORDINAL_TAG));
-            tag.put(FILTER_TAG, stacks.get(selected).getOrCreateTag().copy());
+            held.update(GTDataComponents.MAGNET, MagnetComponent.EMPTY,
+                    c -> new MagnetComponent(c.active(), filterSync.getValue()));
+            held.set(GTDataComponents.SIMPLE_ITEM_FILTER, (SimpleItemFilter) filters.get(FilterMode.SIMPLE));
+            held.set(GTDataComponents.ITEM_TAG_FILTER, (TagFilter<ItemStack, Item>) filters.get(FilterMode.TAG));
         });
 
         return new ModularPanel<>("item_magnet")
@@ -189,38 +193,34 @@ public class ItemMagnetBehavior implements IInteractionItem, IItemLifeCycle, IAd
     }
 
     @Override
-    public InteractionResultHolder<ItemStack> use(Item item, Level world, @NotNull Player player,
-                                                  InteractionHand hand) {
-        if (!player.level().isClientSide) {
-            if (player.isShiftKeyDown()) {
-                player.displayClientMessage(Component.translatable(toggleActive(player.getItemInHand(hand)) ?
-                        "behavior.item_magnet.enabled" : "behavior.item_magnet.disabled"), true);
-            } else {
-                UIFactories.playerInventory().openFromHand(player, hand);
+    public InteractionResult use(ItemStack item, Level level, @NotNull Player player,
+                                                  InteractionHand usedHand) {
+        ItemStack heldItem = player.getItemInHand(usedHand);
+        if (player.isShiftKeyDown()) {
+            if (!level.isClientSide()) {
+                player.sendOverlayMessage(Component.translatable(toggleActive(heldItem) ?
+                        "behavior.item_magnet.enabled" : "behavior.item_magnet.disabled"));
             }
+            return InteractionResult.SUCCESS.heldItemTransformedTo(heldItem);
         }
-        return InteractionResultHolder.pass(player.getItemInHand(hand));
+        return IItemUIHolder.super.use(item, level, player, usedHand);
     }
 
     private static boolean isActive(ItemStack stack) {
         if (stack == ItemStack.EMPTY) {
             return false;
         }
-        CompoundTag tag = stack.getTag();
-        if (tag == null) {
-            return false;
-        }
-        if (tag.contains("IsActive")) {
-            return tag.getBoolean("IsActive");
-        }
-        return false;
+        return stack.getOrDefault(GTDataComponents.MAGNET, MagnetComponent.EMPTY).active();
     }
 
     private static boolean toggleActive(ItemStack stack) {
-        boolean isActive = isActive(stack);
-        // noinspection ConstantConditions
-        stack.getOrCreateTag().putBoolean("IsActive", !isActive);
-        return !isActive;
+        MutableBoolean active = new MutableBoolean();
+        stack.update(GTDataComponents.MAGNET, MagnetComponent.EMPTY,
+                c -> {
+                    active.setValue(!c.active);
+                    return new MagnetComponent(!c.active, c.filterType);
+                });
+        return active.booleanValue();
     }
 
     @Override
@@ -260,9 +260,10 @@ public class ItemMagnetBehavior implements IInteractionItem, IItemLifeCycle, IAd
                     continue;
                 }
 
-                if (!world.isClientSide) {
+                if (!world.isClientSide()) {
                     if (filter == null) {
-                        filter = FilterMode.get(stack.getOrCreateTag().getInt(FILTER_ORDINAL_TAG)).loadFilter(stack);
+                        filter = stack.getOrDefault(GTDataComponents.MAGNET, MagnetComponent.EMPTY).filterType()
+                                .loadFilter(stack);
                     }
 
                     if (!filter.test(itemEntity.getItem())) {
@@ -273,15 +274,15 @@ public class ItemMagnetBehavior implements IInteractionItem, IItemLifeCycle, IAd
                         itemEntity.setNoPickUpDelay();
                     }
                     itemEntity.setDeltaMovement(0, 0, 0);
-                    itemEntity.setPos(entity.getX() - 0.2 + (world.random.nextDouble() * 0.4), entity.getY() - 0.6,
-                            entity.getZ() - 0.2 + (world.random.nextDouble() * 0.4));
+                    itemEntity.setPos(entity.getX() - 0.2 + (world.getRandom().nextDouble() * 0.4), entity.getY() - 0.6,
+                            entity.getZ() - 0.2 + (world.getRandom().nextDouble() * 0.4));
                     didMoveEntity = true;
                 }
             }
 
             if (didMoveEntity) {
                 world.playSound(null, entity, SoundEvents.EXPERIENCE_ORB_PICKUP, SoundSource.PLAYERS,
-                        0.1F, 0.5F * ((world.random.nextFloat() - world.random.nextFloat()) * 0.7F + 2F));
+                        0.1F, 0.5F * ((world.getRandom().nextFloat() - world.getRandom().nextFloat()) * 0.7F + 2F));
             }
 
             List<ExperienceOrb> xp = world.getEntitiesOfClass(ExperienceOrb.class,
@@ -289,15 +290,15 @@ public class ItemMagnetBehavior implements IInteractionItem, IItemLifeCycle, IAd
                             .inflate(4, 4, 4));
 
             for (ExperienceOrb orb : xp) {
-                if (!world.isClientSide && !orb.isRemoved()) {
+                if (!world.isClientSide() && !orb.isRemoved()) {
                     if (player.takeXpDelay == 0) {
-                        if (MinecraftForge.EVENT_BUS.post(new PlayerXpEvent.PickupXp(player, orb))) {
+                        if (NeoForge.EVENT_BUS.post(new PlayerXpEvent.PickupXp(player, orb)).isCanceled()) {
                             continue;
                         }
                         world.playSound(null, entity, SoundEvents.EXPERIENCE_ORB_PICKUP, SoundSource.PLAYERS,
-                                0.1F, 0.5F * ((world.random.nextFloat() - world.random.nextFloat()) * 0.7F + 1.8F));
+                                0.1F, 0.5F * ((world.getRandom().nextFloat() - world.getRandom().nextFloat()) * 0.7F + 1.8F));
                         player.take(orb, 1);
-                        player.giveExperiencePoints(orb.value);
+                        player.giveExperiencePoints(orb.getValue());
                         orb.discard();
                         didMoveEntity = true;
                     }
@@ -311,14 +312,13 @@ public class ItemMagnetBehavior implements IInteractionItem, IItemLifeCycle, IAd
     }
 
     @SubscribeEvent
-    public void onItemToss(@NotNull ItemTossEvent event) {
-        if (event.getPlayer() == null) return;
+    public static void onItemToss(@NotNull ItemTossEvent event) {
         if (hasMagnet(event.getPlayer())) {
             event.getEntity().setPickUpDelay(60);
         }
     }
 
-    private boolean hasMagnet(@NotNull Player player) {
+    private static boolean hasMagnet(@NotNull Player player) {
         Inventory inventory = player.getInventory();
         for (int i = 0; i < inventory.getContainerSize(); i++) {
             ItemStack stackInSlot = inventory.getItem(i);
@@ -327,10 +327,7 @@ public class ItemMagnetBehavior implements IInteractionItem, IItemLifeCycle, IAd
             }
         }
 
-        if (!GTCEu.Mods.isCuriosLoaded()) {
-            return false;
-        }
-        return CuriosUtils.hasMagnetCurios(player);
+        return false;
     }
 
     private static boolean isMagnet(@NotNull ItemStack stack) {
@@ -353,25 +350,19 @@ public class ItemMagnetBehavior implements IInteractionItem, IItemLifeCycle, IAd
     }
 
     @Override
-    public void appendHoverText(ItemStack itemStack, @Nullable Level level, List<Component> lines,
+    public void appendHoverText(ItemStack itemStack, Item.TooltipContext context, List<Component> lines,
                                 TooltipFlag isAdvanced) {
         lines.add(Component
                 .translatable(isActive(itemStack) ? "behavior.item_magnet.enabled" : "behavior.item_magnet.disabled"));
     }
 
-    private static class CuriosUtils {
 
-        public static boolean hasMagnetCurios(Player player) {
-            return CuriosApi.getCuriosInventory(player)
-                    .map(curios -> curios.findFirstCurio(i -> isMagnet(i) && isActive(i)).isPresent())
-                    .orElse(false);
-        }
-    }
-
-    public enum FilterMode {
+    public enum FilterMode implements StringRepresentable {
 
         SIMPLE(GTItems.ITEM_FILTER, "item_filter"),
         TAG(GTItems.TAG_FILTER, "item_tag_filter");
+
+        public static final Codec<FilterMode> CODEC = StringRepresentable.fromEnum(FilterMode::values);
 
         public final ItemEntry<ComponentItem> item;
         public final String texture;
@@ -382,10 +373,19 @@ public class ItemMagnetBehavior implements IInteractionItem, IItemLifeCycle, IAd
         }
 
         public ItemStack getFilter(ItemStack magnet) {
-            var tag = magnet.getOrCreateTag();
-            var mockStack = new ItemStack(item);
-            mockStack.setTag(tag.getCompound(FILTER_TAG));
+            var mockStack = new ItemStack(item.asItem());
+            switch (this) {
+                case SIMPLE -> mockStack.set(GTDataComponents.SIMPLE_ITEM_FILTER,
+                        magnet.get(GTDataComponents.SIMPLE_ITEM_FILTER));
+                case TAG -> mockStack.set(GTDataComponents.ITEM_TAG_FILTER,
+                        magnet.get(GTDataComponents.ITEM_TAG_FILTER));
+            }
             return mockStack;
+        }
+
+        @Override
+        public @NonNull String getSerializedName() {
+            return texture;
         }
 
         public Filter<ItemStack> loadFilter(ItemStack magnet) {
@@ -400,5 +400,19 @@ public class ItemMagnetBehavior implements IInteractionItem, IItemLifeCycle, IAd
         public @NotNull String getTooltip() {
             return item.asItem().getDescriptionId();
         }
+    }
+
+    public record MagnetComponent(boolean active, FilterMode filterType) {
+
+        public static final Codec<MagnetComponent> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+                Codec.BOOL.orElse(false).fieldOf("active").forGetter(MagnetComponent::active),
+                FilterMode.CODEC.fieldOf("filter_type").forGetter(MagnetComponent::filterType))
+                .apply(instance, MagnetComponent::new));
+        public static final StreamCodec<ByteBuf, MagnetComponent> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.BOOL, MagnetComponent::active,
+                ByteBufCodecs.VAR_INT, c -> c.filterType().ordinal(),
+                (active, ordinal) -> new MagnetComponent(active, FilterMode.get(ordinal)));
+
+        public static final MagnetComponent EMPTY = new MagnetComponent(false, FilterMode.SIMPLE);
     }
 }

@@ -2,51 +2,29 @@ package com.gregtechceu.gtceu.data.recipe.builder;
 
 import com.gregtechceu.gtceu.api.recipe.ShapedFluidContainerRecipe;
 
-import net.minecraft.data.recipes.FinishedRecipe;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.item.crafting.RecipeSerializer;
+import net.minecraft.data.recipes.RecipeBuilder;
+import net.minecraft.data.recipes.RecipeOutput;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.item.crafting.ShapedRecipe;
+import net.minecraft.world.item.crafting.ShapedRecipePattern;
 
-import com.google.gson.JsonObject;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.function.Consumer;
+import java.util.Objects;
 
 public class ShapedFluidContainerRecipeBuilder extends ShapedRecipeBuilder {
 
-    public ShapedFluidContainerRecipeBuilder(@Nullable ResourceLocation id) {
+    public ShapedFluidContainerRecipeBuilder(@Nullable Identifier id) {
         super(id);
     }
 
-    public void save(Consumer<FinishedRecipe> consumer) {
-        consumer.accept(new FinishedRecipe() {
-
-            @Override
-            public void serializeRecipeData(JsonObject pJson) {
-                toJson(pJson);
-            }
-
-            @Override
-            public ResourceLocation getId() {
-                var ID = id == null ? defaultId() : id;
-                return ID.withPath("shaped_fluid_container/" + ID.getPath());
-            }
-
-            @Override
-            public RecipeSerializer<?> getType() {
-                return ShapedFluidContainerRecipe.SERIALIZER;
-            }
-
-            @Nullable
-            @Override
-            public JsonObject serializeAdvancement() {
-                return null;
-            }
-
-            @Nullable
-            @Override
-            public ResourceLocation getAdvancementId() {
-                return null;
-            }
-        });
+    public void save(RecipeOutput consumer) {
+        var recipeId = id == null ? defaultId() : id;
+        var recipe = new ShapedFluidContainerRecipe(new net.minecraft.world.item.crafting.Recipe.CommonInfo(false),
+                new net.minecraft.world.item.crafting.CraftingRecipe.CraftingBookInfo(
+                        RecipeBuilder.determineCraftingBookCategory(this.category),
+                        Objects.requireNonNullElse(this.group, "")),
+                ShapedRecipePattern.of(key, rows), net.minecraft.world.item.ItemStackTemplate.fromNonEmptyStack(this.output));
+        consumer.accept(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.RECIPE, recipeId.withPrefix("shaped/")), recipe, null);
     }
 }

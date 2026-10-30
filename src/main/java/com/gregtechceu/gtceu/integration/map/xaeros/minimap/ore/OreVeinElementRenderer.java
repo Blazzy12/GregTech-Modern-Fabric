@@ -1,23 +1,23 @@
 package com.gregtechceu.gtceu.integration.map.xaeros.minimap.ore;
 
 import com.gregtechceu.gtceu.api.data.chemical.material.Material;
+import com.gregtechceu.gtceu.api.data.chemical.material.info.MaterialIconSet;
 import com.gregtechceu.gtceu.api.data.chemical.material.info.MaterialIconType;
 import com.gregtechceu.gtceu.api.data.worldgen.ores.GeneratedVeinMetadata;
-import com.gregtechceu.gtceu.client.util.RenderUtil;
 import com.gregtechceu.gtceu.config.ConfigHolder;
 import com.gregtechceu.gtceu.integration.map.GroupingMapRenderer;
 import com.gregtechceu.gtceu.integration.map.layer.builtin.OreRenderLayer;
 import com.gregtechceu.gtceu.integration.map.xaeros.common.ore.OreVeinElement;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.inventory.InventoryMenu;
+import net.minecraft.resources.Identifier;
+import net.minecraft.data.AtlasIds;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import xaero.common.graphics.renderer.multitexture.MultiTextureRenderTypeRendererProvider;
+import xaero.hud.minimap.element.render.MinimapElementGraphics;
 import xaero.hud.minimap.element.render.MinimapElementRenderInfo;
+import xaero.lib.client.graphics.XaeroBufferProvider;
+import com.gregtechceu.gtceu.integration.map.xaeros.common.XaeroDraw;
 import xaero.hud.minimap.element.render.MinimapElementRenderLocation;
 import xaero.hud.minimap.element.render.MinimapElementRenderer;
 
@@ -30,60 +30,44 @@ public class OreVeinElementRenderer extends MinimapElementRenderer<OreVeinElemen
     }
 
     @Override
-    public void preRender(MinimapElementRenderInfo renderInfo, MultiBufferSource.BufferSource renderTypeBuffers,
+    public void preRender(MinimapElementRenderInfo renderInfo, XaeroBufferProvider buffers,
                           MultiTextureRenderTypeRendererProvider multiTextureRenderTypeRenderers) {}
 
     @Override
-    public boolean renderElement(OreVeinElement element,
-                                 boolean highlit,
-                                 boolean outOfBounds,
+    public boolean renderElement(OreVeinElement element, boolean highlit, boolean outOfBounds,
                                  double optionalDepth, float optionalScale, double partialX, double partialY,
-                                 MinimapElementRenderInfo renderInfo,
-                                 GuiGraphics graphics, MultiBufferSource.BufferSource renderTypeBuffers) {
+                                 MinimapElementRenderInfo renderInfo, MinimapElementGraphics graphics,
+                                 XaeroBufferProvider buffers) {
         GeneratedVeinMetadata vein = element.getVein();
         int iconSize = ConfigHolder.INSTANCE.compat.minimap.oreIconSize;
 
         Material material = OreRenderLayer.getMaterial(vein);
-        int materialARGB = material.getMaterialARGB();
-        float[] colors = RenderUtil.floats(materialARGB);
-        RenderSystem.setShaderColor(1, 1, 1, 1);
+        int materialARGB = material == null ? 0xFFFFFFFF : material.getMaterialARGB();
 
-        ResourceLocation oreTexture = MaterialIconType.rawOre
-                .getItemTexturePath(material.getMaterialIconSet(), true);
+        Identifier oreTexture = MaterialIconType.rawOre
+                .getItemTexturePath(material == null ? MaterialIconSet.DULL.value() : material.getMaterialIconSet(),
+                        true);
         if (oreTexture != null) {
-            var oreSprite = Minecraft.getInstance()
-                    .getTextureAtlas(InventoryMenu.BLOCK_ATLAS)
-                    .apply(oreTexture);
-            graphics.blit(-iconSize / 2, -iconSize / 2, 0, iconSize, iconSize,
-                    oreSprite, colors[0], colors[1], colors[2], 1);
+            var oreSprite = Minecraft.getInstance().getAtlasManager().getAtlasOrThrow(AtlasIds.ITEMS)
+                    .getSprite(oreTexture);
+            XaeroDraw.tintedSprite(graphics.pose(), buffers, oreSprite, -iconSize / 2, -iconSize / 2, iconSize,
+                    iconSize, materialARGB | 0xFF000000);
         }
-        // FIXME drawing the 2nd layer makes xaero's minimap transparent. so we won't. for now.
-        // oreTexture = MaterialIconType.rawOre.getItemTexturePath(firstMaterial.getMaterialIconSet(), "secondary",
-        // true);
-        // if (oreTexture != null) {
-        // int materialSecondaryARGB = firstMaterial.getMaterialSecondaryARGB();
-        // colors = DrawUtil.floats(materialSecondaryARGB);
-        // var oreSprite = Minecraft.getInstance()
-        // .getTextureAtlas(InventoryMenu.BLOCK_ATLAS)
-        // .apply(oreTexture);
-        // graphics.blit(-iconSize / 2, -iconSize / 2, 0, iconSize, iconSize,
-        // oreSprite, colors[0], colors[1], colors[2], 1);
-        // }
 
-        RenderSystem.setShaderColor(1, 1, 1, 1);
         int borderColor = ConfigHolder.INSTANCE.compat.minimap.getBorderColor(materialARGB | 0xFF000000);
         if ((borderColor & 0xFF000000) != 0) {
-            int thickness = iconSize / 16;
-            graphics.fill(-iconSize / 2, -iconSize / 2, iconSize, thickness, borderColor);
-            graphics.fill(-iconSize / 2, -iconSize / 2 - thickness, iconSize, thickness, borderColor);
-            graphics.fill(-iconSize / 2, -iconSize / 2, thickness, iconSize, borderColor);
-            graphics.fill(-iconSize / 2 - thickness, -iconSize / 2, thickness, iconSize, borderColor);
+            int thickness = Math.max(1, iconSize / 16);
+            int half = iconSize / 2;
+            graphics.fill(-half, -half, half, -half + thickness, borderColor);
+            graphics.fill(-half, half - thickness, half, half, borderColor);
+            graphics.fill(-half, -half, -half + thickness, half, borderColor);
+            graphics.fill(half - thickness, -half, half, half, borderColor);
         }
         return true;
     }
 
     @Override
-    public void postRender(MinimapElementRenderInfo renderInfo, MultiBufferSource.BufferSource renderTypeBuffers,
+    public void postRender(MinimapElementRenderInfo renderInfo, XaeroBufferProvider buffers,
                            MultiTextureRenderTypeRendererProvider multiTextureRenderTypeRenderers) {}
 
     @Override

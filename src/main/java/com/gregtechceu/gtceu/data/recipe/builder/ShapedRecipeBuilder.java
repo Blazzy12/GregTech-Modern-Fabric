@@ -1,40 +1,49 @@
 package com.gregtechceu.gtceu.data.recipe.builder;
 
-import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.api.recipe.StrictShapedRecipe;
-import com.gregtechceu.gtceu.utils.data.NBTToJsonConverter;
 
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.data.recipes.FinishedRecipe;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.data.recipes.RecipeBuilder;
+import net.minecraft.data.recipes.RecipeCategory;
+import net.minecraft.data.recipes.RecipeOutput;
+import net.minecraft.resources.Identifier;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
-import net.minecraft.world.item.crafting.RecipeSerializer;
+import net.minecraft.world.item.crafting.ShapedRecipe;
+import net.minecraft.world.item.crafting.ShapedRecipePattern;
 import net.minecraft.world.level.ItemLike;
-import net.minecraftforge.common.crafting.StrictNBTIngredient;
+import com.gregtechceu.gtceu.compat.common.crafting.DataComponentIngredient;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import lombok.Setter;
+import lombok.experimental.Accessors;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.*;
-import java.util.function.Consumer;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
+@Accessors(chain = true, fluent = true)
 public class ShapedRecipeBuilder {
 
+    @Setter
     protected ItemStack output = ItemStack.EMPTY;
-    protected @Nullable ResourceLocation id;
-    protected @Nullable String group;
+    @Setter
+    protected Identifier id;
+    @Setter
+    protected String group = "";
+    @Setter
+    protected RecipeCategory category = RecipeCategory.MISC;
+
+    protected final List<String> rows = Lists.newArrayList();
+    protected final Map<Character, Ingredient> key = Maps.newLinkedHashMap();
+    @Setter
     protected boolean isStrict;
-    protected boolean matchSize;
 
-    protected List<String[]> shape = new ArrayList<>();
-    protected Map<Character, Ingredient> ingredientMap = new LinkedHashMap<>();
-
-    public ShapedRecipeBuilder(@Nullable ResourceLocation id) {
+    public ShapedRecipeBuilder(@Nullable Identifier id) {
         this.id = id;
     }
 
@@ -42,38 +51,32 @@ public class ShapedRecipeBuilder {
         this(null);
     }
 
-    public ShapedRecipeBuilder slice(String... data) {
-        this.shape.add(data);
-        return this;
-    }
-
-    public ShapedRecipeBuilder where(char symbol, Ingredient value) {
-        this.ingredientMap.put(symbol, value);
-        return this;
-    }
-
     public ShapedRecipeBuilder pattern(String slice) {
-        return slice(slice);
+        rows.add(slice);
+        return this;
     }
 
     public ShapedRecipeBuilder define(char cha, TagKey<Item> itemStack) {
-        return where(cha, Ingredient.of(itemStack));
+        key.put(cha, Ingredient.of(com.gregtechceu.gtceu.utils.TagUtil.holderSet(net.minecraft.core.registries.BuiltInRegistries.ITEM, itemStack)));
+        return this;
     }
 
     public ShapedRecipeBuilder define(char cha, ItemStack itemStack) {
-        return where(cha, itemStack.hasTag() ? StrictNBTIngredient.of(itemStack) : Ingredient.of(itemStack));
+        if (!itemStack.getComponentsPatch().isEmpty()) {
+            key.put(cha, DataComponentIngredient.of(true, itemStack));
+        } else {
+            key.put(cha, Ingredient.of((itemStack).getItem()));
+        }
+        return this;
     }
 
     public ShapedRecipeBuilder define(char cha, ItemLike itemLike) {
-        return where(cha, Ingredient.of(itemLike));
+        key.put(cha, Ingredient.of(itemLike));
+        return this;
     }
 
     public ShapedRecipeBuilder define(char cha, Ingredient ingredient) {
-        return where(cha, ingredient);
-    }
-
-    public ShapedRecipeBuilder output(ItemStack itemStack) {
-        this.output = itemStack.copy();
+        key.put(cha, ingredient);
         return this;
     }
 
@@ -83,120 +86,22 @@ public class ShapedRecipeBuilder {
         return this;
     }
 
-    public ShapedRecipeBuilder output(ItemStack itemStack, int count, CompoundTag nbt) {
-        this.output = itemStack.copy();
-        this.output.setCount(count);
-        this.output.setTag(nbt);
-        return this;
-    }
-
-    public ShapedRecipeBuilder id(ResourceLocation id) {
-        this.id = id;
-        return this;
-    }
-
-    public ShapedRecipeBuilder id(String id) {
-        this.id = ResourceLocation.parse(id);
-        return this;
-    }
-
-    public ShapedRecipeBuilder group(String group) {
-        this.group = group;
-        return this;
-    }
-
-    public ShapedRecipeBuilder isStrict(boolean isStrict) {
-        this.isStrict = isStrict;
-        return this;
-    }
-
-    public ShapedRecipeBuilder matchSize(boolean matchSize) {
-        if (matchSize) this.isStrict = true;
-        this.matchSize = matchSize;
-        return this;
-    }
-
-    public ShapedRecipeBuilder shallowCopy() {
-        ShapedRecipeBuilder builder = new ShapedRecipeBuilder();
-        builder.shape = new ArrayList<>(this.shape);
-        builder.ingredientMap = new HashMap<>(this.ingredientMap);
-        builder.output = output.copy();
-        return builder;
-    }
-
-    public void toJson(JsonObject json) {
-        if (group != null) {
-            json.addProperty("group", group);
-        }
-
-        if (!shape.isEmpty()) {
-            JsonArray pattern = new JsonArray();
-            for (String[] strings : shape) {
-                for (String string : strings) {
-                    pattern.add(string);
-                }
-            }
-            json.add("pattern", pattern);
-        }
-
-        if (!ingredientMap.isEmpty()) {
-            JsonObject key = new JsonObject();
-            ingredientMap.forEach((k, v) -> key.add(k.toString(), v.toJson()));
-            json.add("key", key);
-        }
-
-        json.addProperty("matchSize", matchSize);
-
-        if (output.isEmpty()) {
-            GTCEu.LOGGER.error("shaped recipe {} output is empty", id);
-            throw new IllegalArgumentException(id + ": output items is empty");
-        } else {
-            JsonObject result = new JsonObject();
-            result.addProperty("item", BuiltInRegistries.ITEM.getKey(output.getItem()).toString());
-            if (output.getCount() > 1) {
-                result.addProperty("count", output.getCount());
-            }
-            if (output.hasTag() && output.getTag() != null) {
-                result.add("nbt", NBTToJsonConverter.getObject(output.getTag()));
-            }
-            json.add("result", result);
-        }
-    }
-
-    protected ResourceLocation defaultId() {
+    protected Identifier defaultId() {
         return BuiltInRegistries.ITEM.getKey(output.getItem());
     }
 
-    public void save(Consumer<FinishedRecipe> consumer) {
-        consumer.accept(new FinishedRecipe() {
-
-            @Override
-            public void serializeRecipeData(JsonObject pJson) {
-                toJson(pJson);
-            }
-
-            @Override
-            public ResourceLocation getId() {
-                var ID = id == null ? defaultId() : id;
-                return ID.withPath("shaped/" + ID.getPath());
-            }
-
-            @Override
-            public RecipeSerializer<?> getType() {
-                return isStrict ? StrictShapedRecipe.SERIALIZER : RecipeSerializer.SHAPED_RECIPE;
-            }
-
-            @Nullable
-            @Override
-            public JsonObject serializeAdvancement() {
-                return null;
-            }
-
-            @Nullable
-            @Override
-            public ResourceLocation getAdvancementId() {
-                return null;
-            }
-        });
+    public void save(RecipeOutput consumer) {
+        var recipeId = id == null ? defaultId() : id;
+        net.minecraft.world.item.crafting.CraftingRecipe recipe;
+        var bookInfo = new net.minecraft.world.item.crafting.CraftingRecipe.CraftingBookInfo(
+                RecipeBuilder.determineCraftingBookCategory(this.category), Objects.requireNonNullElse(this.group, ""));
+        var commonInfo = new net.minecraft.world.item.crafting.Recipe.CommonInfo(false);
+        var result = net.minecraft.world.item.ItemStackTemplate.fromNonEmptyStack(this.output);
+        if (isStrict) {
+            recipe = new StrictShapedRecipe(commonInfo, bookInfo, ShapedRecipePattern.of(key, rows), result);
+        } else {
+            recipe = new ShapedRecipe(commonInfo, bookInfo, ShapedRecipePattern.of(key, rows), result);
+        }
+        consumer.accept(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.RECIPE, recipeId.withPrefix("shaped/")), recipe, null);
     }
 }

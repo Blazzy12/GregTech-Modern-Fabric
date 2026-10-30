@@ -9,23 +9,25 @@ import com.gregtechceu.gtceu.api.data.tag.TagPrefix;
 import com.gregtechceu.gtceu.common.data.GTMaterials;
 import com.gregtechceu.gtceu.data.recipe.VanillaRecipeHelper;
 
-import net.minecraft.data.recipes.FinishedRecipe;
+import net.minecraft.core.Holder;
+import net.minecraft.data.recipes.RecipeOutput;
 
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Map;
-import java.util.function.Consumer;
 
+import static com.gregtechceu.gtceu.api.data.chemical.material.info.MaterialFlags.*;
 import static com.gregtechceu.gtceu.api.data.tag.TagPrefix.*;
 import static com.gregtechceu.gtceu.common.data.GTRecipeTypes.PACKER_RECIPES;
 
 public final class WireCombiningHandler {
 
-    private static final TagPrefix[] WIRE_DOUBLING_ORDER = new TagPrefix[] {
+    @SuppressWarnings("unchecked")
+    private static final Holder<TagPrefix>[] WIRE_DOUBLING_ORDER = new Holder[] {
             wireGtSingle, wireGtDouble, wireGtQuadruple, wireGtOctal, wireGtHex
     };
 
-    private static final Map<TagPrefix, TagPrefix> cableToWireMap = Map.of(
+    private static final Map<Holder<TagPrefix>, Holder<TagPrefix>> cableToWireMap = Map.of(
             cableGtSingle, wireGtSingle,
             cableGtDouble, wireGtDouble,
             cableGtQuadruple, wireGtQuadruple,
@@ -34,7 +36,7 @@ public final class WireCombiningHandler {
 
     private WireCombiningHandler() {}
 
-    public static void run(@NotNull Consumer<FinishedRecipe> provider, @NotNull Material material) {
+    public static void run(@NotNull RecipeOutput provider, @NotNull Material material) {
         // Generate Wire Packer/Unpacker recipes
         processWireCompression(provider, material);
 
@@ -44,14 +46,14 @@ public final class WireCombiningHandler {
         }
 
         // Generate Cable -> Wire recipes in the unpacker
-        for (TagPrefix prefix : cableToWireMap.keySet()) {
+        for (Holder<TagPrefix> prefix : cableToWireMap.keySet()) {
             processCableStripping(provider, prefix, material);
         }
     }
 
-    private static void generateWireCombiningRecipe(@NotNull Consumer<FinishedRecipe> provider, int index,
+    private static void generateWireCombiningRecipe(@NotNull RecipeOutput provider, int index,
                                                     @NotNull Material material) {
-        TagPrefix prefix = WIRE_DOUBLING_ORDER[index];
+        TagPrefix prefix = WIRE_DOUBLING_ORDER[index].value();
         if (!material.shouldGenerateRecipesFor(prefix) || !material.hasProperty(PropertyKey.WIRE)) {
             return;
         }
@@ -78,7 +80,7 @@ public final class WireCombiningHandler {
         }
     }
 
-    private static void processWireCompression(@NotNull Consumer<FinishedRecipe> provider, @NotNull Material material) {
+    private static void processWireCompression(@NotNull RecipeOutput provider, @NotNull Material material) {
         if (!material.shouldGenerateRecipesFor(wireGtSingle) || !material.hasProperty(PropertyKey.WIRE)) {
             return;
         }
@@ -102,17 +104,17 @@ public final class WireCombiningHandler {
         }
     }
 
-    private static void processCableStripping(@NotNull Consumer<FinishedRecipe> provider, @NotNull TagPrefix prefix,
+    private static void processCableStripping(@NotNull RecipeOutput provider, @NotNull Holder<TagPrefix> prefix,
                                               @NotNull Material material) {
         if (!material.shouldGenerateRecipesFor(prefix) || !material.hasProperty(PropertyKey.WIRE)) {
             return;
         }
 
-        PACKER_RECIPES.recipeBuilder("strip_" + material.getName() + "_" + prefix.name)
+        PACKER_RECIPES.recipeBuilder("strip_" + material.getName() + "_" + prefix.value().name)
                 .inputItems(prefix, material)
                 .outputItems(cableToWireMap.get(prefix), material)
                 .outputItems(plate, GTMaterials.Rubber,
-                        (int) (prefix.secondaryMaterials().get(0).amount() / GTValues.M))
+                        (int) (prefix.value().secondaryMaterials().getFirst().amount() / GTValues.M))
                 .duration(100).EUt(GTValues.VA[GTValues.ULV])
                 .save(provider);
     }

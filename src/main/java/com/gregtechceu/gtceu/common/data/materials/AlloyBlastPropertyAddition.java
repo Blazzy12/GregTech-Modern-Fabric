@@ -10,7 +10,7 @@ import com.gregtechceu.gtceu.api.registry.GTRegistries;
 import com.gregtechceu.gtceu.common.data.GTMaterials;
 import com.gregtechceu.gtceu.data.recipe.misc.alloyblast.CustomAlloyBlastRecipeProducer;
 
-import net.minecraftforge.eventbus.api.SubscribeEvent;
+import com.gregtechceu.gtceu.compat.bus.SubscribeEvent;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -31,10 +31,10 @@ public class AlloyBlastPropertyAddition {
         }
 
         // Manual overrides
-        GTMaterials.NiobiumNitride.getProperty(PropertyKey.ALLOY_BLAST)
+        GTMaterials.NiobiumNitride.getPropertyOrThrow(PropertyKey.ALLOY_BLAST)
                 .setRecipeProducer(new CustomAlloyBlastRecipeProducer(1, 11, -1));
 
-        GTMaterials.IndiumTinBariumTitaniumCuprate.getProperty(PropertyKey.ALLOY_BLAST)
+        GTMaterials.IndiumTinBariumTitaniumCuprate.getPropertyOrThrow(PropertyKey.ALLOY_BLAST)
                 .setRecipeProducer(new CustomAlloyBlastRecipeProducer(-1, -1, 16));
     }
 

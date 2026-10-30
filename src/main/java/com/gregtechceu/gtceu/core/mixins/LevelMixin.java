@@ -13,6 +13,7 @@ import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.LevelChunk;
 
 import org.spongepowered.asm.mixin.Final;
+import com.llamalad7.mixinextras.sugar.Local;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -36,7 +37,7 @@ public abstract class LevelMixin implements LevelAccessor {
     @Inject(method = "getBlockEntity", at = @At(value = "HEAD"), cancellable = true)
     private void gtceu$getBlockEntityOffThread(BlockPos pos, CallbackInfoReturnable<BlockEntity> cir) {
         if (Thread.currentThread() == this.thread) return;
-        if (this.isClientSide) return;
+        if (this.isClientSide()) return;
 
         int chunkX = pos.getX() >> 4, chunkZ = pos.getZ() >> 4;
         if (!this.getChunkSource().hasChunk(chunkX, chunkZ)) return;
@@ -50,7 +51,7 @@ public abstract class LevelMixin implements LevelAccessor {
     @Inject(method = "getBlockState", at = @At(value = "HEAD"), cancellable = true)
     private void gtceu$getBlockStateOffThread(BlockPos pos, CallbackInfoReturnable<BlockState> cir) {
         if (Thread.currentThread() == this.thread) return;
-        if (this.isClientSide) return;
+        if (this.isClientSide()) return;
 
         int chunkX = pos.getX() >> 4, chunkZ = pos.getZ() >> 4;
         if (!this.getChunkSource().hasChunk(chunkX, chunkZ)) return;
@@ -61,15 +62,14 @@ public abstract class LevelMixin implements LevelAccessor {
         }
     }
 
-    @SuppressWarnings("ConstantValue")
-    @Inject(method = "markAndNotifyBlock",
+    @Inject(method = "setBlock(Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/state/BlockState;II)Z",
             at = @At(value = "INVOKE",
-                     target = "Lnet/minecraft/world/level/Level;setBlocksDirty(Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/state/BlockState;Lnet/minecraft/world/level/block/state/BlockState;)V",
-                     remap = true),
-            remap = false)
-    private void gtceu$updateChunkMultiblocks(BlockPos pos, LevelChunk chunk,
-                                              BlockState oldState, BlockState newState, int flags, int recursionLeft,
-                                              CallbackInfo ci) {
+                     target = "Lnet/minecraft/world/level/Level;setBlocksDirty(Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/state/BlockState;Lnet/minecraft/world/level/block/state/BlockState;)V"))
+    private void gtceu$updateChunkMultiblocks(BlockPos pos, BlockState state, int flags, int updateLimit,
+                                              CallbackInfoReturnable<Boolean> cir,
+                                              @Local LevelChunk chunk,
+                                              @Local(ordinal = 1) BlockState oldState,
+                                              @Local(ordinal = 2) BlockState newState) {
         if (!(((Object) this) instanceof ServerLevel serverLevel)) return;
 
         MultiblockWorldSavedData mwsd = MultiblockWorldSavedData.getOrCreate(serverLevel);

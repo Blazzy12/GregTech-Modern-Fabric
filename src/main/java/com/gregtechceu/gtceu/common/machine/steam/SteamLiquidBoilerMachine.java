@@ -10,13 +10,13 @@ import com.gregtechceu.gtceu.common.mui.GTGuiTextures;
 import com.gregtechceu.gtceu.config.ConfigHolder;
 import com.gregtechceu.gtceu.utils.ExtendedUseOnContext;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.level.material.Fluid;
-import net.minecraftforge.fluids.FluidType;
-import net.minecraftforge.fluids.FluidUtil;
+import com.gregtechceu.gtceu.compat.fluids.FluidType;
+import com.gregtechceu.gtceu.compat.fluids.FluidUtil;
 
 import brachy.modularui.drawable.UITexture;
 import brachy.modularui.drawable.progress.ProgressDrawable;
@@ -53,10 +53,10 @@ public class SteamLiquidBoilerMachine extends SteamBoilerMachine {
         this.fuelTank = attachTrait(new NotifiableFluidTank(1, 16 * FluidType.BUCKET_VOLUME, IO.IN));
         fuelTank.setFilter(fluid -> FUEL_CACHE.computeIfAbsent(fluid.getFluid(), f -> {
             if (isRemote()) return true;
-            return recipeLogic.getRecipeManager().getAllRecipesFor(getRecipeType()).stream().anyMatch(recipe -> {
-                var list = recipe.inputs.getOrDefault(FluidRecipeCapability.CAP, Collections.emptyList());
+            return com.gregtechceu.gtceu.utils.GTUtil.getRecipesFor(getLevel(), getRecipeType()).stream().anyMatch(recipe -> {
+                var list = recipe.value().inputs.getOrDefault(FluidRecipeCapability.CAP, Collections.emptyList());
                 if (!list.isEmpty()) {
-                    return Arrays.stream(FluidRecipeCapability.CAP.of(list.get(0).content()).getStacks())
+                    return Arrays.stream(FluidRecipeCapability.CAP.of(list.getFirst().content()).getFluids())
                             .anyMatch(stack -> stack.getFluid() == f);
                 }
                 return false;

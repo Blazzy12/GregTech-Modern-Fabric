@@ -1,7 +1,6 @@
 package com.gregtechceu.gtceu.client.model;
 
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
+import com.gregtechceu.gtceu.compat.client.render.MultiBufferSource;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
@@ -9,13 +8,15 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.client.model.IDynamicBakedModel;
+import com.gregtechceu.gtceu.compat.client.model.IDynamicBakedModel;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import org.jetbrains.annotations.Nullable;
 
-public interface IBlockEntityRendererBakedModel<T extends BlockEntity>
-                                               extends IDynamicBakedModel, BlockEntityRenderer<T> {
+/**
+ * A model that also renders its block entity, through {@code BlockEntityWithBERModelRenderer}.
+ */
+public interface IBlockEntityRendererBakedModel<T extends BlockEntity> extends IDynamicBakedModel {
 
     @Nullable
     BlockEntityType<? extends T> getBlockEntityType();
@@ -26,13 +27,21 @@ public interface IBlockEntityRendererBakedModel<T extends BlockEntity>
     default void renderByItem(ItemStack stack, ItemDisplayContext displayContext,
                               PoseStack poseStack, MultiBufferSource buffer, int packedLight, int packedOverlay) {}
 
+    default boolean shouldRenderOffScreen(T blockEntity) {
+        return false;
+    }
+
+    default int getViewDistance() {
+        return 64;
+    }
+
     default boolean shouldRender(T blockEntity, Vec3 cameraPos) {
         return Vec3.atCenterOf(blockEntity.getBlockPos()).closerThan(cameraPos, this.getViewDistance());
     }
 
     default AABB getRenderBoundingBox(T blockEntity) {
         BlockPos pos = blockEntity.getBlockPos();
-        return new AABB(pos.offset(-1, 0, -1), pos.offset(2, 2, 2));
+        return AABB.encapsulatingFullBlocks(pos.offset(-1, -1, -1), pos.offset(1, 1, 1));
     }
 
     @Override

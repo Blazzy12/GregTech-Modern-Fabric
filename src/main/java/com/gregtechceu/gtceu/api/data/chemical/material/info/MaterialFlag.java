@@ -5,7 +5,6 @@ import com.gregtechceu.gtceu.api.data.chemical.material.Material;
 import com.gregtechceu.gtceu.api.data.chemical.material.properties.PropertyKey;
 
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.Arrays;
 import java.util.HashSet;
@@ -48,7 +47,7 @@ public class MaterialFlag {
         return this.name;
     }
 
-    public static @Nullable MaterialFlag getByName(String name) {
+    public static MaterialFlag getByName(String name) {
         return FLAG_REGISTRY.stream().filter(f -> f.toString().equalsIgnoreCase(name)).findFirst().orElse(null);
     }
 

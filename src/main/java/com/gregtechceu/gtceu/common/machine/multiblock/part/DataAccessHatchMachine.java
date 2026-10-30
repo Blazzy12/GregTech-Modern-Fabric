@@ -14,7 +14,7 @@ import com.gregtechceu.gtceu.api.machine.trait.notifiable.NotifiableItemStackHan
 import com.gregtechceu.gtceu.api.recipe.GTRecipe;
 import com.gregtechceu.gtceu.api.sync_system.annotations.SaveField;
 import com.gregtechceu.gtceu.api.sync_system.annotations.SyncToClient;
-import com.gregtechceu.gtceu.common.data.GTRecipeTypes;
+import com.gregtechceu.gtceu.common.data.item.GTDataComponents;
 import com.gregtechceu.gtceu.common.item.behavior.PortableScannerBehavior;
 import com.gregtechceu.gtceu.common.machine.multiblock.electric.research.DataBankMachine;
 import com.gregtechceu.gtceu.common.mui.GTGuiTextures;
@@ -23,13 +23,13 @@ import com.gregtechceu.gtceu.common.recipe.condition.ResearchCondition;
 import com.gregtechceu.gtceu.utils.ItemStackHashStrategy;
 import com.gregtechceu.gtceu.utils.ResearchManager;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.BlockHitResult;
-import net.minecraftforge.items.IItemHandler;
+import com.gregtechceu.gtceu.compat.items.IItemHandler;
 
 import brachy.modularui.api.drawable.IDrawable;
 import brachy.modularui.factory.PosGuiData;
@@ -76,7 +76,7 @@ public class DataAccessHatchMachine extends TieredPartMachine
             @Override
             public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
                 boolean isDataBank = isFormed() && getControllers().first() instanceof DataBankMachine;
-                if (ResearchManager.isStackDataItem(stack, isDataBank)) {
+                if (ResearchManager.isStackDataItem(stack, isDataBank) && stack.has(GTDataComponents.RESEARCH_ITEM)) {
                     return super.insertItem(slot, stack, simulate);
                 }
                 return stack;
@@ -111,11 +111,11 @@ public class DataAccessHatchMachine extends TieredPartMachine
     }
 
     private void rebuildData(boolean isDataBank) {
-        if (isCreative || getLevel() == null || getLevel().isClientSide) return;
+        if (isCreative || getLevel() == null || getLevel().isClientSide()) return;
         recipes.clear();
         for (int i = 0; i < this.importItems.getSlots(); i++) {
             ItemStack stack = this.importItems.getStackInSlot(i);
-            ResearchManager.ResearchItem researchData = ResearchManager.readResearchId(stack);
+            ResearchManager.ResearchItem researchData = stack.get(GTDataComponents.RESEARCH_ITEM);
             boolean isValid = ResearchManager.isStackDataItem(stack, isDataBank);
             if (researchData != null && isValid) {
                 Collection<GTRecipe> collection = researchData.recipeType()
@@ -141,13 +141,12 @@ public class DataAccessHatchMachine extends TieredPartMachine
                 return Collections.emptyList();
             List<Component> list = new ArrayList<>();
 
-            list.add(Component.translatable("behavior.data_item.title",
-                    Component.translatable(GTRecipeTypes.ASSEMBLY_LINE_RECIPES.registryName.toLanguageKey())));
+            list.add(Component.translatable("behavior.data_item.title"));
             list.add(Component.empty());
             Collection<ItemStack> itemsAdded = new ObjectOpenCustomHashSet<>(ItemStackHashStrategy.comparingAll());
             for (GTRecipe recipe : recipes) {
                 ItemStack stack = ItemRecipeCapability.CAP
-                        .of(recipe.getOutputContents(ItemRecipeCapability.CAP).get(0).content()).getItems()[0];
+                        .of(recipe.getOutputContents(ItemRecipeCapability.CAP).getFirst().content()).getItems()[0];
                 if (!itemsAdded.contains(stack)) {
                     itemsAdded.add(stack);
                     list.add(Component.translatable("behavior.data_item.data", stack.getDisplayName()));
@@ -182,5 +181,10 @@ public class DataAccessHatchMachine extends TieredPartMachine
     @Override
     public IItemHandler getDataItems() {
         return importItems.storage;
+    }
+
+    @Override
+    public Component getFailReason() {
+        return Component.translatable("gtceu.machine.data_access_hatch.missing_research");
     }
 }

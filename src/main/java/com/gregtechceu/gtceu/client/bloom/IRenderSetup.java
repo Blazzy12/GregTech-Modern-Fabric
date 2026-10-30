@@ -1,25 +1,15 @@
 package com.gregtechceu.gtceu.client.bloom;
 
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 
-import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.*;
 
+import net.minecraft.client.renderer.rendertype.RenderType;
+
+/**
+ * How a group of bloom effects or particles is drawn. 26.x draws through render types instead of GL state set
+ * around a buffer.
+ */
 public interface IRenderSetup {
 
-    /**
-     * Run any pre render gl code here.
-     *
-     * @param buffer Buffer builder
-     */
-    @OnlyIn(Dist.CLIENT)
-    void preDraw(BufferBuilder buffer);
-
-    /**
-     * Run any post render gl code here.
-     *
-     * @param buffer Buffer builder
-     */
-    @OnlyIn(Dist.CLIENT)
-    void postDraw(BufferBuilder buffer);
+    RenderType getRenderType();
 }

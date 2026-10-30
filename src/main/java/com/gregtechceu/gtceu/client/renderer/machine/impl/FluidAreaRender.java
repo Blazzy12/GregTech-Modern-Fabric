@@ -1,5 +1,7 @@
 package com.gregtechceu.gtceu.client.renderer.machine.impl;
 
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+
 import com.gregtechceu.gtceu.api.machine.multiblock.WorkableMultiblockMachine;
 import com.gregtechceu.gtceu.api.multiblock.util.RelativeDirection;
 import com.gregtechceu.gtceu.client.renderer.block.FluidBlockRenderer;
@@ -9,20 +11,18 @@ import com.gregtechceu.gtceu.client.util.RenderUtil;
 import com.gregtechceu.gtceu.common.machine.trait.multiblock.MultiblockFluidRendererTrait;
 import com.gregtechceu.gtceu.config.ConfigHolder;
 
-import net.minecraft.client.renderer.ItemBlockRenderTypes;
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
+import com.gregtechceu.gtceu.compat.client.render.MultiBufferSource;
+import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.client.RenderTypeHelper;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import lombok.Getter;
 import org.jetbrains.annotations.Nullable;
@@ -36,8 +36,7 @@ public class FluidAreaRender extends DynamicRender<WorkableMultiblockMachine, Fl
     public static final List<RelativeDirection> DEFAULT_FACES = Collections.singletonList(RelativeDirection.UP);
 
     // spotless:off
-    @SuppressWarnings("deprecation")
-    public static final Codec<FluidAreaRender> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+    public static final MapCodec<FluidAreaRender> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
             FluidBlockRenderer.CODEC.forGetter(FluidAreaRender::getFluidBlockRenderer),
             BuiltInRegistries.FLUID.byNameCodec().optionalFieldOf("fixed_fluid").forGetter(FluidAreaRender::getFixedFluid),
             RelativeDirection.CODEC.listOf().optionalFieldOf("drawn_faces", DEFAULT_FACES).forGetter(FluidAreaRender::getDrawFaces)
@@ -52,7 +51,7 @@ public class FluidAreaRender extends DynamicRender<WorkableMultiblockMachine, Fl
     private final List<RelativeDirection> drawFaces;
 
     private @Nullable Fluid cachedFluid;
-    private @Nullable ResourceLocation cachedRecipe;
+    private @Nullable Identifier cachedRecipe;
 
     @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
     public FluidAreaRender(FluidBlockRenderer fluidBlockRenderer,
@@ -109,8 +108,7 @@ public class FluidAreaRender extends DynamicRender<WorkableMultiblockMachine, Fl
             return;
         }
 
-        RenderType fluidRenderType = ItemBlockRenderTypes.getRenderLayer(cachedFluid.defaultFluidState());
-        VertexConsumer consumer = buffer.getBuffer(RenderTypeHelper.getEntityRenderType(fluidRenderType, false));
+        VertexConsumer consumer = buffer.getBuffer(RenderTypes.translucentMovingBlock());
 
         for (RelativeDirection face : this.drawFaces) {
             poseStack.pushPose();
@@ -120,7 +118,7 @@ public class FluidAreaRender extends DynamicRender<WorkableMultiblockMachine, Fl
             if (dir.getAxis() != Direction.Axis.Y) dir = dir.getOpposite();
 
             fluidBlockRenderer.drawPlane(dir, trait.getFluidOffsets(), poseStack, consumer, cachedFluid,
-                    RenderUtil.FluidTextureType.STILL, packedOverlay, machine.getBlockPos(), machine.getLevel());
+                    RenderUtil.FluidTextureType.STILL, packedOverlay, machine.getBlockPos(), RenderUtil.tintGetter(machine.getLevel()));
             poseStack.popPose();
         }
     }

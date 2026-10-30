@@ -1,17 +1,21 @@
 package com.gregtechceu.gtceu.api.transfer.item;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
-import net.minecraftforge.common.util.INBTSerializable;
-import net.minecraftforge.items.ItemStackHandler;
+import com.gregtechceu.gtceu.compat.common.util.INBTSerializable;
+import com.gregtechceu.gtceu.compat.items.ItemStackHandler;
 
 import lombok.Getter;
 import lombok.Setter;
+import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NonNull;
 
 import java.util.function.Predicate;
 
@@ -59,6 +63,17 @@ public class CustomItemStackHandler extends ItemStackHandler
         onContentsChanged.run();
     }
 
+    /**
+     * Don't use unless necessary.<br>
+     * (A good use case is loading/saving this container's items from/to a {@link ItemContainerContents} component)
+     *
+     * @return the internal list of items in this handler
+     */
+    @ApiStatus.Internal
+    public NonNullList<ItemStack> getStacks() {
+        return this.stacks;
+    }
+
     public void clear() {
         stacks.clear();
         onContentsChanged.run();
@@ -78,8 +93,8 @@ public class CustomItemStackHandler extends ItemStackHandler
     }
 
     @Override
-    public void deserializeNBT(CompoundTag nbt) {
-        if (nbt.getInt("Size") != stacks.size()) nbt.putInt("Size", stacks.size());
-        super.deserializeNBT(nbt);
+    public void deserializeNBT(HolderLookup.@NonNull Provider provider, CompoundTag nbt) {
+        if (nbt.getIntOr("Size", 0) != stacks.size()) nbt.putInt("Size", stacks.size());
+        super.deserializeNBT(provider, nbt);
     }
 }

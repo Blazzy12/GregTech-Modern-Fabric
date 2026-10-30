@@ -1,12 +1,13 @@
 package com.gregtechceu.gtceu.client.renderer.placeholder;
 
+import net.minecraft.util.LightCoordsUtil;
+
 import com.gregtechceu.gtceu.api.placeholder.IPlaceholderRenderer;
 import com.gregtechceu.gtceu.client.renderer.GTRenderTypes;
 import com.gregtechceu.gtceu.common.machine.multiblock.electric.CentralMonitorMachine;
 import com.gregtechceu.gtceu.common.machine.multiblock.electric.monitor.MonitorGroup;
 
-import net.minecraft.client.renderer.LightTexture;
-import net.minecraft.client.renderer.MultiBufferSource;
+import com.gregtechceu.gtceu.compat.client.render.MultiBufferSource;
 import net.minecraft.nbt.CompoundTag;
 
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -22,14 +23,14 @@ public class QuadPlaceholderRenderer implements IPlaceholderRenderer {
         VertexConsumer consumer = buffer.getBuffer(GTRenderTypes.getMonitor());
         Matrix4f pose = poseStack.last().pose();
 
-        consumer.vertex(pose, tag.getFloat("x1"), tag.getFloat("y1"), 0).color(tag.getInt("color1"))
-                .uv2(LightTexture.FULL_BRIGHT).endVertex();
-        consumer.vertex(pose, tag.getFloat("x2"), tag.getFloat("y2"), 0).color(tag.getInt("color2"))
-                .uv2(LightTexture.FULL_BRIGHT).endVertex();
-        consumer.vertex(pose, tag.getFloat("x3"), tag.getFloat("y3"), 0).color(tag.getInt("color3"))
-                .uv2(LightTexture.FULL_BRIGHT).endVertex();
-        consumer.vertex(pose, tag.getFloat("x4"), tag.getFloat("y4"), 0).color(tag.getInt("color4"))
-                .uv2(LightTexture.FULL_BRIGHT).endVertex();
+        consumer.addVertex(pose, tag.getFloatOr("x1", 0f), tag.getFloatOr("y1", 0f), 0).setColor(tag.getIntOr("color1", 0))
+                .setLight(LightCoordsUtil.FULL_BRIGHT);
+        consumer.addVertex(pose, tag.getFloatOr("x2", 0f), tag.getFloatOr("y2", 0f), 0).setColor(tag.getIntOr("color2", 0))
+                .setLight(LightCoordsUtil.FULL_BRIGHT);
+        consumer.addVertex(pose, tag.getFloatOr("x3", 0f), tag.getFloatOr("y3", 0f), 0).setColor(tag.getIntOr("color3", 0))
+                .setLight(LightCoordsUtil.FULL_BRIGHT);
+        consumer.addVertex(pose, tag.getFloatOr("x4", 0f), tag.getFloatOr("y4", 0f), 0).setColor(tag.getIntOr("color4", 0))
+                .setLight(LightCoordsUtil.FULL_BRIGHT);
         poseStack.popPose();
     }
 }

@@ -1,20 +1,19 @@
 package com.gregtechceu.gtceu.api.item.component;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import com.gregtechceu.gtceu.api.data.chemical.material.Material;
 import com.gregtechceu.gtceu.api.data.chemical.material.properties.PropertyKey;
 import com.gregtechceu.gtceu.api.item.IComponentItem;
-import com.gregtechceu.gtceu.api.registry.GTRegistries;
 import com.gregtechceu.gtceu.common.data.GTMaterials;
+import com.gregtechceu.gtceu.common.data.item.GTDataComponents;
 
-import net.minecraft.client.color.item.ItemColor;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.Tag;
+import com.gregtechceu.gtceu.compat.client.color.ItemColor;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.level.Level;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -25,23 +24,9 @@ public interface IMaterialPartItem extends IItemComponent, IDurabilityBar, IAddI
 
     int getPartMaxDurability(ItemStack itemStack);
 
-    @Nullable
-    default CompoundTag getPartStatsTag(ItemStack itemStack) {
-        return itemStack.getTagElement("GT.PartStats");
-    }
-
-    default CompoundTag getOrCreatePartStatsTag(ItemStack itemStack) {
-        return itemStack.getOrCreateTagElement("GT.PartStats");
-    }
-
     default Material getPartMaterial(ItemStack itemStack) {
-        var compound = getPartStatsTag(itemStack);
-        var defaultMaterial = GTMaterials.Neutronium;
-        if (compound == null || !compound.contains("Material", Tag.TAG_STRING)) {
-            return defaultMaterial;
-        }
-        var materialName = compound.getString("Material");
-        Material material = GTRegistries.MATERIALS.get(materialName);
+        var material = itemStack.get(GTDataComponents.ITEM_MATERIAL);
+        var defaultMaterial = GTMaterials.Aluminium.value();
         if (material == null || !material.hasProperty(PropertyKey.INGOT)) {
             return defaultMaterial;
         }
@@ -51,33 +36,30 @@ public interface IMaterialPartItem extends IItemComponent, IDurabilityBar, IAddI
     default void setPartMaterial(ItemStack itemStack, @NotNull Material material) {
         if (!material.hasProperty(PropertyKey.INGOT))
             throw new IllegalArgumentException("Part material must have an Ingot!");
-        var compound = getOrCreatePartStatsTag(itemStack);
-        compound.putString("Material", material.getResourceLocation().toString());
+        itemStack.set(GTDataComponents.ITEM_MATERIAL, material);
+        // update other components after setting part stats
+        itemStack.set(DataComponents.MAX_DAMAGE, getPartMaxDurability(itemStack));
+        itemStack.setDamageValue(0);
     }
 
     default int getPartDamage(ItemStack itemStack) {
-        var compound = getPartStatsTag(itemStack);
-        if (compound == null || !compound.contains("Damage", Tag.TAG_ANY_NUMERIC)) {
-            return 0;
-        }
-        return compound.getInt("Damage");
+        return itemStack.getDamageValue();
     }
 
     default void setPartDamage(ItemStack itemStack, int damage) {
-        var compound = getOrCreatePartStatsTag(itemStack);
-        compound.putInt("Damage", Math.min(getPartMaxDurability(itemStack), damage));
+        itemStack.setDamageValue(damage);
     }
 
     @Override
     @Nullable
     default Component getItemName(ItemStack stack) {
         var material = getPartMaterial(stack);
-        return Component.translatable(stack.getDescriptionId(), material.getLocalizedName());
+        return Component.translatable(stack.getItem().getDescriptionId(), material.getLocalizedName());
     }
 
     @Override
-    default void appendHoverText(ItemStack stack, @org.jetbrains.annotations.Nullable Level level,
-                                 List<Component> tooltipComponents, TooltipFlag isAdvanced) {
+    default void appendHoverText(ItemStack stack, Item.TooltipContext context, List<Component> tooltipComponents,
+                                 TooltipFlag isAdvanced) {
         var material = getPartMaterial(stack);
         var maxDurability = getPartMaxDurability(stack);
         var damage = getPartDamage(stack);
@@ -87,7 +69,7 @@ public interface IMaterialPartItem extends IItemComponent, IDurabilityBar, IAddI
                 .add(Component.translatable("metaitem.tool.tooltip.primary_material", material.getLocalizedName()));
     }
 
-    @OnlyIn(Dist.CLIENT)
+    @Environment(EnvType.CLIENT)
     static ItemColor getItemStackColor() {
         return (itemStack, i) -> {
             if (itemStack.getItem() instanceof IComponentItem componentItem) {
@@ -104,11 +86,6 @@ public interface IMaterialPartItem extends IItemComponent, IDurabilityBar, IAddI
     @Override
     default float getDurabilityForDisplay(ItemStack itemStack) {
         var maxDurability = getPartMaxDurability(itemStack);
-        return (float) (maxDurability - getPartDamage(itemStack)) / maxDurability;
-    }
-
-    @Override
-    default int getMaxDurability(ItemStack stack) {
-        return getPartMaxDurability(stack);
+        return (maxDurability - getPartDamage(itemStack)) * 1f / maxDurability;
     }
 }

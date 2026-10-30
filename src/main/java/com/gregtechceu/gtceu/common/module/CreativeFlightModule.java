@@ -4,44 +4,43 @@ import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.api.GTValues;
 import com.gregtechceu.gtceu.api.capability.GTCapabilityHelper;
 import com.gregtechceu.gtceu.api.capability.IElectricItem;
+import com.gregtechceu.gtceu.api.item.module.AttributeItemModule;
 import com.gregtechceu.gtceu.api.item.module.ITieredItemModule;
-import com.gregtechceu.gtceu.api.item.module.ItemModule;
 import com.gregtechceu.gtceu.api.item.module.ModuleContext;
+import com.gregtechceu.gtceu.api.item.module.ui.ItemModuleSettingsBuilder;
 
 import net.minecraft.ChatFormatting;
+import net.minecraft.core.Holder;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.attributes.Attribute;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import com.gregtechceu.gtceu.compat.bus.SubscribeEvent;
+import com.gregtechceu.gtceu.compat.fml.common.EventBusSubscriber;
+import com.gregtechceu.gtceu.compat.common.NeoForgeMod;
+import com.gregtechceu.gtceu.compat.event.entity.player.PlayerEvent;
+import com.gregtechceu.gtceu.compat.event.tick.EntityTickEvent;
 
-@Mod.EventBusSubscriber(modid = GTCEu.MOD_ID)
-public class CreativeFlightModule extends ItemModule implements ITieredItemModule {
+import brachy.modularui.api.drawable.Text;
+import brachy.modularui.value.sync.PanelSyncManager;
+
+@EventBusSubscriber(modid = GTCEu.MOD_ID)
+public class CreativeFlightModule extends AttributeItemModule implements ITieredItemModule {
 
     public static final int ENERGY_PER_TICK = 768;
     private static final String FLIGHT_BOOST = "gtceu:thruster_flight_boost";
 
-    public CreativeFlightModule(ResourceLocation id) {
+    public CreativeFlightModule(Identifier id) {
         super(id);
     }
 
     @Override
     public Component getInfo() {
         return Component.translatable(getDescriptionLanguageKey(), ENERGY_PER_TICK);
-    }
-
-    private void setMayFly(LivingEntity entity, boolean mayFly) {
-        if (entity instanceof Player player) {
-            if (player.isCreative() || player.isSpectator()) return;
-            player.getAbilities().mayfly = mayFly;
-            if (!mayFly) player.getAbilities().flying = false;
-            player.onUpdateAbilities();
-        }
     }
 
     private boolean isFlying(LivingEntity entity) {
@@ -51,51 +50,28 @@ public class CreativeFlightModule extends ItemModule implements ITieredItemModul
     }
 
     @Override
-    public void onEquip(ModuleContext moduleContext, LivingEntity entity) {
-        super.onEquip(moduleContext, entity);
-        setMayFly(entity, true);
+    public Holder<Attribute> getAttribute(ModuleContext moduleContext) {
+        return NeoForgeMod.CREATIVE_FLIGHT;
     }
 
     @Override
-    public void onUnequip(ModuleContext moduleContext, LivingEntity entity) {
-        super.onUnequip(moduleContext, entity);
-        setMayFly(entity, false);
+    public double getModifier(ModuleContext moduleContext) {
+        return 1;
     }
 
     @Override
-    public void onArmorTick(ModuleContext moduleContext, LivingEntity entity) {
-        IElectricItem electricItem = GTCapabilityHelper.getElectricItem(moduleContext.getAppliedTo());
-        if (!isEnabled(moduleContext) || electricItem == null || !electricItem.canUse(ENERGY_PER_TICK)) {
-            setMayFly(entity, false);
-            return;
-        }
-        if (!isFlying(entity)) {
-            setMayFly(entity, true);
-            return;
-        }
-        if (entity.level().isClientSide) return;
+    protected double getNeutralModifier(ModuleContext moduleContext) {
+        return 1;
+    }
 
-        long cost = ENERGY_PER_TICK;
-        var player = (Player) entity;
-        var modular = GTCapabilityHelper.getModularItem(moduleContext.getAppliedTo());
-        if (player.isSprinting() && !player.isSpectator() && modular != null &&
-                moduleContext.getAppliedTo().getTag() != null &&
-                moduleContext.getAppliedTo().getTag().getBoolean("enabled")) {
-            for (var context : modular.getAllModuleInstances()) {
-                if (context.getModule() instanceof JetpackModule thruster && thruster.isEnabled(context)) {
-                    var logic = thruster.getArmorLogic(context);
-                    long combinedCost = cost + Math.round(logic.getEnergyPerUse() * logic.getSprintEnergyModifier());
-                    if (electricItem.canUse(combinedCost)) {
-                        cost = combinedCost;
-                        applyFlightBoost(player, thruster instanceof AdvancedJetpackModule ?
-                                (float) logic.getSprintSpeedModifier() : 1.3f);
-                    }
-                    break;
-                }
-            }
-        }
-        electricItem.discharge(cost, electricItem.getTier(), true, false, false);
-        setMayFly(entity, true);
+    @Override
+    public AttributeModifier.Operation getModifierOperation() {
+        return AttributeModifier.Operation.ADD_VALUE;
+    }
+
+    @Override
+    public double getMaxAttributeAmount() {
+        return 1;
     }
 
     @Override
@@ -110,14 +86,50 @@ public class CreativeFlightModule extends ItemModule implements ITieredItemModul
                 .noneMatch(context -> context.getModule() instanceof LiquidFuelJetpackModule);
     }
 
+    @Override
+    public ItemModuleSettingsBuilder getSettings(ModuleContext moduleContext, PanelSyncManager psm, int id) {
+        ItemModuleSettingsBuilder settings = new ItemModuleSettingsBuilder(psm, id);
+        return settings
+                .bool(Text.lang("gui.gtceu.item_module.enabled"), () -> isEnabled(moduleContext),
+                        b -> setEnabled(moduleContext, b));
+    }
+
+    @Override
+    public boolean keepAttributeActive(ModuleContext moduleContext, LivingEntity entity) {
+        IElectricItem electricItem = GTCapabilityHelper.getElectricItem(moduleContext.getAppliedTo());
+        if (!isEnabled(moduleContext) || electricItem == null || !electricItem.canUse(ENERGY_PER_TICK)) return false;
+        if (!isFlying(entity)) return true;
+        if (entity.level().isClientSide()) return true;
+
+        long cost = ENERGY_PER_TICK;
+        var player = (Player) entity;
+        var modular = GTCapabilityHelper.getModularItem(moduleContext.getAppliedTo());
+        if (player.isSprinting() && !player.isSpectator() && modular != null) {
+            for (var context : modular.getAllModuleInstances()) {
+                if (context.getModule() instanceof JetpackModule thruster && thruster.isEnabled(context)) {
+                    var logic = thruster.getArmorLogic(context);
+                    long combinedCost = cost + Math.round(logic.getEnergyPerUse() * logic.getSprintEnergyModifier());
+                    if (electricItem.canUse(combinedCost)) {
+                        cost = combinedCost;
+                        applyFlightBoost(player, thruster instanceof AdvancedJetpackModule ?
+                                (float) logic.getSprintSpeedModifier() : 1.3f);
+                    }
+                    break;
+                }
+            }
+        }
+        electricItem.discharge(cost, electricItem.getTier(), true, false, false);
+        return true;
+    }
+
     private static void applyFlightBoost(Player player, float multiplier) {
         var data = player.getPersistentData();
-        var boost = data.getCompound(FLIGHT_BOOST);
+        var boost = data.getCompoundOrEmpty(FLIGHT_BOOST);
         float current = player.getAbilities().getFlyingSpeed();
-        if (!boost.contains("base") || Float.compare(current, boost.getFloat("applied")) != 0) {
+        if (!boost.contains("base") || Float.compare(current, boost.getFloatOr("applied", 0f)) != 0) {
             boost.putFloat("base", current);
         }
-        float speed = boost.getFloat("base") * multiplier;
+        float speed = boost.getFloatOr("base", 0f) * multiplier;
         boost.putFloat("applied", speed);
         boost.putLong("tick", player.level().getGameTime());
         data.put(FLIGHT_BOOST, boost);
@@ -130,22 +142,21 @@ public class CreativeFlightModule extends ItemModule implements ITieredItemModul
     private static void restoreFlightSpeed(Player player) {
         var data = player.getPersistentData();
         if (!data.contains(FLIGHT_BOOST)) return;
-        CompoundTag boost = data.getCompound(FLIGHT_BOOST);
+        CompoundTag boost = data.getCompoundOrEmpty(FLIGHT_BOOST);
         // Keep speed changes made by other mods after our last update.
-        if (Float.compare(player.getAbilities().getFlyingSpeed(), boost.getFloat("applied")) == 0) {
-            player.getAbilities().setFlyingSpeed(boost.getFloat("base"));
+        if (Float.compare(player.getAbilities().getFlyingSpeed(), boost.getFloatOr("applied", 0f)) == 0) {
+            player.getAbilities().setFlyingSpeed(boost.getFloatOr("base", 0f));
             player.onUpdateAbilities();
         }
         data.remove(FLIGHT_BOOST);
     }
 
     @SubscribeEvent
-    public static void afterPlayerTick(TickEvent.PlayerTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) return;
-        if (!event.player.level().isClientSide && event.player.getPersistentData().contains(FLIGHT_BOOST) &&
-                event.player.getPersistentData().getCompound(FLIGHT_BOOST).getLong("tick") !=
-                        event.player.level().getGameTime()) {
-            restoreFlightSpeed(event.player);
+    public static void afterPlayerTick(EntityTickEvent.Post event) {
+        if (!(event.getEntity() instanceof Player player)) return;
+        if (!player.level().isClientSide() && player.getPersistentData().contains(FLIGHT_BOOST) &&
+                player.getPersistentData().getCompoundOrEmpty(FLIGHT_BOOST).getLongOr("tick", 0L) != player.level().getGameTime()) {
+            restoreFlightSpeed(player);
         }
     }
 

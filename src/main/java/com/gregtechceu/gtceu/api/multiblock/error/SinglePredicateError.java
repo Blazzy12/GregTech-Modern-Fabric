@@ -1,10 +1,8 @@
 package com.gregtechceu.gtceu.api.multiblock.error;
 
-import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.api.multiblock.predicates.SettingsHolder;
 import com.gregtechceu.gtceu.api.multiblock.util.BlockInfo;
 
-import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.StringRepresentable;
 
@@ -13,6 +11,7 @@ import brachy.modularui.drawable.ItemDrawable;
 import brachy.modularui.widget.ParentWidget;
 import brachy.modularui.widgets.menu.ContextMenuButton;
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import lombok.Getter;
 
@@ -20,7 +19,8 @@ import java.util.List;
 
 public class SinglePredicateError extends PatternError {
 
-    public static final Codec<SinglePredicateError> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+    // spotless:off
+    public static final MapCodec<SinglePredicateError> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
             ErrorType.CODEC.fieldOf("error_type").forGetter(e -> e.type),
             Codec.INT.fieldOf("actual_count").forGetter(e -> e.actualCount),
             Codec.INT.fieldOf("pred_min_count").forGetter(e -> e.predMinCount),
@@ -28,11 +28,9 @@ public class SinglePredicateError extends PatternError {
             Codec.INT.fieldOf("pred_min_layer_count").forGetter(e -> e.predMinLayerCount),
             Codec.INT.fieldOf("pred_max_layer_count").forGetter(e -> e.predMaxLayerCount),
             Codec.STRING.fieldOf("name").forGetter(e -> e.debugName),
-            BlockInfo.CODEC.listOf().fieldOf("candidates").forGetter(e -> e.candidates),
-            BlockPos.CODEC.fieldOf("pos").forGetter(PatternError::pos))
-            .apply(instance, SinglePredicateError::new));
-
-    public static final PatternErrorType TYPE = new PatternErrorType(GTCEu.id("single_predicate_error"), CODEC);
+            BlockInfo.CODEC.listOf().fieldOf("candidates").forGetter(e -> e.candidates))
+    .apply(instance, SinglePredicateError::new));
+    //spotless:on
 
     public final ErrorType type;
     public final int actualCount;
@@ -45,19 +43,18 @@ public class SinglePredicateError extends PatternError {
     public final String debugName;
 
     public SinglePredicateError(SettingsHolder<?> holder,
-                                List<BlockInfo> candidates, ErrorType type, int actualCount, BlockPos pos) {
+                                List<BlockInfo> candidates, ErrorType type, int actualCount) {
         this(type, actualCount,
                 holder.getMinCount(),
                 holder.getMaxCount(),
                 holder.getMinSliceCount(),
                 holder.getMaxSliceCount(),
                 holder.toString(),
-                candidates, pos);
+                candidates);
     }
 
     public SinglePredicateError(ErrorType type, int actualCount, int minCount, int maxCount, int minLayerCount,
-                                int maxLayerCount, String name, List<BlockInfo> candidates, BlockPos pos) {
-        super(pos);
+                                int maxLayerCount, String name, List<BlockInfo> candidates) {
         this.type = type;
         this.actualCount = actualCount;
         this.candidates = candidates;
@@ -84,23 +81,23 @@ public class SinglePredicateError extends PatternError {
     }
 
     public static SinglePredicateError maxCount(SettingsHolder<?> failingPredicate, List<BlockInfo> candidates,
-                                                int actualCount, BlockPos pos) {
-        return new SinglePredicateError(failingPredicate, candidates, ErrorType.MAX_COUNT, actualCount, pos);
+                                                int actualCount) {
+        return new SinglePredicateError(failingPredicate, candidates, ErrorType.MAX_COUNT, actualCount);
     }
 
     public static SinglePredicateError minCount(SettingsHolder<?> failingPredicate, List<BlockInfo> candidates,
-                                                int actualCount, BlockPos pos) {
-        return new SinglePredicateError(failingPredicate, candidates, ErrorType.MIN_COUNT, actualCount, pos);
+                                                int actualCount) {
+        return new SinglePredicateError(failingPredicate, candidates, ErrorType.MIN_COUNT, actualCount);
     }
 
     public static SinglePredicateError maxLayerCount(SettingsHolder<?> failingPredicate, List<BlockInfo> candidates,
-                                                     int actualCount, BlockPos pos) {
-        return new SinglePredicateError(failingPredicate, candidates, ErrorType.MAX_LAYER_COUNT, actualCount, pos);
+                                                     int actualCount) {
+        return new SinglePredicateError(failingPredicate, candidates, ErrorType.MAX_LAYER_COUNT, actualCount);
     }
 
     public static SinglePredicateError minLayerCount(SettingsHolder<?> failingPredicate, List<BlockInfo> candidates,
-                                                     int actualCount, BlockPos pos) {
-        return new SinglePredicateError(failingPredicate, candidates, ErrorType.MIN_LAYER_COUNT, actualCount, pos);
+                                                     int actualCount) {
+        return new SinglePredicateError(failingPredicate, candidates, ErrorType.MIN_LAYER_COUNT, actualCount);
     }
 
     @Getter
@@ -144,6 +141,6 @@ public class SinglePredicateError extends PatternError {
 
     @Override
     public PatternErrorType type() {
-        return TYPE;
+        return GTPatternErrors.SINGLE_PREDICATE_ERROR.value();
     }
 }

@@ -4,13 +4,12 @@ import com.gregtechceu.gtceu.api.GTValues;
 import com.gregtechceu.gtceu.api.blockentity.BlockEntityCreationInfo;
 import com.gregtechceu.gtceu.api.machine.multiblock.MultiblockControllerMachine;
 import com.gregtechceu.gtceu.api.machine.multiblock.part.MultiblockPartMachine;
-import com.gregtechceu.gtceu.api.sync_system.annotations.SaveField;
 import com.gregtechceu.gtceu.common.data.GTBlocks;
 import com.gregtechceu.gtceu.common.machine.trait.hpca.HPCAComponentTrait;
 import com.gregtechceu.gtceu.common.machine.trait.hpca.HPCAComputationProviderTrait;
 import com.gregtechceu.gtceu.common.machine.trait.hpca.HPCACoolantProviderTrait;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
 import net.minecraft.world.item.ItemStack;
 
 import brachy.modularui.api.drawable.IDrawable;
@@ -25,7 +24,6 @@ import javax.annotation.ParametersAreNonnullByDefault;
 public class HPCAComponentPartMachine extends MultiblockPartMachine {
 
     @Getter
-    @SaveField
     protected final HPCAComponentTrait hpcaComponentTrait;
     @Getter
     protected final boolean isAdvanced;
@@ -76,7 +74,7 @@ public class HPCAComponentPartMachine extends MultiblockPartMachine {
     public void modifyDrops(List<ItemStack> drops) {
         for (int i = 0; i < drops.size(); ++i) {
             ItemStack drop = drops.get(i);
-            if (drop.getItem() == this.getDefinition().getItem()) {
+            if (drop.getItem() == this.getDefinition().asItem()) {
                 if (hpcaComponentTrait.isDamaged()) {
                     if (isAdvanced()) {
                         drops.set(i, GTBlocks.ADVANCED_COMPUTER_CASING.asStack());

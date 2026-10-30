@@ -5,10 +5,8 @@ import com.gregtechceu.gtceu.common.data.machines.GTMultiMachines;
 import com.gregtechceu.gtceu.config.ConfigHolder;
 import com.gregtechceu.gtceu.data.recipe.CustomTags;
 
-import net.minecraft.data.recipes.FinishedRecipe;
+import net.minecraft.data.recipes.RecipeOutput;
 import net.minecraft.world.item.ItemStack;
-
-import java.util.function.Consumer;
 
 import static com.gregtechceu.gtceu.api.GTValues.*;
 import static com.gregtechceu.gtceu.api.data.tag.TagPrefix.*;
@@ -21,7 +19,7 @@ import static com.gregtechceu.gtceu.common.data.machines.GTResearchMachines.*;
 
 public class ComputerRecipes {
 
-    public static void init(Consumer<FinishedRecipe> provider) {
+    public static void init(RecipeOutput provider) {
         ASSEMBLER_RECIPES.recipeBuilder("basic_data_access_hatch")
                 .inputItems(ITEM_IMPORT_BUS[HV])
                 .inputItems(TOOL_DATA_STICK, 4)

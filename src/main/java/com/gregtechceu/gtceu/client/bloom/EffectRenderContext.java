@@ -27,7 +27,7 @@ public final class EffectRenderContext {
     }
 
     @Getter
-    private Frustum frustum = new Frustum(Minecraft.getInstance().levelRenderer.getFrustum());
+    private Frustum frustum = new Frustum(new org.joml.Matrix4f(), new org.joml.Matrix4f());
 
     private @Nullable Entity renderViewEntity;
     @Getter
@@ -46,13 +46,13 @@ public final class EffectRenderContext {
     private float rotationXZ;
 
     public EffectRenderContext update(Camera camera, Frustum frustum, float partialTicks) {
-        this.renderViewEntity = camera.getEntity();
-        this.camPos = camera.getPosition();
+        this.renderViewEntity = camera.entity();
+        this.camPos = camera.position();
         this.partialTicks = partialTicks;
 
         float i = Minecraft.getInstance().options.getCameraType().isFirstPerson() ? 1 : -1;
-        float pitch = camera.getYRot();
-        float yaw = camera.getXRot();
+        float pitch = camera.yRot();
+        float yaw = camera.xRot();
 
         this.rotationX = Mth.cos(yaw * Mth.DEG_TO_RAD) * i;
         this.rotationZ = Mth.sin(yaw * Mth.DEG_TO_RAD) * i;

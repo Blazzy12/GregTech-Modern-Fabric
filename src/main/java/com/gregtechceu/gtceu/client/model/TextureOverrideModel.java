@@ -1,17 +1,18 @@
 package com.gregtechceu.gtceu.client.model;
 
+import net.minecraft.client.renderer.chunk.ChunkSectionLayer;
+
 import com.gregtechceu.gtceu.client.util.quad.transformers.GTQuadTransformers;
 
-import net.minecraft.client.renderer.RenderType;
-import net.minecraft.client.renderer.block.model.BakedQuad;
+import com.gregtechceu.gtceu.compat.client.model.BakedQuad;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.client.resources.model.BakedModel;
+import com.gregtechceu.gtceu.compat.client.model.BakedModel;
 import net.minecraft.core.Direction;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.client.model.BakedModelWrapper;
-import net.minecraftforge.client.model.IQuadTransformer;
-import net.minecraftforge.client.model.data.ModelData;
+import com.gregtechceu.gtceu.compat.client.model.BakedModelWrapper;
+import com.gregtechceu.gtceu.compat.client.model.IQuadTransformer;
+import com.gregtechceu.gtceu.compat.client.model.data.ModelData;
 
 import lombok.Getter;
 import org.jetbrains.annotations.Nullable;
@@ -36,7 +37,7 @@ public class TextureOverrideModel<T extends BakedModel> extends BakedModelWrappe
 
     @Override
     public List<BakedQuad> getQuads(@Nullable BlockState state, @Nullable Direction side,
-                                    RandomSource rand, ModelData modelData, @Nullable RenderType renderType) {
+                                    RandomSource rand, ModelData modelData, @Nullable ChunkSectionLayer renderType) {
         return retextureQuads(super.getQuads(state, side, rand, modelData, renderType), textureOverrides);
     }
 

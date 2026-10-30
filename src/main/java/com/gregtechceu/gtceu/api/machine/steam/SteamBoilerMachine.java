@@ -30,9 +30,9 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.level.block.Block;
-import net.minecraftforge.fluids.FluidType;
-import net.minecraftforge.fluids.FluidUtil;
-import net.minecraftforge.fluids.capability.IFluidHandler.FluidAction;
+import com.gregtechceu.gtceu.compat.fluids.FluidType;
+import com.gregtechceu.gtceu.compat.fluids.FluidUtil;
+import com.gregtechceu.gtceu.compat.fluids.capability.IFluidHandler.FluidAction;
 
 import brachy.modularui.api.drawable.Text;
 import brachy.modularui.drawable.UITexture;
@@ -159,12 +159,13 @@ public abstract class SteamBoilerMachine extends SteamWorkableMachine
     protected void updateCurrentTemperature() {
         if (recipeLogic.isWorking()) {
             if (getOffsetTimer() % 12 == 0) {
-                if (currentTemperature < getMaxTemperature())
+                if (currentTemperature < getMaxTemperature()) {
                     if (isHighPressure) {
                         currentTemperature++;
                     } else if (getOffsetTimer() % 24 == 0) {
                         currentTemperature++;
                     }
+                }
             }
         } else if (timeBeforeCoolingDown == 0) {
             if (currentTemperature > 0) {
@@ -290,7 +291,7 @@ public abstract class SteamBoilerMachine extends SteamWorkableMachine
         if (!isRemote()) {
             context.getPlayer().sendSystemMessage(Component.translatable("behaviour.soft_hammer.ignored"));
         }
-        return InteractionResult.sidedSuccess(getLevel().isClientSide);
+        return InteractionResult.SUCCESS;
     }
 
     @Override

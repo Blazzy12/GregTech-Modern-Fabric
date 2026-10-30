@@ -1,12 +1,9 @@
 package com.gregtechceu.gtceu.api.multiblock.util;
 
 import com.gregtechceu.gtceu.GTCEu;
-import com.gregtechceu.gtceu.client.util.FakeBlockTintGetter;
 
-import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.BlockAndTintGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -25,8 +22,6 @@ public class BlockInfo {
 
     public static final Codec<BlockInfo> CODEC = BlockState.CODEC.xmap(BlockInfo::fromBlockState,
             BlockInfo::getBlockState);
-
-    public static final FakeBlockTintGetter FAKE_LEVEL = new FakeBlockTintGetter();
 
     public static final BlockInfo EMPTY = new BlockInfo(Blocks.AIR);
 
@@ -53,8 +48,6 @@ public class BlockInfo {
         this.blockState = blockState;
         this.itemStack = itemStack;
         this.blockEntity = blockEntity;
-
-        FAKE_LEVEL.setState(blockState);
     }
 
     public static BlockInfo fromFluid(Fluid fluid) {
@@ -83,24 +76,9 @@ public class BlockInfo {
 
     public ItemStack getItemStackForm() {
         if (GTCEu.isClientThread()) {
-            Level level = Objects.requireNonNull(Minecraft.getInstance().level);
-            return getItemStackForm(level, BlockPos.ZERO);
+            return new ItemStack(blockState.getBlock());
         }
         return itemStack == null ? new ItemStack(blockState.getBlock()) : itemStack;
-    }
-
-    public ItemStack getItemStackForm(BlockAndTintGetter level, BlockPos pos) {
-        if (itemStack != null) return itemStack;
-
-        BlockAndTintGetter oldParent = FAKE_LEVEL.parent;
-        try {
-            FAKE_LEVEL.setParent(level);
-            FAKE_LEVEL.setState(this.blockState);
-            FAKE_LEVEL.setPos(pos);
-            return blockState.getBlock().getCloneItemStack(FAKE_LEVEL, pos, this.blockState);
-        } finally {
-            FAKE_LEVEL.setParent(oldParent);
-        }
     }
 
     public void apply(Level level, BlockPos pos) {

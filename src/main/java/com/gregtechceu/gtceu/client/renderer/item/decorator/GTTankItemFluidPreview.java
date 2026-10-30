@@ -4,12 +4,12 @@ import com.gregtechceu.gtceu.config.ConfigHolder;
 import com.gregtechceu.gtceu.utils.GTUtil;
 
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.client.IItemDecorator;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.capability.IFluidHandlerItem;
+import com.gregtechceu.gtceu.compat.capabilities.Capabilities;
+import com.gregtechceu.gtceu.compat.client.IItemDecorator;
+import com.gregtechceu.gtceu.compat.fluids.FluidStack;
+import com.gregtechceu.gtceu.compat.fluids.capability.IFluidHandlerItem;
 
 import brachy.modularui.drawable.GuiDraw;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -18,10 +18,8 @@ import lombok.Getter;
 import lombok.Setter;
 import org.jetbrains.annotations.Range;
 
-import java.util.Optional;
-
 /**
- * An Item Decorator to render including fluid icons for items with {@link ForgeCapabilities#FLUID_HANDLER_ITEM}.
+ * An Item Decorator to render contained fluid icons for items with {@link Capabilities.FluidHandler#ITEM}.
  * <p>
  * The fluid type count can be up to 4, set by {@link #setMaxRenderCount(int)}, 1 by default.
  *
@@ -32,7 +30,7 @@ public class GTTankItemFluidPreview implements IItemDecorator {
     public static final GTTankItemFluidPreview DRUM = new GTTankItemFluidPreview() {
 
         @Override
-        public boolean render(GuiGraphics guiGraphics, Font font, ItemStack itemStack, int x, int y) {
+        public boolean render(GuiGraphicsExtractor guiGraphics, Font font, ItemStack itemStack, int x, int y) {
             if (!ConfigHolder.INSTANCE.client.tankItemFluidPreview.drum) return false;
             return super.render(guiGraphics, font, itemStack, x, y);
         }
@@ -41,7 +39,7 @@ public class GTTankItemFluidPreview implements IItemDecorator {
     public static final GTTankItemFluidPreview QUANTUM_TANK = new GTTankItemFluidPreview() {
 
         @Override
-        public boolean render(GuiGraphics guiGraphics, Font font, ItemStack itemStack, int x, int y) {
+        public boolean render(GuiGraphicsExtractor guiGraphics, Font font, ItemStack itemStack, int x, int y) {
             if (!ConfigHolder.INSTANCE.client.tankItemFluidPreview.quantumTank) return false;
             return super.render(guiGraphics, font, itemStack, x, y);
         }
@@ -79,22 +77,19 @@ public class GTTankItemFluidPreview implements IItemDecorator {
     }
 
     @Override
-    public boolean render(GuiGraphics guiGraphics, Font font, ItemStack itemStack, int x, int y) {
+    public boolean render(GuiGraphicsExtractor guiGraphics, Font font, ItemStack itemStack, int x, int y) {
         if (isRequireShiftKeyDown() && !GTUtil.isShiftDown()) {
             return false;
         }
 
-        Optional<IFluidHandlerItem> optional = itemStack.getCapability(ForgeCapabilities.FLUID_HANDLER_ITEM)
-                .resolve();
-        if (optional.isEmpty()) {
+        IFluidHandlerItem fluidHandler = itemStack.getCapability(Capabilities.FluidHandler.ITEM);
+        if (fluidHandler == null) {
             return false;
         }
 
         if (isRenderOnTopOfItem()) {
-            RenderSystem.disableDepthTest();
         }
 
-        IFluidHandlerItem fluidHandler = optional.get();
         for (int index = 0, renderedCount = 0; index < fluidHandler.getTanks() &&
                 renderedCount < getMaxRenderCount(); index++) {
             FluidStack fluidInTank = fluidHandler.getFluidInTank(index);

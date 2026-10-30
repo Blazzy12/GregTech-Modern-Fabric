@@ -7,10 +7,7 @@ import com.gregtechceu.gtceu.common.cover.data.TransferMode;
 import com.gregtechceu.gtceu.common.data.GTItems;
 import com.gregtechceu.gtceu.common.mui.GTGuiTextures;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.Tag;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
 import net.minecraft.world.item.ItemStack;
 
 import brachy.modularui.factory.GuiData;
@@ -23,11 +20,13 @@ import brachy.modularui.widgets.layout.Flow;
 import brachy.modularui.widgets.layout.Grid;
 import brachy.modularui.widgets.slot.ModularSlot;
 import brachy.modularui.widgets.slot.PhantomItemSlot;
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
 import lombok.Getter;
-import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Range;
 
 import java.util.Arrays;
+import java.util.List;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 
@@ -35,6 +34,13 @@ import javax.annotation.ParametersAreNonnullByDefault;
 @MethodsReturnNonnullByDefault
 public class SimpleItemFilter extends Filter<ItemStack> {
 
+    // spotless:off
+    public static final Codec<SimpleItemFilter> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+            Codec.BOOL.fieldOf("is_blacklist").forGetter(val -> val.isBlackList),
+            Codec.BOOL.fieldOf("ignore_components").forGetter(val -> val.ignoreNbt),
+            ItemStack.OPTIONAL_CODEC.listOf().fieldOf("matches").forGetter(val -> Arrays.stream(val.matches).toList()))
+    .apply(instance, SimpleItemFilter::new));
+    //spotless:on
     @Getter
     protected boolean isBlackList;
     @Getter
@@ -45,27 +51,26 @@ public class SimpleItemFilter extends Filter<ItemStack> {
     @Getter
     protected int maxStackSize = TransferMode.MAX_SIZE_STACK;
 
-    public SimpleItemFilter(ItemStack stack) {
-        super(stack);
-
-        var tag = stack.getOrCreateTag();
-
+    public SimpleItemFilter() {
         Arrays.fill(matches, ItemStack.EMPTY);
+        maxStackSize = 1;
+    }
 
-        if (tag.isEmpty()) return;
+    public SimpleItemFilter(boolean isBlackList, boolean ignoreNbt, List<ItemStack> matches) {
+        this.isBlackList = isBlackList;
+        this.ignoreNbt = ignoreNbt;
 
-        isBlackList = tag.getBoolean("isBlackList");
-        ignoreNbt = tag.getBoolean("matchNbt");
-        var list = tag.getList("matches", Tag.TAG_COMPOUND);
-        for (int i = 0; i < list.size(); i++) {
-            matches[i] = ItemStack.of((CompoundTag) list.get(i));
-        }
+        Arrays.setAll(this.matches, i -> {
+            if (i < matches.size()) {
+                return matches.get(i);
+            } else {
+                return ItemStack.EMPTY;
+            }
+        });
     }
 
     public static SimpleItemFilter forItems(boolean ignoreNbt, ItemStack... items) {
-        SimpleItemFilter filter = new SimpleItemFilter(GTItems.ITEM_FILTER.asStack());
-        filter.setIgnoreNbt(ignoreNbt);
-        filter.setBlackList(false);
+        SimpleItemFilter filter = new SimpleItemFilter(false, ignoreNbt, List.of(GTItems.ITEM_FILTER.asStack()));
         int i = 0;
         for (ItemStack item : items) {
             filter.matches[i] = item.copy();
@@ -80,21 +85,6 @@ public class SimpleItemFilter extends Filter<ItemStack> {
     @Override
     public boolean supportsAmounts() {
         return !isBlackList();
-    }
-
-    public @Nullable CompoundTag writeFilterNBT() {
-        if (!isBlackList && !ignoreNbt && Arrays.stream(matches).allMatch(ItemStack::isEmpty)) {
-            return null;
-        }
-        var tag = new CompoundTag();
-        tag.putBoolean("isBlackList", isBlackList);
-        tag.putBoolean("matchNbt", ignoreNbt);
-        var list = new ListTag();
-        for (var match : matches) {
-            list.add(match.save(new CompoundTag()));
-        }
-        tag.put("matches", list);
-        return tag;
     }
 
     public void setBlackList(boolean blackList) {
@@ -196,15 +186,19 @@ public class SimpleItemFilter extends Filter<ItemStack> {
         return totalItemCount;
     }
 
+    @Override
+    public Filter<ItemStack> createCopy() {
+        return new SimpleItemFilter(isBlackList, ignoreNbt, Arrays.asList(matches));
+    }
+
     public int getTotalConfiguredItemCount(ItemStack itemStack) {
         int totalCount = 0;
 
         for (var candidate : matches) {
-            if (ignoreNbt && ItemStack.isSameItem(candidate, itemStack)) {
-                totalCount += candidate.getCount();
-            }
-            if (!ignoreNbt && ItemStack.isSameItemSameTags(candidate, itemStack)) {
-                totalCount += candidate.getCount();
+            if (ignoreNbt) {
+                if (ItemStack.isSameItem(candidate, itemStack)) totalCount += candidate.getCount();
+            } else {
+                if (ItemStack.isSameItemSameComponents(candidate, itemStack)) totalCount += candidate.getCount();
             }
         }
 
@@ -217,5 +211,23 @@ public class SimpleItemFilter extends Filter<ItemStack> {
         for (ItemStack match : matches) {
             match.setCount(Math.min(match.getCount(), maxStackSize));
         }
+    }
+
+    @Override
+    public final boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof SimpleItemFilter that)) return false;
+
+        return isBlackList == that.isBlackList && ignoreNbt == that.ignoreNbt && maxStackSize == that.maxStackSize &&
+                Arrays.equals(matches, that.matches);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = Boolean.hashCode(isBlackList);
+        result = 31 * result + Boolean.hashCode(ignoreNbt);
+        result = 31 * result + Arrays.hashCode(matches);
+        result = 31 * result + maxStackSize;
+        return result;
     }
 }

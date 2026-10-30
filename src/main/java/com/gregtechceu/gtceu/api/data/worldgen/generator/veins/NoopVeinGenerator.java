@@ -3,21 +3,24 @@ package com.gregtechceu.gtceu.api.data.worldgen.generator.veins;
 import com.gregtechceu.gtceu.api.data.worldgen.GTOreDefinition;
 import com.gregtechceu.gtceu.api.data.worldgen.generator.VeinGenerator;
 import com.gregtechceu.gtceu.api.data.worldgen.ores.OreBlockPlacer;
+import com.gregtechceu.gtceu.common.data.worldgen.GTVeinGenerators;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 
-import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
+import lombok.NoArgsConstructor;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+@NoArgsConstructor
 public class NoopVeinGenerator extends VeinGenerator {
 
     public static final NoopVeinGenerator INSTANCE = new NoopVeinGenerator();
-    public static final Codec<NoopVeinGenerator> CODEC = Codec.unit(() -> INSTANCE);
+    public static final MapCodec<NoopVeinGenerator> CODEC = MapCodec.unit(() -> INSTANCE);
 
     @Override
     public List<VeinEntry> getAllEntries() {
@@ -41,7 +44,7 @@ public class NoopVeinGenerator extends VeinGenerator {
     }
 
     @Override
-    public Codec<? extends VeinGenerator> codec() {
-        return CODEC;
+    public VeinGeneratorType<?> type() {
+        return GTVeinGenerators.NO_OP.value();
     }
 }

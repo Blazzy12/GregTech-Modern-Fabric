@@ -9,62 +9,69 @@ import com.gregtechceu.gtceu.api.item.armor.ArmorUtils;
 import com.gregtechceu.gtceu.api.item.armor.ModularArmorItem;
 import com.gregtechceu.gtceu.api.item.capability.ElectricItem;
 import com.gregtechceu.gtceu.api.item.component.ElectricStats;
+import com.gregtechceu.gtceu.api.item.datacomponents.GTArmor;
+import com.gregtechceu.gtceu.api.item.datacomponents.SimpleEnergyContent;
 import com.gregtechceu.gtceu.api.item.module.*;
 import com.gregtechceu.gtceu.api.item.module.ui.ItemModuleSettingsBuilder;
+import com.gregtechceu.gtceu.common.data.item.GTDataComponents;
 import com.gregtechceu.gtceu.utils.GTStringUtils;
 
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.EquipmentSlot;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.item.ArmorItem;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.level.Level;
-import net.minecraftforge.common.capabilities.Capability;
+import com.gregtechceu.gtceu.compat.capabilities.ItemCapability;
 
 import brachy.modularui.api.drawable.Text;
 import brachy.modularui.value.sync.PanelSyncManager;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.util.List;
 
 public class BatteryItemModule extends CapabilityProviderItemModule<IElectricItem> implements IHUDProviderItemModule {
 
-    public BatteryItemModule(ResourceLocation id) {
+    public BatteryItemModule(Identifier id) {
         super(id);
     }
 
     @Override
-    public Capability<IElectricItem> getCapability() {
+    public ItemCapability<IElectricItem, Void> getCapability() {
         return GTCapability.CAPABILITY_ELECTRIC_ITEM;
     }
 
     @Override
     public void applyInitialCapabilityData(IElectricItem newCap, ModuleContext context) {
-        var moduleItemData = context.getData().getModuleItem().getCapability(GTCapability.CAPABILITY_ELECTRIC_ITEM)
-                .resolve();
-        moduleItemData
-                .ifPresent(iElectricItem -> newCap.charge(iElectricItem.getCharge(), newCap.getTier(), true, false));
+        var moduleItemData = context.getData().getModuleItem().getCapability(GTCapability.CAPABILITY_ELECTRIC_ITEM);
+        if (moduleItemData != null) newCap.charge(moduleItemData.getCharge(), newCap.getTier(), true, false);
     }
 
     @Override
     public ItemStack copyCapabilityDataToModuleItem(IElectricItem cap, ModuleContext context) {
         var newItem = context.getData().getModuleItem().copy();
-        newItem.getOrCreateTag().putLong("Charge", cap.getCharge());
-        newItem.getOrCreateTag().putLong("MaxCharge", cap.getMaxCharge());
+        newItem.set(GTDataComponents.ENERGY_CONTENT, new SimpleEnergyContent(cap.getMaxCharge(), cap.getCharge()));
         return newItem;
     }
 
+    /** 26.x has no ArmorItem class; armour is anything equippable in a humanoid armour slot. */
+    private static boolean isArmor(ItemStack stack) {
+        var equippable = stack.get(DataComponents.EQUIPPABLE);
+        return equippable != null && equippable.slot().getType() == EquipmentSlot.Type.HUMANOID_ARMOR;
+    }
+
     @Override
+
     public @Nullable IElectricItem createCapabilityForStack(ModuleContext context, ItemStack stack) {
         var batteryItem = context.getData().getModuleItem().getItem();
         if (!(batteryItem instanceof IComponentItem componentItem)) return null;
         for (var component : componentItem.getComponents()) {
             if (component instanceof ElectricStats stats) {
                 return new ElectricItem(stack, stats.maxCharge, stats.tier, stats.chargeable,
-                        stats.dischargeable && !(stack.getItem() instanceof ArmorItem));
+                        stats.dischargeable && !isArmor(stack));
             }
         }
         return null;
@@ -72,10 +79,7 @@ public class BatteryItemModule extends CapabilityProviderItemModule<IElectricIte
 
     @Override
     public void clearCapabilityFromStack(ModuleContext context, ItemStack stack) {
-        var tag = stack.getOrCreateTag();
-        tag.remove("Charge");
-        tag.remove("MaxCharge");
-        tag.remove("Infinite");
+        stack.remove(GTDataComponents.ENERGY_CONTENT);
     }
 
     @Override
@@ -92,9 +96,9 @@ public class BatteryItemModule extends CapabilityProviderItemModule<IElectricIte
     }
 
     @Override
-    public void appendHoverText(ModuleContext moduleContext, Level level, List<Component> tooltips,
+    public void appendHoverText(ModuleContext moduleContext, Item.TooltipContext context, List<Component> tooltips,
                                 TooltipFlag isAdvanced) {
-        super.appendHoverText(moduleContext, level, tooltips, isAdvanced);
+        super.appendHoverText(moduleContext, context, tooltips, isAdvanced);
         tooltips.add(
                 Component.translatable("module.gtceu.battery",
                         moduleContext.getData().getModuleItem().getHoverName()));
@@ -105,16 +109,19 @@ public class BatteryItemModule extends CapabilityProviderItemModule<IElectricIte
     }
 
     @Override
-    public void drawHUD(ModuleContext moduleContext, ArmorUtils.ModularHUD hud, GuiGraphics graphics) {
+    public void drawHUD(ModuleContext moduleContext, ArmorUtils.ModularHUD hud, GuiGraphicsExtractor graphics) {
         IElectricItem electricItem = GTCapabilityHelper.getElectricItem(moduleContext.getAppliedTo());
         if (electricItem == null) return;
-        EquipmentSlot slot = LivingEntity.getEquipmentSlotForItem(moduleContext.getAppliedTo());
+        var equipable = moduleContext.getAppliedTo().get(DataComponents.EQUIPPABLE);
         Component displayName = moduleContext.getData().getModuleItem().getHoverName();
-        switch (slot) {
-            case HEAD -> hud.newLine(Component.translatable("module.gtceu.battery.hud.helmet", displayName));
-            case CHEST -> hud.newLine(Component.translatable("module.gtceu.battery.hud.chestplate", displayName));
-            case LEGS -> hud.newLine(Component.translatable("module.gtceu.battery.hud.leggings", displayName));
-            case FEET -> hud.newLine(Component.translatable("module.gtceu.battery.hud.boots", displayName));
+
+        if (equipable != null) {
+            switch (equipable.slot()) {
+                case HEAD -> hud.newLine(Component.translatable("module.gtceu.battery.hud.helmet", displayName));
+                case CHEST -> hud.newLine(Component.translatable("module.gtceu.battery.hud.chestplate", displayName));
+                case LEGS -> hud.newLine(Component.translatable("module.gtceu.battery.hud.leggings", displayName));
+                case FEET -> hud.newLine(Component.translatable("module.gtceu.battery.hud.boots", displayName));
+            }
         }
         hud.newLine(Component.translatable("module.gtceu.battery.hud.info", electricItem.getCharge(),
                 electricItem.getMaxCharge()));
@@ -131,8 +138,9 @@ public class BatteryItemModule extends CapabilityProviderItemModule<IElectricIte
         ItemStack stack = moduleContext.getAppliedTo();
         if (stack.getItem() instanceof ModularArmorItem armor && armor.getEquipmentSlot() == EquipmentSlot.CHEST) {
             settings.bool(Text.lang("gui.gtceu.armor_config.charge_inventory"),
-                    () -> stack.getTag() != null && stack.getOrCreateTag().getBoolean("DischargeMode"),
-                    v -> stack.getOrCreateTag().putBoolean("DischargeMode", v));
+                    () -> stack.getOrDefault(GTDataComponents.ARMOR_DATA, GTArmor.EMPTY).canShare(),
+                    enabled -> stack.update(GTDataComponents.ARMOR_DATA, GTArmor.EMPTY,
+                            armorData -> armorData.setCanShare(enabled)));
         }
         return settings;
     }

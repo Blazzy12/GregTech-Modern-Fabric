@@ -1,17 +1,18 @@
 package com.gregtechceu.gtceu.client.renderer.cover;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
+import net.minecraft.client.renderer.chunk.ChunkSectionLayer;
+
 import com.gregtechceu.gtceu.api.cover.CoverBehavior;
 
-import net.minecraft.client.renderer.RenderType;
-import net.minecraft.client.renderer.block.model.BakedQuad;
+import com.gregtechceu.gtceu.compat.client.model.BakedQuad;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.util.RandomSource;
-import net.minecraft.world.level.BlockAndTintGetter;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.client.ChunkRenderTypeSet;
-import net.minecraftforge.client.model.data.ModelData;
+import net.minecraft.client.renderer.block.BlockAndTintGetter;
+import com.gregtechceu.gtceu.compat.client.model.ChunkRenderTypeSet;
+import com.gregtechceu.gtceu.compat.client.model.data.ModelData;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -19,14 +20,14 @@ import java.util.List;
 
 public interface ICoverRenderer {
 
-    @OnlyIn(Dist.CLIENT)
+    @Environment(EnvType.CLIENT)
     void renderCover(List<BakedQuad> quads, @Nullable Direction side, RandomSource rand,
                      CoverBehavior coverBehavior, BlockPos pos, BlockAndTintGetter level,
-                     ModelData modelData, @Nullable RenderType renderType);
+                     ModelData modelData, @Nullable ChunkSectionLayer renderType);
 
     default ChunkRenderTypeSet getRenderTypes(CoverBehavior coverBehavior, BlockPos pos, BlockAndTintGetter level,
                                               RandomSource rand, ModelData modelData) {
-        return ChunkRenderTypeSet.of(RenderType.cutoutMipped());
+        return ChunkRenderTypeSet.of(ChunkSectionLayer.CUTOUT);
     }
 
     default ModelData getModelData(CoverBehavior coverBehavior, BlockPos pos, BlockAndTintGetter level,

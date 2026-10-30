@@ -11,7 +11,7 @@ import com.gregtechceu.gtceu.client.model.GTModelProperties;
 
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraftforge.client.model.data.ModelData;
+import com.gregtechceu.gtceu.compat.client.model.data.ModelData;
 
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.NotNull;
@@ -125,7 +125,6 @@ public interface IPipeNode<PipeType extends Enum<PipeType> & IPipeType<NodeDataT
     @Override
     default @NotNull ModelData getModelData() {
         return ModelData.builder()
-                .with(GTModelProperties.LEVEL, self().getLevel())
                 .with(GTModelProperties.POS, self().getBlockPos())
                 .with(GTModelProperties.PIPE_CONNECTION_MASK, this.getVisualConnections())
                 .with(GTModelProperties.PIPE_BLOCKED_MASK, this.getBlockedConnections())

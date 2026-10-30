@@ -1,13 +1,12 @@
 package com.gregtechceu.gtceu.api.multiblock.error;
 
-import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.api.multiblock.util.BlockInfo;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 
 import brachy.modularui.api.drawable.Text;
-import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import lombok.Getter;
 
@@ -16,12 +15,13 @@ import java.util.List;
 
 public class SimplePatternError extends PatternError {
 
-    public static final Codec<SimplePatternError> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-            BlockPos.CODEC.fieldOf("pos").forGetter(PatternError::pos),
+    // spotless:off
+    public static final MapCodec<SimplePatternError> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
+            BlockPos.CODEC.fieldOf("pos").forGetter(PatternError::getPos),
             BlockInfo.CODEC.listOf().listOf().fieldOf("candidates").forGetter(SimplePatternError::getCandidates))
-            .apply(instance, SimplePatternError::new));
+    .apply(instance, SimplePatternError::new));
+    //spotless:on
 
-    public static final PatternErrorType TYPE = new PatternErrorType(GTCEu.id("simple_pattern_error"), CODEC);
     @Getter
     private final List<List<BlockInfo>> candidates;
 
@@ -52,6 +52,6 @@ public class SimplePatternError extends PatternError {
 
     @Override
     public PatternErrorType type() {
-        return TYPE;
+        return GTPatternErrors.SIMPLE_PATTERN_ERROR.value();
     }
 }

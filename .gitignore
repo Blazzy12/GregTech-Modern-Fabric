@@ -25,3 +25,6 @@
 *.DS_Store
 
 qodana.yaml
+
+# extracted at build time by the extractLibs task (see README)
+/libs/

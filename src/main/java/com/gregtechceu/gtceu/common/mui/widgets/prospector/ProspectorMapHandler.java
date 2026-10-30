@@ -87,6 +87,7 @@ public class ProspectorMapHandler<T> extends Widget<ProspectorMapHandler<T>> imp
         this.playerChunkPos = player.chunkPosition();
 
         if (GTCEu.isClientSide()) {
+            if (this.texture != null) this.texture.close();
             this.texture = new ProspectorMapTexture<>(this);
             background(this.texture);
             size(this.texture.getImageWidth(), this.texture.getImageHeight());
@@ -182,13 +183,13 @@ public class ProspectorMapHandler<T> extends Widget<ProspectorMapHandler<T>> imp
             int ox = column - this.chunkRadius + 1;
             int oz = row - this.chunkRadius + 1;
 
-            LevelChunk chunk = level.getChunk(this.playerChunkPos.x + ox, this.playerChunkPos.z + oz);
+            LevelChunk chunk = level.getChunk(this.playerChunkPos.x() + ox, this.playerChunkPos.z() + oz);
             if (mode == ProspectorMode.ORE) {
                 ServerCache.instance.prospectAllInChunk(level.dimension(), chunk.getPos(), serverPlayer);
             }
 
-            ProspectingUpdatePacket<T> packet = new ProspectingUpdatePacket<>(this.playerChunkPos.x + ox,
-                    this.playerChunkPos.z + oz, mode);
+            ProspectingUpdatePacket<T> packet = new ProspectingUpdatePacket<>(this.playerChunkPos.x() + ox,
+                    this.playerChunkPos.z() + oz, mode);
             mode.scan(packet.data, chunk);
             this.syncHandler.notifyUpdate(packet::writePacketData);
 
@@ -240,10 +241,9 @@ public class ProspectorMapHandler<T> extends Widget<ProspectorMapHandler<T>> imp
         WaypointManager.setWaypoint(clickedItem.uniqueId,
                 clickedItem.name.getString(), clickedItem.color,
                 player.level().dimension(), clickedItem.position);
-        player.displayClientMessage(
+        player.sendSystemMessage(
                 Component.translatable("behavior.prospector.added_waypoint",
-                        clickedItem.name.copy().withStyle(style -> style.withColor(clickedItem.color))),
-                false);
+                        clickedItem.name.copy().withStyle(style -> style.withColor(clickedItem.color))));
         this.getContext().getScreen().getMainPanel().closeIfOpen();
 
         Interactable.playButtonClickSound();
@@ -296,8 +296,8 @@ public class ProspectorMapHandler<T> extends Widget<ProspectorMapHandler<T>> imp
         int xDiff = chunkX - (this.chunkRadius - 1);
         int zDiff = chunkZ - (this.chunkRadius - 1);
 
-        int x = SectionPos.sectionToBlockCoord(player.chunkPosition().x + xDiff) + offsetX;
-        int z = SectionPos.sectionToBlockCoord(player.chunkPosition().z + zDiff) + offsetZ;
+        int x = SectionPos.sectionToBlockCoord(player.chunkPosition().x() + xDiff) + offsetX;
+        int z = SectionPos.sectionToBlockCoord(player.chunkPosition().z() + zDiff) + offsetZ;
         int y = player.level().getHeight(Heightmap.Types.WORLD_SURFACE, x, z);
 
         BlockPos pos = new BlockPos(x, y, z);
@@ -334,7 +334,7 @@ public class ProspectorMapHandler<T> extends Widget<ProspectorMapHandler<T>> imp
             });
             String uniqueId = OreRenderLayer.getId(veins.get(0));
             Component name = OreRenderLayer.getName(veins.get(0));
-            List<Material> materials = veins.get(0).definition().veinGenerator().getAllMaterials();
+            List<Material> materials = veins.get(0).definition().value().veinGenerator().getAllMaterials();
             Material mostCommonItem = materials.get(materials.size() - 1);
             int color = mostCommonItem.getMaterialARGB();
             return new WaypointItem(pos, uniqueId, name, color);

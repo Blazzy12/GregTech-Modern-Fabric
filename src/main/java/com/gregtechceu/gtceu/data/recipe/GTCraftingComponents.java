@@ -6,11 +6,9 @@ import com.gregtechceu.gtceu.common.data.GTBlocks;
 import com.gregtechceu.gtceu.common.data.GTItems;
 import com.gregtechceu.gtceu.common.data.GTMachines;
 import com.gregtechceu.gtceu.data.recipe.event.CraftingComponentModificationEvent;
-import com.gregtechceu.gtceu.integration.kjs.GTCEuStartupEvents;
-import com.gregtechceu.gtceu.integration.kjs.events.CraftingComponentsEventJS;
 
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.common.Tags;
+import com.gregtechceu.gtceu.compat.common.NeoForge;
+import com.gregtechceu.gtceu.compat.common.Tags;
 
 import static com.gregtechceu.gtceu.api.GTValues.*;
 import static com.gregtechceu.gtceu.api.data.tag.TagPrefix.*;
@@ -46,7 +44,6 @@ public class GTCraftingComponents {
     public static CraftingComponent MOTOR;
     public static CraftingComponent ROTOR;
     public static CraftingComponent SENSOR;
-    public static CraftingComponent SENSOR_EMITTER_GEM;
     public static CraftingComponent GRINDER;
     public static CraftingComponent SAWBLADE;
     public static CraftingComponent PISTON;
@@ -355,10 +352,10 @@ public class GTCraftingComponents {
          * Laminated Glass: IV, LuV
          * Fusion: ZPM, UV, UHV
          */
-        GLASS = CraftingComponent.of("glass", Tags.Items.GLASS)
-                .add(ULV, Tags.Items.GLASS)
-                .add(LV, Tags.Items.GLASS)
-                .add(MV, Tags.Items.GLASS)
+        GLASS = CraftingComponent.of("glass", Tags.Items.GLASS_BLOCKS)
+                .add(ULV, Tags.Items.GLASS_BLOCKS)
+                .add(LV, Tags.Items.GLASS_BLOCKS)
+                .add(MV, Tags.Items.GLASS_BLOCKS)
                 .add(HV, GTBlocks.CASING_TEMPERED_GLASS.asStack())
                 .add(EV, GTBlocks.CASING_TEMPERED_GLASS.asStack())
                 .add(IV, GTBlocks.CASING_LAMINATED_GLASS.asStack())
@@ -513,16 +510,6 @@ public class GTCraftingComponents {
                     .add(OpV, GTItems.SENSOR_OpV.asStack());
         }
 
-        SENSOR_EMITTER_GEM = CraftingComponent.of("sensor_emitter_gem", gem, Quartzite)
-                .add(LV, gem, Quartzite)
-                .add(MV, gemFlawless, Emerald)
-                .add(HV, gem, EnderEye)
-                .add(EV, GTItems.QUANTUM_EYE.asStack())
-                .add(IV, GTItems.QUANTUM_STAR.asStack())
-                .add(LuV, GTItems.QUANTUM_STAR.asStack())
-                .add(ZPM, GTItems.QUANTUM_STAR.asStack())
-                .add(UV, GTItems.GRAVI_STAR.asStack());
-
         CONVEYOR = CraftingComponent.of("conveyor", GTItems.CONVEYOR_MODULE_LV.asStack())
                 .add(LV, GTItems.CONVEYOR_MODULE_LV.asStack())
                 .add(MV, GTItems.CONVEYOR_MODULE_MV.asStack())
@@ -654,10 +641,10 @@ public class GTCraftingComponents {
                 .add(UV, rod, Tritanium)
                 .add(UHV, rod, Tritanium);
 
-        PIPE_REACTOR = CraftingComponent.of("pipe_reactor", Tags.Items.GLASS)
-                .add(ULV, Tags.Items.GLASS)
-                .add(LV, Tags.Items.GLASS)
-                .add(MV, Tags.Items.GLASS)
+        PIPE_REACTOR = CraftingComponent.of("pipe_reactor", Tags.Items.GLASS_BLOCKS)
+                .add(ULV, Tags.Items.GLASS_BLOCKS)
+                .add(LV, Tags.Items.GLASS_BLOCKS)
+                .add(MV, Tags.Items.GLASS_BLOCKS)
                 .add(HV, pipeNormalFluid, Polyethylene)
                 .add(EV, pipeLargeFluid, Polyethylene)
                 .add(IV, pipeHugeFluid, Polyethylene)
@@ -711,8 +698,8 @@ public class GTCraftingComponents {
                 .add(UV, GTMachines.SUPER_CHEST[1].asStack())
                 .add(UHV, GTMachines.SUPER_CHEST[2].asStack());
 
-        DRUM = CraftingComponent.of("drum", Tags.Items.GLASS)
-                .add(ULV, Tags.Items.GLASS)
+        DRUM = CraftingComponent.of("drum", Tags.Items.GLASS_BLOCKS)
+                .add(ULV, Tags.Items.GLASS_BLOCKS)
                 .add(LV, GTMachines.WOODEN_DRUM.asStack())
                 .add(MV, GTMachines.BRONZE_DRUM.asStack())
                 .add(HV, GTMachines.STEEL_DRUM.asStack())
@@ -759,16 +746,7 @@ public class GTCraftingComponents {
                 .add(UV, spring, Europium)
                 .add(UHV, spring, Europium);
 
-        MinecraftForge.EVENT_BUS.post(new CraftingComponentModificationEvent());
-        if (GTCEu.Mods.isKubeJSLoaded()) {
-            KJSCallWrapper.craftingComponentModification();
-        }
+        NeoForge.EVENT_BUS.post(new CraftingComponentModificationEvent());
     }
 
-    private static final class KJSCallWrapper {
-
-        private static void craftingComponentModification() {
-            GTCEuStartupEvents.CRAFTING_COMPONENTS.post(new CraftingComponentsEventJS());
-        }
-    }
 }

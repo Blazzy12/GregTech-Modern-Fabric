@@ -16,7 +16,7 @@
       "y": 180
     },
     "facing=up": {
-      "gtceu:z": 180,
+      "z": 180,
       "model": "gtceu:block/machine/uhv_8a_energy_converter",
       "x": 270
     },

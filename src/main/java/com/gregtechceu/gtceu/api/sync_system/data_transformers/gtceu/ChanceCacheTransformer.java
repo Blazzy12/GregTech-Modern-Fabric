@@ -8,7 +8,7 @@ import com.gregtechceu.gtceu.api.sync_system.data_transformers.ValueTransformer;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import org.jetbrains.annotations.Nullable;
@@ -27,7 +27,7 @@ public class ChanceCacheTransformer implements
             ListTag cacheTag = new ListTag();
             cache.forEach((content, chance) -> {
                 CompoundTag compoundTag = new CompoundTag();
-                var obj = cap.contentToNbt(content);
+                var obj = cap.toNbt(content, context.lookup());
                 compoundTag.put("entry", obj);
                 compoundTag.putInt("cached_chance", chance);
                 cacheTag.add(compoundTag);
@@ -45,18 +45,18 @@ public class ChanceCacheTransformer implements
                 context);
 
         if (context.currentValue() == null) return null;
-        for (String key : chanceCache.getAllKeys()) {
-            RecipeCapability<?> cap = GTRegistries.RECIPE_CAPABILITIES.get(GTCEu.id(key));
+        for (String key : chanceCache.keySet()) {
+            RecipeCapability<?> cap = GTRegistries.RECIPE_CAPABILITIES.getValue(GTCEu.id(key));
             if (cap == null) continue;
             // noinspection rawtypes
             Object2IntMap map = context.currentValue().computeIfAbsent(cap,
                     RecipeCapability::makeChanceCache);
 
-            ListTag chanceTag = chanceCache.getList(key, Tag.TAG_COMPOUND);
+            ListTag chanceTag = chanceCache.getListOrEmpty(key);
             for (int i = 0; i < chanceTag.size(); ++i) {
-                CompoundTag chanceKey = chanceTag.getCompound(i);
-                var entry = cap.serializer.fromNbt(chanceKey.get("entry"));
-                int value = chanceKey.getInt("cached_chance");
+                CompoundTag chanceKey = chanceTag.getCompoundOrEmpty(i);
+                var entry = cap.serializer.fromNbt(chanceKey.get("entry"), context.lookup());
+                int value = chanceKey.getIntOr("cached_chance", 0);
                 // noinspection unchecked
                 map.put(entry, value);
             }
@@ -65,11 +65,11 @@ public class ChanceCacheTransformer implements
     }
 
     @Override
-    public void writeToPacket(FriendlyByteBuf buf, IdentityHashMap<RecipeCapability<?>, Object2IntMap<?>> value,
+    public void writeToPacket(RegistryFriendlyByteBuf buf, IdentityHashMap<RecipeCapability<?>, Object2IntMap<?>> value,
                               TransformerContext<IdentityHashMap<RecipeCapability<?>, Object2IntMap<?>>> context) {}
 
     @Override
-    public @Nullable IdentityHashMap<RecipeCapability<?>, Object2IntMap<?>> readFromPacket(FriendlyByteBuf buf,
+    public @Nullable IdentityHashMap<RecipeCapability<?>, Object2IntMap<?>> readFromPacket(RegistryFriendlyByteBuf buf,
                                                                                            TransformerContext<IdentityHashMap<RecipeCapability<?>, Object2IntMap<?>>> context) {
         // no-op, client sync not required
         return null;

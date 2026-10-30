@@ -6,7 +6,12 @@ import com.gregtechceu.gtceu.api.data.chemical.material.Material;
 import com.gregtechceu.gtceu.api.data.chemical.material.stack.MaterialEntry;
 import com.gregtechceu.gtceu.api.data.tag.TagPrefix;
 import com.gregtechceu.gtceu.api.machine.MachineDefinition;
-import com.gregtechceu.gtceu.common.data.*;
+import com.gregtechceu.gtceu.api.registry.registrate.entry.MachineEntry;
+import com.gregtechceu.gtceu.common.data.GTBlocks;
+import com.gregtechceu.gtceu.common.data.GTItems;
+import com.gregtechceu.gtceu.common.data.GTMachines;
+import com.gregtechceu.gtceu.common.data.GTMaterials;
+import com.gregtechceu.gtceu.common.data.GTRecipeTypes;
 import com.gregtechceu.gtceu.common.data.machines.GTMachineUtils;
 import com.gregtechceu.gtceu.common.data.machines.GTMultiMachines;
 import com.gregtechceu.gtceu.config.ConfigHolder;
@@ -14,27 +19,29 @@ import com.gregtechceu.gtceu.data.recipe.CraftingComponent;
 import com.gregtechceu.gtceu.data.recipe.CustomTags;
 import com.gregtechceu.gtceu.data.recipe.VanillaRecipeHelper;
 
-import net.minecraft.data.recipes.FinishedRecipe;
+import net.minecraft.core.Holder;
+import net.minecraft.data.recipes.RecipeOutput;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraftforge.common.Tags;
+import com.gregtechceu.gtceu.compat.common.Tags;
 
 import com.tterrag.registrate.util.entry.ItemProviderEntry;
 import org.apache.commons.lang3.ArrayUtils;
 
 import java.util.Arrays;
-import java.util.function.Consumer;
+import java.util.Locale;
+import java.util.Objects;
 
 import static com.gregtechceu.gtceu.api.GTValues.*;
 import static com.gregtechceu.gtceu.data.recipe.GTCraftingComponents.*;
 
 public class MetaTileEntityLoader {
 
-    public static void init(Consumer<FinishedRecipe> provider) {
+    public static void init(RecipeOutput provider) {
         VanillaRecipeHelper.addShapedRecipe(provider, true, "casing_ulv", GTBlocks.MACHINE_CASING_ULV.asStack(), "PPP",
                 "PwP", "PPP", 'P', new MaterialEntry(TagPrefix.plate, GTMaterials.WroughtIron));
         VanillaRecipeHelper.addShapedRecipe(provider, true, "casing_lv", GTBlocks.MACHINE_CASING_LV.asStack(), "PPP",
@@ -328,12 +335,12 @@ public class MetaTileEntityLoader {
                 GTBlocks.CASING_STEEL_SOLID.asStack(), GTBlocks.HIGH_PRESSURE_HAZARD_SIGN_BLOCK.asStack());
 
         var multiHatchMaterials = new Material[] {
-                GTMaterials.Titanium, GTMaterials.TungstenSteel, GTMaterials.NiobiumTitanium,
-                GTMaterials.Iridium, GTMaterials.Naquadah, GTMaterials.Neutronium
+                GTMaterials.Titanium.value(), GTMaterials.TungstenSteel.value(), GTMaterials.NiobiumTitanium.value(),
+                GTMaterials.Iridium.value(), GTMaterials.Naquadah.value(), GTMaterials.Neutronium.value()
         };
         for (int i = 0; i < multiHatchMaterials.length; i++) {
             var tier = GTMachineUtils.MULTI_HATCH_TIERS[i];
-            var tierName = VNL[tier];
+            var tierName = VN[tier].toLowerCase(Locale.ROOT);
 
             var material = multiHatchMaterials[i];
 
@@ -731,9 +738,10 @@ public class MetaTileEntityLoader {
                 new MaterialEntry(TagPrefix.pipeNormalFluid, GTMaterials.StainlessSteel));
 
         // TODO Crafting station
-        // VanillaRecipeHelper.addShapedRecipe(provider, true, "workbench_bronze", GTMachines.WORKBENCH.getStackForm(),
-        // "CSC", "PWP", "PsP", 'C', OreDictNames.chestWood, 'W', new ItemStack(Blocks.CRAFTING_TABLE), 'S',
-        // OreDictUnifier.get("slabWood"), 'P', new UnificationEntry(TagPrefix.plank, GTMaterials.Wood));
+        // VanillaRecipeHelper.addShapedRecipe(provider, true, "workbench", GTMachines.WORKBENCH.getStackForm(),
+        // "CSC", "PWP", "PsP",
+        // 'C', Tags.Items.CHESTS_WOODEN, 'W', Blocks.CRAFTING_TABLE,
+        // 'S', ItemTags.WOODEN_SLABS, 'P', ItemTags.PLANKS);
 
         VanillaRecipeHelper.addShapedRecipe(provider, true, "primitive_pump", GTMultiMachines.PRIMITIVE_PUMP.asStack(),
                 "RGS", "OWd", "CLC", 'R', new MaterialEntry(TagPrefix.ring, GTMaterials.Iron), 'G',
@@ -782,6 +790,10 @@ public class MetaTileEntityLoader {
                 CABLE, 'C', COIL_HEATING_DOUBLE);
         registerMachineRecipe(provider, GTMachines.ASSEMBLER, "ACA", "VMV", "WCW", 'M', HULL, 'V', CONVEYOR, 'A',
                 ROBOT_ARM, 'C', CIRCUIT, 'W', CABLE);
+        registerMachineRecipe(provider, GTMachines.WELDER, "PCP", "EMA", "WCW", 'M', HULL, 'P', PLATE, 'C', CIRCUIT,
+                'E', MOTOR, 'A', ROBOT_ARM, 'W', CABLE);
+        registerMachineRecipe(provider, GTMachines.SPOOLING, "CPC", "VMV", "WBW", 'M', HULL, 'P', PISTON, 'C', CIRCUIT,
+                'V', CONVEYOR, 'W', CABLE, 'B', PLATE);
         registerMachineRecipe(provider, GTMachines.BENDER, "PBP", "CMC", "EWE", 'M', HULL, 'E', MOTOR, 'P', PISTON, 'C',
                 CIRCUIT, 'W', CABLE, 'B', PLATE);
         registerMachineRecipe(provider, GTMachines.CANNER, "WPW", "CMC", "GGG", 'M', HULL, 'P', PUMP, 'C', CIRCUIT, 'W',
@@ -901,8 +913,11 @@ public class MetaTileEntityLoader {
         registerMachineRecipe(provider, GTMachines.CHARGER_4, "WTW", "WMW", "BCB", 'M', HULL, 'W', WIRE_QUAD, 'T',
                 Tags.Items.CHESTS_WOODEN, 'B', CABLE, 'C', CIRCUIT);
 
-        Material[] fluidMap = new Material[] { GTMaterials.Glue, GTMaterials.Polyethylene,
-                GTMaterials.Polytetrafluoroethylene, GTMaterials.Polybenzimidazole };
+        registerMachineRecipe(provider, GTMachines.WIRELESS_CHARGER, "FEF", "CMC", "WBW", 'M', HULL, 'W', CABLE_QUAD,
+                'E', EMITTER, 'C', CIRCUIT, 'B', PLATE, 'F', FIELD_GENERATOR);
+
+        Material[] fluidMap = new Material[] { GTMaterials.Glue.value(), GTMaterials.Polyethylene.value(),
+                GTMaterials.Polytetrafluoroethylene.value(), GTMaterials.Polybenzimidazole.value() };
 
         for (var machine : GTMachines.FLUID_IMPORT_HATCH) {
             if (machine == null) continue;
@@ -911,7 +926,7 @@ public class MetaTileEntityLoader {
             for (; j < fluidMap.length; j++) {
                 int fluidAmount = GTValues.L * 2 * (tier + 1);
                 GTRecipeTypes.ASSEMBLER_RECIPES
-                        .recipeBuilder("fluid_hatch_" + VNL[tier] + "_" + fluidMap[j].getName())
+                        .recipeBuilder("fluid_hatch_" + VN[tier].toLowerCase(Locale.ROOT) + "_" + fluidMap[j].getName())
                         .inputItems(HULL.get(tier))
                         .inputItems(DRUM.get(tier))
                         .circuitMeta(1)
@@ -931,7 +946,7 @@ public class MetaTileEntityLoader {
                 int fluidAmount = GTValues.L * 2 * (tier + 1);
                 GTRecipeTypes.ASSEMBLER_RECIPES
                         .recipeBuilder(
-                                "fluid_export_hatch_" + VNL[tier] + "_" + fluidMap[j].getName())
+                                "fluid_export_hatch_" + VN[tier].toLowerCase(Locale.ROOT) + "_" + fluidMap[j].getName())
                         .inputItems(HULL.get(tier))
                         .inputItems(DRUM.get(tier))
                         .circuitMeta(2)
@@ -951,7 +966,7 @@ public class MetaTileEntityLoader {
                 int fluidAmount = GTValues.L * 2 * (tier + 1);
                 GTRecipeTypes.ASSEMBLER_RECIPES
                         .recipeBuilder(
-                                "item_import_bus_" + VNL[tier] + "_" + fluidMap[j].getName())
+                                "item_import_bus_" + VN[tier].toLowerCase(Locale.ROOT) + "_" + fluidMap[j].getName())
                         .inputItems(HULL.get(tier))
                         .inputItems(CRATE.get(tier))
                         .circuitMeta(1)
@@ -971,7 +986,7 @@ public class MetaTileEntityLoader {
                 int fluidAmount = GTValues.L * 2 * (tier + 1);
                 GTRecipeTypes.ASSEMBLER_RECIPES
                         .recipeBuilder(
-                                "item_export_bus_" + VNL[tier] + "_" + fluidMap[j].getName())
+                                "item_export_bus_" + VN[tier].toLowerCase(Locale.ROOT) + "_" + fluidMap[j].getName())
                         .inputItems(HULL.get(tier))
                         .inputItems(CRATE.get(tier))
                         .circuitMeta(2)
@@ -991,7 +1006,7 @@ public class MetaTileEntityLoader {
                 int fluidAmount = GTValues.L * 8 * (tier + 1);
                 GTRecipeTypes.ASSEMBLER_RECIPES
                         .recipeBuilder(
-                                "dual_import_bus_" + VNL[tier] + "_" + fluidMap[j].getName())
+                                "dual_import_bus_" + VN[tier].toLowerCase(Locale.ROOT) + "_" + fluidMap[j].getName())
                         .inputItems(GTMachines.ITEM_IMPORT_BUS[tier])
                         .inputItems(GTMachines.FLUID_IMPORT_HATCH[tier])
                         .inputItems(PIPE_NONUPLE.get(tier))
@@ -1013,7 +1028,7 @@ public class MetaTileEntityLoader {
                 int fluidAmount = GTValues.L * 8 * (tier + 1);
                 GTRecipeTypes.ASSEMBLER_RECIPES
                         .recipeBuilder(
-                                "dual_export_bus_" + VNL[tier] + "_" + fluidMap[j].getName())
+                                "dual_export_bus_" + VN[tier].toLowerCase(Locale.ROOT) + "_" + fluidMap[j].getName())
                         .inputItems(GTMachines.ITEM_IMPORT_BUS[tier])
                         .inputItems(GTMachines.FLUID_IMPORT_HATCH[tier])
                         .inputItems(PIPE_NONUPLE.get(tier))
@@ -1223,7 +1238,7 @@ public class MetaTileEntityLoader {
     // - CraftingComponent.Component
     // - MaterialEntry
     // - TagKey<?>
-    public static void registerMachineRecipe(Consumer<FinishedRecipe> provider, boolean setMaterialInfoData,
+    public static void registerMachineRecipe(RecipeOutput provider, boolean setMaterialInfoData,
                                              MachineDefinition[] machines, Object... recipe) {
         for (MachineDefinition machine : machines) {
 
@@ -1240,9 +1255,24 @@ public class MetaTileEntityLoader {
         }
     }
 
-    public static void registerMachineRecipe(Consumer<FinishedRecipe> provider, MachineDefinition[] machines,
+    public static void registerMachineRecipe(RecipeOutput provider, MachineDefinition[] machines,
                                              Object... recipe) {
         registerMachineRecipe(provider, true, machines, recipe);
+    }
+
+    public static void registerMachineRecipe(RecipeOutput provider, boolean setMaterialInfoData,
+                                             MachineEntry<? extends MachineDefinition>[] machines, Object... recipe) {
+        registerMachineRecipe(provider, setMaterialInfoData,
+                Arrays.stream(machines).filter(Objects::nonNull).map(Holder::value).toArray(MachineDefinition[]::new),
+                recipe);
+    }
+
+    public static void registerMachineRecipe(RecipeOutput provider,
+                                             MachineEntry<? extends MachineDefinition>[] machines,
+                                             Object... recipe) {
+        registerMachineRecipe(provider, true,
+                Arrays.stream(machines).filter(Objects::nonNull).map(Holder::value).toArray(MachineDefinition[]::new),
+                recipe);
     }
 
     private static Object[] prepareRecipe(int tier, Object... recipe) {
@@ -1254,7 +1284,7 @@ public class MetaTileEntityLoader {
                 recipe[i] = new ItemStack(item);
             } else if (recipe[i] instanceof Block block) {
                 recipe[i] = new ItemStack(block);
-            } else if (recipe[i] instanceof ItemProviderEntry<?> itemEntry) {
+            } else if (recipe[i] instanceof ItemProviderEntry<?, ?> itemEntry) {
                 recipe[i] = itemEntry.asStack();
             }
         }

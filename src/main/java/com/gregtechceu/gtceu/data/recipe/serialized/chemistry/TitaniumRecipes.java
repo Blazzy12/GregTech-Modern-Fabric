@@ -1,10 +1,9 @@
 package com.gregtechceu.gtceu.data.recipe.serialized.chemistry;
 
-import net.minecraft.data.recipes.FinishedRecipe;
-
-import java.util.function.Consumer;
+import net.minecraft.data.recipes.RecipeOutput;
 
 import static com.gregtechceu.gtceu.api.GTValues.*;
+import static com.gregtechceu.gtceu.api.data.chemical.material.info.MaterialFlags.*;
 import static com.gregtechceu.gtceu.api.data.tag.TagPrefix.*;
 import static com.gregtechceu.gtceu.common.data.GTMaterials.*;
 import static com.gregtechceu.gtceu.common.data.GTRecipeTypes.*;
@@ -13,14 +12,14 @@ public class TitaniumRecipes {
 
     private TitaniumRecipes() {}
 
-    public static void init(Consumer<FinishedRecipe> provider) {
+    public static void init(RecipeOutput provider) {
         titaniumProcess(provider);
         solvayProcess(provider);
         bauxiteProcess(provider);
         ilmeniteProcess(provider);
     }
 
-    private static void titaniumProcess(Consumer<FinishedRecipe> provider) {
+    private static void titaniumProcess(RecipeOutput provider) {
         // Rutile extraction from Ilmenite
         // FeTiO3 + C -> Fe + TiO2 + CO
         BLAST_RECIPES.recipeBuilder("rutile_from_ilmenite")
@@ -49,7 +48,7 @@ public class TitaniumRecipes {
                 .inputFluids(TitaniumTetrachloride.getFluid(1000))
                 .outputItems(ingotHot, Titanium)
                 .outputItems(dust, MagnesiumChloride, 6)
-                .blastFurnaceTemp(Titanium.getBlastTemperature() + 200)
+                .blastFurnaceTemp(Titanium.value().getBlastTemperature() + 200)
                 .duration(800).EUt(VA[HV]).save(provider);
 
         CHEMICAL_RECIPES.recipeBuilder("salt_from_magnesium_chloride")
@@ -60,7 +59,7 @@ public class TitaniumRecipes {
                 .duration(200).EUt(VA[HV]).save(provider);
     }
 
-    private static void solvayProcess(Consumer<FinishedRecipe> provider) {
+    private static void solvayProcess(RecipeOutput provider) {
         // CaCO3 -> CaO + CO2
         CHEMICAL_RECIPES.recipeBuilder("quicklime_from_calcite")
                 .circuitMeta(1)
@@ -97,7 +96,7 @@ public class TitaniumRecipes {
                 .duration(200).EUt(VA[MV]).save(provider);
     }
 
-    private static void bauxiteProcess(Consumer<FinishedRecipe> provider) {
+    private static void bauxiteProcess(RecipeOutput provider) {
         // Bauxite (crushed) + Soda Ash + Calcium Chloride -> Bauxite Slurry
         MIXER_RECIPES.recipeBuilder("bauxite_slurry_from_crushed_bauxite")
                 .inputItems(crushed, Bauxite, 32)
@@ -163,7 +162,7 @@ public class TitaniumRecipes {
                 .duration(100).EUt(VA[MV]).save(provider);
     }
 
-    private static void ilmeniteProcess(Consumer<FinishedRecipe> provider) {
+    private static void ilmeniteProcess(RecipeOutput provider) {
         // Byproduct separation for Ilmenite
         ELECTROMAGNETIC_SEPARATOR_RECIPES.recipeBuilder("ilmenite_separation")
                 .inputItems(dust, IlmeniteSlag)

@@ -2,9 +2,11 @@ package com.gregtechceu.gtceu.data.lang;
 
 import com.gregtechceu.gtceu.api.data.worldgen.GTOreDefinition;
 import com.gregtechceu.gtceu.api.data.worldgen.bedrockfluid.BedrockFluidDefinition;
-import com.gregtechceu.gtceu.api.registry.GTRegistries;
 import com.gregtechceu.gtceu.common.data.GTBedrockFluids;
-import com.gregtechceu.gtceu.common.data.GTOres;
+import com.gregtechceu.gtceu.common.data.GTOreVeins;
+
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.Identifier;
 
 import com.tterrag.registrate.providers.RegistrateLangProvider;
 
@@ -31,17 +33,15 @@ public class IntegrationLang {
         provider.add("gtceu.jei.ore_vein_diagram.spawn_range", "Spawn Range:");
         provider.add("gtceu.jei.ore_vein_diagram.weight", "Weight: %s");
         provider.add("gtceu.jei.ore_vein_diagram.dimensions", "Dimensions:");
-        GTRegistries.ORE_VEINS.unfreeze();
-        GTOres.init();
-        for (GTOreDefinition oreDefinition : GTRegistries.ORE_VEINS) {
-            String name = GTRegistries.ORE_VEINS.getKey(oreDefinition).getPath();
-            provider.add("gtceu.jei.ore_vein." + name, RegistrateLangProvider.toEnglishName(name));
+        for (ResourceKey<GTOreDefinition> key : GTOreVeins.ALL_KEYS) {
+            Identifier id = key.identifier();
+            String name = id.getPath();
+            provider.add(id.toLanguageKey("ore_vein"), RegistrateLangProvider.toEnglishName(name));
         }
-        GTRegistries.BEDROCK_FLUID_DEFINITIONS.unfreeze();
-        GTBedrockFluids.init();
-        for (BedrockFluidDefinition fluid : GTRegistries.BEDROCK_FLUID_DEFINITIONS) {
-            String name = GTRegistries.BEDROCK_FLUID_DEFINITIONS.getKey(fluid).getPath();
-            provider.add("gtceu.jei.bedrock_fluid." + name, RegistrateLangProvider.toEnglishName(name));
+        for (ResourceKey<BedrockFluidDefinition> key : GTBedrockFluids.ALL_KEYS) {
+            Identifier id = key.identifier();
+            String name = id.getPath();
+            provider.add(id.toLanguageKey("bedrock_fluid"), RegistrateLangProvider.toEnglishName(name));
         }
 
         provider.add("gtceu.rei.group.potion_fluids", "Potion Fluids");

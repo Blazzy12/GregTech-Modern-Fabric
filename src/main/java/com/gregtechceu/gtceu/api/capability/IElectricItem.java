@@ -1,28 +1,23 @@
 package com.gregtechceu.gtceu.api.capability;
 
-import com.gregtechceu.gtceu.GTCEu;
+import net.minecraft.world.InteractionResult;
+
 import com.gregtechceu.gtceu.api.GTValues;
 import com.gregtechceu.gtceu.api.capability.compat.FeCompat;
 import com.gregtechceu.gtceu.config.ConfigHolder;
 import com.gregtechceu.gtceu.utils.FormattingUtil;
-import com.gregtechceu.gtceu.utils.GTMath;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.energy.IEnergyStorage;
-import net.minecraftforge.items.IItemHandler;
-import net.minecraftforge.items.wrapper.EmptyHandler;
+import com.gregtechceu.gtceu.compat.energy.IEnergyStorage;
 
-import org.jetbrains.annotations.Nullable;
-import top.theillusivec4.curios.api.CuriosApi;
-import top.theillusivec4.curios.api.type.capability.ICuriosItemHandler;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -39,6 +34,10 @@ public interface IElectricItem {
     boolean canProvideChargeExternally();
 
     boolean chargeable();
+
+    boolean isDischargeMode();
+
+    void setDischargeMode(boolean dischargeMode);
 
     /**
      * Charge an item with a specified amount of energy.
@@ -110,56 +109,26 @@ public interface IElectricItem {
 
     // Helper methods for interacting with electric items.
 
-    default InteractionResultHolder<ItemStack> use(ItemStack itemStack, Level level, Player player,
+    default InteractionResult use(ItemStack item, Level level, Player player,
                                                    InteractionHand usedHand) {
         if (canProvideChargeExternally() && player.isShiftKeyDown()) {
-            if (!level.isClientSide) {
-                boolean isInDischargeMode = isInDischargeMode(itemStack);
+            if (!level.isClientSide()) {
+                boolean isInDischargeMode = isDischargeMode();
                 String locale = "metaitem.electric.discharge_mode." + (isInDischargeMode ? "disabled" : "enabled");
-                player.displayClientMessage(Component.translatable(locale), true);
-                setInDischargeMode(itemStack, !isInDischargeMode);
+                player.sendOverlayMessage(Component.translatable(locale));
+                setDischargeMode(!isInDischargeMode);
             }
-            return InteractionResultHolder.success(itemStack);
+            return InteractionResult.SUCCESS.heldItemTransformedTo(item);
         }
-        return InteractionResultHolder.pass(itemStack);
-    }
-
-    private static boolean isInDischargeMode(ItemStack itemStack) {
-        var tagCompound = itemStack.getTag();
-        return tagCompound != null && tagCompound.getBoolean("DischargeMode");
-    }
-
-    private static void setInDischargeMode(ItemStack itemStack, boolean isDischargeMode) {
-        var tagCompound = itemStack.getOrCreateTag();
-        if (isDischargeMode) {
-            tagCompound.putBoolean("DischargeMode", true);
-        } else {
-            tagCompound.remove("DischargeMode");
-            if (tagCompound.isEmpty()) {
-                itemStack.setTag(null);
-            }
-        }
+        return InteractionResult.PASS;
     }
 
     default void inventoryTick(ItemStack stack, Level level, Entity entity, int slotId, boolean isSelected) {
-        if (!level.isClientSide && entity instanceof Player player &&
+        if (!level.isClientSide() && entity instanceof Player player &&
                 canProvideChargeExternally() &&
-                isInDischargeMode(stack) && getCharge() > 0L) {
+                isDischargeMode() && getCharge() > 0L) {
             long transferLimit = getTransferLimit();
 
-            if (GTCEu.Mods.isCuriosLoaded()) {
-                IItemHandler curios = CuriosApi.getCuriosInventory(player)
-                        .<IItemHandler>map(ICuriosItemHandler::getEquippedCurios)
-                        .orElse(EmptyHandler.INSTANCE);
-                for (int i = 0; i < curios.getSlots(); i++) {
-                    var itemInSlot = curios.getStackInSlot(i);
-                    long chargedAmount = chargeItemStack(transferLimit, this, itemInSlot);
-                    if (chargedAmount > 0L) {
-                        transferLimit -= chargedAmount;
-                    }
-                    if (transferLimit == 0L) break;
-                }
-            }
 
             var inventoryPlayer = player.getInventory();
             for (int i = 0; i < inventoryPlayer.getContainerSize(); i++) {
@@ -173,7 +142,7 @@ public interface IElectricItem {
         }
     }
 
-    default void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltipComponents,
+    default void appendHoverText(ItemStack stack, Item.TooltipContext context, List<Component> tooltipComponents,
                                  TooltipFlag isAdvanced) {
         IElectricItem.addCurrentChargeTooltip(tooltipComponents, getCharge(), getMaxCharge(),
                 getTier(), canProvideChargeExternally());
@@ -223,7 +192,7 @@ public interface IElectricItem {
         double percentage = (double) currentCharge / (double) maxCharge;
 
         Instant start = Instant.now();
-        Instant current = Instant.now().plusSeconds(GTMath.clamp((long) ((currentCharge * 1.0) / GTValues.V[tier] / 20),
+        Instant current = Instant.now().plusSeconds(Math.clamp((long) ((currentCharge * 1.0) / GTValues.V[tier] / 20),
                 0L, Instant.MAX.getEpochSecond() - start.getEpochSecond()));
         Instant max = Instant.now().plusSeconds((long) ((maxCharge * 1.0) / GTValues.V[tier] / 20));
         Duration durationCurrent = Duration.between(start, current);

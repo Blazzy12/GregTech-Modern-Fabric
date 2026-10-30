@@ -3,11 +3,11 @@ package com.gregtechceu.gtceu.api.block;
 import com.gregtechceu.gtceu.api.GTCEuAPI;
 import com.gregtechceu.gtceu.api.data.chemical.material.Material;
 
-import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.common.util.Lazy;
+import net.minecraft.core.Holder;
+import net.minecraft.resources.Identifier;
+import com.gregtechceu.gtceu.compat.common.util.Lazy;
 
 import com.mojang.serialization.Codec;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Arrays;
@@ -27,7 +27,6 @@ public interface ICoilType {
     /**
      * @return The Unique Name of the Heating Coil
      */
-    @NotNull
     String getName();
 
     /**
@@ -60,12 +59,12 @@ public interface ICoilType {
      * @return the {@link Material} of the Heating Coil if it has one, otherwise {@code null}
      */
     @Nullable
-    Material getMaterial();
+    Holder<Material> getMaterial();
 
     /**
-     * @return the {@link ResourceLocation} defining the base texture of the coil
+     * @return the {@link Identifier} defining the base texture of the coil
      */
-    ResourceLocation getTexture();
+    Identifier getTexture();
 
     Lazy<ICoilType[]> ALL_COILS_TEMPERATURE_SORTED = Lazy.of(() -> GTCEuAPI.HEATING_COILS.keySet().stream()
             .sorted(Comparator.comparingInt(ICoilType::getCoilTemperature))

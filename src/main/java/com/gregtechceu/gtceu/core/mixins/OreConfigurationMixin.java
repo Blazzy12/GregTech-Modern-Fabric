@@ -4,8 +4,8 @@ import com.gregtechceu.gtceu.config.ConfigHolder;
 
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.levelgen.feature.configurations.OreConfiguration;
-import net.minecraft.world.level.levelgen.feature.configurations.OreConfiguration.TargetBlockState;
+import net.minecraft.world.level.levelgen.feature.AbstractOreFeature;
+import net.minecraft.world.level.levelgen.feature.BlockReplacement;
 
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -14,7 +14,8 @@ import org.spongepowered.asm.mixin.injection.ModifyVariable;
 
 import java.util.List;
 
-@Mixin(OreConfiguration.class)
+/** Strips vanilla ores from ore features when GT's ore generation replaces them. */
+@Mixin(AbstractOreFeature.class)
 public class OreConfigurationMixin {
 
     @Unique
@@ -30,12 +31,12 @@ public class OreConfigurationMixin {
             Blocks.NETHER_QUARTZ_ORE);
 
     @ModifyVariable(method = "<init>(Ljava/util/List;IF)V", at = @At("HEAD"), index = 1, argsOnly = true)
-    private static List<TargetBlockState> gtceu$init(List<TargetBlockState> targetStates) {
+    private static List<BlockReplacement> gtceu$init(List<BlockReplacement> targetStates) {
         if (ConfigHolder.INSTANCE == null || !ConfigHolder.INSTANCE.worldgen.oreVeins.removeVanillaOreGen)
             return targetStates;
 
         return targetStates.stream()
-                .filter(targetState -> !EXCLUDED_BLOCKS.contains(targetState.state.getBlock()))
+                .filter(targetState -> !EXCLUDED_BLOCKS.contains(targetState.state().getBlock()))
                 .toList();
     }
 }

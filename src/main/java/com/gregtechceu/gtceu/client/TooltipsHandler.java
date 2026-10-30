@@ -1,5 +1,7 @@
 package com.gregtechceu.gtceu.client;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.api.GTValues;
 import com.gregtechceu.gtceu.api.data.chemical.ChemicalHelper;
@@ -23,16 +25,11 @@ import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.tags.FluidTags;
-import net.minecraft.world.item.BucketItem;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.MilkBucketItem;
-import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.*;
 import net.minecraft.world.level.material.EmptyFluid;
 import net.minecraft.world.level.material.Fluid;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.FluidType;
+import com.gregtechceu.gtceu.compat.fluids.FluidStack;
+import com.gregtechceu.gtceu.compat.fluids.FluidType;
 
 import com.mojang.datafixers.util.Either;
 
@@ -40,13 +37,14 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
 
-@OnlyIn(Dist.CLIENT)
+@Environment(EnvType.CLIENT)
 public class TooltipsHandler {
 
     private static final String ITEM_PREFIX = "item." + GTCEu.MOD_ID;
     private static final String BLOCK_PREFIX = "block." + GTCEu.MOD_ID;
 
-    public static void appendTooltips(ItemStack stack, TooltipFlag flag, List<Component> tooltips) {
+    public static void appendTooltips(ItemStack stack, TooltipFlag flag, List<Component> tooltips,
+                                      Item.TooltipContext context) {
         // Formula
         var materialEntry = ChemicalHelper.getMaterialEntry(stack.getItem());
         if (materialEntry != null) {
@@ -56,16 +54,16 @@ public class TooltipsHandler {
             }
         }
         if (stack.getItem() instanceof BucketItem bucket) {
-            var fluid = bucket.getFluid();
+            var fluid = bucket.content;
             if (!(fluid instanceof EmptyFluid)) {
-                appendFluidTooltips(new FluidStack(fluid, FluidType.BUCKET_VOLUME), tooltips::add, flag);
+                appendFluidTooltips(new FluidStack(fluid, FluidType.BUCKET_VOLUME), tooltips::add, flag, context);
             }
-        } else if (stack.getItem() instanceof MilkBucketItem) {
-            appendFluidTooltips(GTMaterials.Milk.getFluid(FluidType.BUCKET_VOLUME), tooltips::add, flag);
+        } else if (stack.is(net.minecraft.world.item.Items.MILK_BUCKET)) {
+            appendFluidTooltips(GTMaterials.Milk.getFluid(FluidType.BUCKET_VOLUME), tooltips::add, flag, context);
         }
 
         // Block/Item custom tooltips
-        String translationKey = stack.getDescriptionId();
+        String translationKey = stack.getItem().getDescriptionId();
         if (translationKey.startsWith(ITEM_PREFIX) || translationKey.startsWith(BLOCK_PREFIX)) {
             String tooltipKey = translationKey + ".tooltip";
             if (Language.getInstance().has(tooltipKey)) {
@@ -85,16 +83,17 @@ public class TooltipsHandler {
         GTUtil.appendHazardTooltips(material.map(UnaryOperator.identity(), MaterialEntry::material), tooltips);
     }
 
-    public static void appendFluidTooltips(FluidStack fluidStack, Consumer<Component> tooltips, TooltipFlag flag) {
+    public static void appendFluidTooltips(FluidStack fluidStack, Consumer<Component> tooltips, TooltipFlag flag,
+                                           Item.TooltipContext context) {
         Fluid fluid = fluidStack.getFluid();
         int amount = fluidStack.getAmount();
         FluidType fluidType = fluid.getFluidType();
 
         if (fluidType == GTFluids.POTION.getType()) {
-            if (fluid.is(FluidTags.WATER)) {
+            if (fluidStack.is(FluidTags.WATER)) {
                 return;
             }
-            PotionFluidHelper.addPotionTooltip(fluidStack, tooltips);
+            PotionFluidHelper.addPotionTooltip(fluidStack, tooltips, context);
             return;
         }
 

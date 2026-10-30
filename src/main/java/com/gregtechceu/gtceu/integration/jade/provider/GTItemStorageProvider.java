@@ -1,27 +1,23 @@
 package com.gregtechceu.gtceu.integration.jade.provider;
 
 import com.gregtechceu.gtceu.GTCEu;
-import com.gregtechceu.gtceu.api.machine.MetaMachine;
 import com.gregtechceu.gtceu.common.machine.storage.CreativeChestMachine;
 import com.gregtechceu.gtceu.common.machine.storage.QuantumChestMachine;
-import com.gregtechceu.gtceu.integration.ae2.machine.MEOutputBusPartMachine;
-import com.gregtechceu.gtceu.integration.ae2.machine.MEPatternBufferProxyPartMachine;
 import com.gregtechceu.gtceu.utils.GTMath;
 
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 
-import appeng.api.stacks.AEItemKey;
 import org.jetbrains.annotations.Nullable;
 import snownee.jade.addon.universal.ItemStorageProvider;
 import snownee.jade.api.Accessor;
+import snownee.jade.api.BlockAccessor;
 import snownee.jade.api.view.ClientViewGroup;
 import snownee.jade.api.view.IClientExtensionProvider;
 import snownee.jade.api.view.IServerExtensionProvider;
 import snownee.jade.api.view.ItemView;
 import snownee.jade.api.view.ViewGroup;
+import snownee.jade.impl.BlockAccessorImpl;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -32,25 +28,24 @@ import java.util.List;
  * Currently: Quantum Chests, Pattern Buffer Proxies
  * Defaults to Jade's normal ItemStack provider
  */
-public enum GTItemStorageProvider implements IServerExtensionProvider<MetaMachine, ItemStack>,
+public enum GTItemStorageProvider implements IServerExtensionProvider<ItemStack>,
         IClientExtensionProvider<ItemStack, ItemView> {
 
     INSTANCE;
 
     @Override
-    public ResourceLocation getUid() {
+    public Identifier getUid() {
         return GTCEu.id("custom_item_storage");
     }
 
     @Override
     public List<ClientViewGroup<ItemView>> getClientGroups(Accessor<?> accessor, List<ViewGroup<ItemStack>> list) {
-        return ItemStorageProvider.INSTANCE.getClientGroups(accessor, list);
+        return ItemStorageProvider.Extension.INSTANCE.getClientGroups(accessor, list);
     }
 
     @Override
-    public @Nullable List<ViewGroup<ItemStack>> getGroups(ServerPlayer serverPlayer, ServerLevel serverLevel,
-                                                          MetaMachine machine, boolean b) {
-        if (machine instanceof QuantumChestMachine qcm) {
+    public @Nullable List<ViewGroup<ItemStack>> getGroups(Accessor<?> accessor) {
+        if (accessor.getTarget() instanceof QuantumChestMachine qcm) {
             ItemStack stored = qcm.getStored();
             long amount = qcm.getStoredAmount();
             if (qcm instanceof CreativeChestMachine ccm) {
@@ -61,23 +56,8 @@ public enum GTItemStorageProvider implements IServerExtensionProvider<MetaMachin
                 list.add(stored.copyWithCount(stack));
             }
             return list.isEmpty() ? Collections.emptyList() : List.of(new ViewGroup<>(list));
-        } else if (machine instanceof MEPatternBufferProxyPartMachine proxy) {
-            var buffer = proxy.getBuffer();
-            if (buffer == null) return Collections.emptyList();
-            return ItemStorageProvider.INSTANCE.getGroups(serverPlayer, serverLevel, machine, b);
-        } else if (GTCEu.Mods.isAE2Loaded() && machine instanceof MEOutputBusPartMachine bus) {
-            List<ItemStack> list = new ArrayList<>();
-            var iterator = bus.storageIterator();
-            while (iterator.hasNext()) {
-                var entry = iterator.next();
-                if (entry.getKey() instanceof AEItemKey itemKey) {
-                    ItemStack stack = itemKey.toStack(GTMath.saturatedCast(entry.getLongValue()));
-                    list.add(stack.copy());
-                }
-            }
-            return list.isEmpty() ? Collections.emptyList() : List.of(new ViewGroup<>(list));
         }
 
-        return ItemStorageProvider.INSTANCE.getGroups(serverPlayer, serverLevel, machine, b);
+        return ItemStorageProvider.Extension.INSTANCE.getGroups(accessor);
     }
 }

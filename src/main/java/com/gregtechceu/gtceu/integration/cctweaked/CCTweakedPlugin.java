@@ -1,13 +1,18 @@
 package com.gregtechceu.gtceu.integration.cctweaked;
 
 import com.gregtechceu.gtceu.api.capability.GTCapability;
+import com.gregtechceu.gtceu.compat.capabilities.BlockCapability;
 import com.gregtechceu.gtceu.api.placeholder.*;
 import com.gregtechceu.gtceu.api.placeholder.exceptions.NotSupportedException;
 import com.gregtechceu.gtceu.api.placeholder.exceptions.PlaceholderException;
+import com.gregtechceu.gtceu.api.registry.GTRegistries;
+import com.gregtechceu.gtceu.common.registry.GTRegistration;
 import com.gregtechceu.gtceu.integration.cctweaked.peripherals.*;
 
 import dan200.computercraft.api.ComputerCraftAPI;
-import dan200.computercraft.api.ForgeComputerCraftAPI;
+import dan200.computercraft.impl.Peripherals;
+
+import net.minecraft.core.Direction;
 
 import java.util.List;
 
@@ -21,24 +26,35 @@ public class CCTweakedPlugin {
         ComputerCraftAPI.registerGenericSource(new CoverHolderPeripheral());
         ComputerCraftAPI.registerGenericSource(new CentralMonitorPeripheral());
         ComputerCraftAPI.registerGenericSource(new MaintenancePeripheral());
-        ForgeComputerCraftAPI.registerGenericCapability(GTCapability.CAPABILITY_CONTROLLABLE);
-        ForgeComputerCraftAPI.registerGenericCapability(GTCapability.CAPABILITY_ENERGY_INFO_PROVIDER);
-        ForgeComputerCraftAPI.registerGenericCapability(GTCapability.CAPABILITY_WORKABLE);
-        ForgeComputerCraftAPI.registerGenericCapability(GTCapability.CAPABILITY_COVERABLE);
+        registerGenericCapability(GTCapability.CAPABILITY_CONTROLLABLE);
+        registerGenericCapability(GTCapability.CAPABILITY_ENERGY_INFO_PROVIDER);
+        registerGenericCapability(GTCapability.CAPABILITY_WORKABLE);
+        registerGenericCapability(GTCapability.CAPABILITY_COVERABLE);
+    }
+
+    /**
+     * Lets CC's generic peripherals see a capability of a block, like {@code ForgeComputerCraftAPI
+     * #registerGenericCapability}. CC on Fabric has no public API for this; {@code Peripherals} is its internal one.
+     */
+    private static void registerGenericCapability(BlockCapability<?, Direction> capability) {
+        Peripherals.addGenericLookup((level, pos, state, blockEntity, side) -> level.getCapability(capability, pos,
+                state, blockEntity, side));
     }
 
     public static void initPlaceholders() {
-        PlaceholderHandler.addPlaceholder(new Placeholder("bufferText") {
+        GTRegistration.REGISTRATE.simple("buffer_text", GTRegistries.Keys.PLACEHOLDER,
+                () -> new Placeholder("buffer_text") {
 
-            @Override
-            public MultiLineComponent apply(PlaceholderContext ctx,
-                                            List<MultiLineComponent> args) throws PlaceholderException {
-                PlaceholderUtils.checkArgs(args, 1);
-                if (!(ctx.cover() instanceof IPlaceholderInfoProviderCover cover)) throw new NotSupportedException();
-                int i = PlaceholderUtils.toInt(args.get(0));
-                PlaceholderUtils.checkRange("line number", 1, 100, i);
-                return MultiLineComponent.of(cover.getComputerCraftTextBuffer().get(i - 1));
-            }
-        });
+                    @Override
+                    public MultiLineComponent apply(PlaceholderContext ctx,
+                                                    List<MultiLineComponent> args) throws PlaceholderException {
+                        PlaceholderUtils.checkArgs(args, 1);
+                        if (!(ctx.cover() instanceof IPlaceholderInfoProviderCover cover))
+                            throw new NotSupportedException();
+                        int i = PlaceholderUtils.toInt(args.get(0));
+                        PlaceholderUtils.checkRange("line number", 1, 100, i);
+                        return MultiLineComponent.of(cover.getComputerCraftTextBuffer().get(i - 1));
+                    }
+                });
     }
 }

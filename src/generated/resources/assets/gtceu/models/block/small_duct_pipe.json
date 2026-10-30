@@ -1,6 +1,6 @@
 {
   "parent": "gtceu:block/pipe/small_duct_pipe/center",
-  "loader": "gtceu:pipe",
+  "fabric:type": "gtceu:pipe",
   "parts": {
     "center": {
       "model": "gtceu:block/pipe/small_duct_pipe/center"

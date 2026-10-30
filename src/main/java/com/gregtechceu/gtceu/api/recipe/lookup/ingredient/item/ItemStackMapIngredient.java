@@ -1,9 +1,6 @@
 package com.gregtechceu.gtceu.api.recipe.lookup.ingredient.item;
 
 import com.gregtechceu.gtceu.api.recipe.lookup.ingredient.AbstractMapIngredient;
-import com.gregtechceu.gtceu.core.mixins.IngredientAccessor;
-import com.gregtechceu.gtceu.core.mixins.ItemValueAccessor;
-import com.gregtechceu.gtceu.utils.IngredientEquality;
 
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
@@ -31,10 +28,10 @@ public class ItemStackMapIngredient extends AbstractMapIngredient {
     @NotNull
     public static List<AbstractMapIngredient> from(Ingredient ingredient) {
         List<AbstractMapIngredient> ingredients = new ObjectArrayList<>();
-        for (Ingredient.Value value : ((IngredientAccessor) ingredient).getValues()) {
-            if (value instanceof ItemValueAccessor itemValue) {
-                ingredients.add(new ItemStackMapIngredient(itemValue.getItem(), ingredient));
-            }
+        // 26.x ingredients are a tag or a direct item list; only direct lists map to item stacks
+        if (!ingredient.isCustom() && ingredient.getTag().isEmpty()) {
+            ingredient.items().forEach(item -> ingredients.add(new ItemStackMapIngredient(new ItemStack(item),
+                    ingredient)));
         }
         return ingredients;
     }
@@ -53,7 +50,7 @@ public class ItemStackMapIngredient extends AbstractMapIngredient {
             }
             if (this.ingredient != null) {
                 if (other.ingredient != null) {
-                    return IngredientEquality.ingredientEquals(this.ingredient, other.ingredient);
+                    return this.ingredient.equals(other.ingredient);
                 } else {
                     return this.ingredient.test(other.stack);
                 }

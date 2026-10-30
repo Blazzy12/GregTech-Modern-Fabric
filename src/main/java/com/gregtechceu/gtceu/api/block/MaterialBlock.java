@@ -1,5 +1,7 @@
 package com.gregtechceu.gtceu.api.block;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.api.blockentity.PipeBlockEntity;
 import com.gregtechceu.gtceu.api.data.chemical.material.Material;
@@ -11,8 +13,8 @@ import com.gregtechceu.gtceu.client.model.runtimegen.MaterialBlockModelGenerator
 import com.gregtechceu.gtceu.config.ConfigHolder;
 import com.gregtechceu.gtceu.data.recipe.VanillaRecipeHelper;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
-import net.minecraft.client.color.block.BlockColor;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.client.color.BlockColor;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.BlockParticleOption;
@@ -46,8 +48,6 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 
 import java.util.Set;
 
@@ -75,7 +75,7 @@ public class MaterialBlock extends Block {
         return block;
     }
 
-    @OnlyIn(Dist.CLIENT)
+    @Environment(EnvType.CLIENT)
     public static BlockColor tintedColor() {
         return (state, reader, pos, tintIndex) -> {
             if (state.getBlock() instanceof MaterialBlock block) {
@@ -89,14 +89,13 @@ public class MaterialBlock extends Block {
 
     @Override
     public VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
-        if (this.tagPrefix == TagPrefix.frameGt) {
+        if (this.tagPrefix == TagPrefix.frameGt.value()) {
             return FRAME_COLLISION_BOX;
         }
         return super.getCollisionShape(state, level, pos, context);
     }
 
     /** Start falling ore stuff */
-    @SuppressWarnings("deprecation")
     @Override
     public void onPlace(BlockState state, Level level, BlockPos pos, BlockState oldState, boolean isMoving) {
         if (TagPrefix.ORES.containsKey(this.tagPrefix) && TagPrefix.ORES.get(tagPrefix).isSand() &&
@@ -105,21 +104,21 @@ public class MaterialBlock extends Block {
         }
     }
 
-    @SuppressWarnings("deprecation")
     @Override
-    public BlockState updateShape(BlockState state, Direction direction, BlockState neighborState, LevelAccessor level,
-                                  BlockPos currentPos, BlockPos neighborPos) {
+    protected BlockState updateShape(BlockState state, net.minecraft.world.level.LevelReader level,
+                                     net.minecraft.world.level.ScheduledTickAccess ticks, BlockPos currentPos,
+                                     Direction direction, BlockPos neighborPos, BlockState neighborState,
+                                     net.minecraft.util.RandomSource random) {
         if (TagPrefix.ORES.containsKey(this.tagPrefix) && TagPrefix.ORES.get(tagPrefix).isSand() &&
                 ConfigHolder.INSTANCE.worldgen.sandOresFall) {
-            level.scheduleTick(currentPos, this, this.getDelayAfterPlace());
+            ticks.scheduleTick(currentPos, this, this.getDelayAfterPlace());
         }
-        return super.updateShape(state, direction, neighborState, level, currentPos, neighborPos);
+        return super.updateShape(state, level, ticks, currentPos, direction, neighborPos, neighborState, random);
     }
 
-    @SuppressWarnings("deprecation")
     @Override
     public void tick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
-        if (!FallingBlock.isFree(level.getBlockState(pos.below())) || pos.getY() < level.getMinBuildHeight()) {
+        if (!FallingBlock.isFree(level.getBlockState(pos.below())) || pos.getY() < level.getMinY()) {
             return;
         }
         FallingBlockEntity.fall(level, pos, state);
@@ -146,9 +145,8 @@ public class MaterialBlock extends Block {
     }
 
     /** End falling ore stuff */
-
-    @Override
-    public String getDescriptionId() {
+    /** Translation key; {@code getDescriptionId()} is final in 26.x. */
+    public String getGTDescriptionId() {
         return tagPrefix.getUnlocalizedName(material);
     }
 
@@ -158,32 +156,32 @@ public class MaterialBlock extends Block {
     }
 
     @Override
-    public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand,
-                                 BlockHitResult hit) {
-        if (this.tagPrefix != TagPrefix.frameGt) {
-            return super.use(state, level, pos, player, hand, hit);
+    protected InteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos,
+                                              Player player, InteractionHand hand, BlockHitResult hit) {
+        if (this.tagPrefix != TagPrefix.frameGt.value()) {
+            return super.useItemOn(stack, state, level, pos, player, hand, hit);
         }
-        ItemStack stack = player.getItemInHand(hand);
         if (stack.isEmpty())
-            return InteractionResult.PASS;
+            return InteractionResult.TRY_WITH_EMPTY_HAND;
 
         if (stack.getItem() instanceof PipeBlockItem) {
             return replaceWithFramedPipe(level, pos, state, player, stack, hit) ? InteractionResult.SUCCESS :
-                    InteractionResult.PASS;
+                    InteractionResult.TRY_WITH_EMPTY_HAND;
         }
 
         Set<GTToolType> types = ToolHelper.getToolTypes(stack);
         if (!types.isEmpty() && ToolHelper.canUse(stack) && types.contains(GTToolType.CROWBAR)) {
-            return removeFrame(level, pos, player, stack) ? InteractionResult.SUCCESS : InteractionResult.PASS;
+            return removeFrame(level, pos, player, stack) ? InteractionResult.SUCCESS :
+                    InteractionResult.TRY_WITH_EMPTY_HAND;
         }
 
         var frameBlock = getFrameboxFromItem(stack);
-        if (frameBlock == null) return InteractionResult.PASS;
+        if (frameBlock == null) return InteractionResult.TRY_WITH_EMPTY_HAND;
 
         BlockPos.MutableBlockPos blockPos = pos.mutable();
         for (int i = 0; i < 32; i++) {
             if (level.getBlockState(blockPos).getBlock() instanceof MaterialBlock matBlock &&
-                    matBlock.tagPrefix == TagPrefix.frameGt) {
+                    matBlock.tagPrefix == TagPrefix.frameGt.value()) {
                 blockPos.move(Direction.UP);
                 continue;
             }
@@ -204,11 +202,11 @@ public class MaterialBlock extends Block {
                     stack.shrink(1);
                 return InteractionResult.SUCCESS;
             } else {
-                return InteractionResult.PASS;
+                return InteractionResult.TRY_WITH_EMPTY_HAND;
             }
         }
 
-        return InteractionResult.PASS;
+        return InteractionResult.TRY_WITH_EMPTY_HAND;
     }
 
     @Nullable
@@ -217,7 +215,7 @@ public class MaterialBlock extends Block {
         if (item instanceof BlockItem ib) {
             Block block = ib.getBlock();
             if (block instanceof MaterialBlock matBlock)
-                return matBlock.tagPrefix == TagPrefix.frameGt ? matBlock : null;
+                return matBlock.tagPrefix == TagPrefix.frameGt.value() ? matBlock : null;
         }
         return null;
     }
@@ -239,8 +237,9 @@ public class MaterialBlock extends Block {
 
     @Override
     public boolean canBeReplaced(BlockState state, BlockPlaceContext useContext) {
-        if (this.tagPrefix == TagPrefix.frameGt && useContext.getItemInHand().getItem() instanceof PipeBlockItem &&
-                !useContext.getPlayer().isCrouching())
+        if (this.tagPrefix == TagPrefix.frameGt.value() &&
+                useContext.getItemInHand().getItem() instanceof PipeBlockItem &&
+                !useContext.getPlayer().isShiftKeyDown())
             return true;
         return super.canBeReplaced(state, useContext);
     }
@@ -277,8 +276,8 @@ public class MaterialBlock extends Block {
     }
 
     @Override
-    public void entityInside(BlockState state, Level level, BlockPos pos, Entity entity) {
-        if (this.tagPrefix == TagPrefix.frameGt && entity instanceof LivingEntity livingEntity) {
+    protected void entityInside(BlockState state, Level level, BlockPos pos, Entity entity, net.minecraft.world.entity.InsideBlockEffectApplier effectApplier, boolean isPrecise) {
+        if (this.tagPrefix == TagPrefix.frameGt.value() && entity instanceof LivingEntity livingEntity) {
             double currentAccel = 0.15D * (livingEntity.getDeltaMovement().y < 0.3D ? 2.5D : 1.0D);
             double currentSpeedVertical = 0.9D * (livingEntity.isInWater() ? 0.4D : 1.0D);
             Vec3 deltaMovement = livingEntity.getDeltaMovement();
@@ -287,7 +286,7 @@ public class MaterialBlock extends Block {
             double d0 = Mth.clamp(deltaMovement.x, -f, f);
             double d1 = Mth.clamp(deltaMovement.z, -f, f);
             double d2 = Math.max(deltaMovement.y, -f);
-            if (d2 < 0.0 && !livingEntity.getFeetBlockState().isScaffolding(livingEntity) &&
+            if (d2 < 0.0 && !livingEntity.getBlockStateOn().is(net.minecraft.world.level.block.Blocks.SCAFFOLDING) &&
                     livingEntity.isSuppressingSlidingDownLadder() &&
                     livingEntity instanceof Player) {
                 d2 = Math.min(deltaMovement.y + currentAccel, 0.0D);

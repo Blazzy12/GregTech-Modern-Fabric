@@ -4,14 +4,15 @@ import com.gregtechceu.gtceu.api.item.component.IAddInformation;
 import com.gregtechceu.gtceu.api.item.component.IMonitorModuleItem;
 import com.gregtechceu.gtceu.client.renderer.monitor.IMonitorRenderer;
 import com.gregtechceu.gtceu.client.renderer.monitor.MonitorImageRenderer;
+import com.gregtechceu.gtceu.common.data.item.GTDataComponents;
 import com.gregtechceu.gtceu.common.machine.multiblock.electric.CentralMonitorMachine;
 import com.gregtechceu.gtceu.common.machine.multiblock.electric.monitor.MonitorGroup;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.level.Level;
 
 import brachy.modularui.api.IPanelHandler;
 import brachy.modularui.api.drawable.Text;
@@ -21,7 +22,6 @@ import brachy.modularui.value.sync.SyncHandlers;
 import brachy.modularui.widgets.TextWidget;
 import brachy.modularui.widgets.layout.Flow;
 import brachy.modularui.widgets.textfield.TextFieldWidget;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
@@ -56,15 +56,15 @@ public class ImageModuleBehaviour implements IMonitorModuleItem, IAddInformation
     }
 
     public String getUrl(ItemStack stack) {
-        return stack.getOrCreateTag().getString("url");
+        return stack.getOrDefault(GTDataComponents.IMAGE_MODULE_URL, "");
     }
 
     public void setUrl(ItemStack stack, String url) {
-        stack.getOrCreateTag().putString("url", url);
+        stack.set(GTDataComponents.IMAGE_MODULE_URL, url);
     }
 
     @Override
-    public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltipComponents,
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context, List<Component> tooltipComponents,
                                 TooltipFlag isAdvanced) {
         tooltipComponents.add(Component.translatable("gtceu.item.tooltip.image_url", getUrl(stack))
                 .withStyle(ChatFormatting.DARK_AQUA));

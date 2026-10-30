@@ -2,6 +2,6 @@
 @MethodsReturnNonnullByDefault
 package com.gregtechceu.gtceu.client.model.pipe;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
 
 import javax.annotation.ParametersAreNonnullByDefault;

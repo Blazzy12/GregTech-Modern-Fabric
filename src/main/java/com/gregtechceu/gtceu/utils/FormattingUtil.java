@@ -3,8 +3,8 @@ package com.gregtechceu.gtceu.utils;
 import com.gregtechceu.gtceu.config.ConfigHolder;
 
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.ComponentContents;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.contents.PlainTextContents;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
@@ -123,8 +123,8 @@ public class FormattingUtil {
     /**
      * apple_orange.juice => Apple Orange (Juice)
      */
-    public static String toEnglishName(Object internalName) {
-        return Arrays.stream(internalName.toString().toLowerCase(Locale.ROOT).split("_"))
+    public static String toEnglishName(String internalName) {
+        return Arrays.stream(internalName.toLowerCase(Locale.ROOT).split("_"))
                 .map(StringUtils::capitalize)
                 .collect(Collectors.joining(" "));
     }
@@ -162,7 +162,7 @@ public class FormattingUtil {
         for (int i = 0; i < string.length(); i++) {
             if (string.charAt(i) == '_')
                 continue;
-            if (i == 0 || string.charAt(i - 1) == '_') {
+            if (i != 0 && string.charAt(i - 1) == '_') {
                 result.append(Character.toUpperCase(string.charAt(i)));
             } else {
                 result.append(string.charAt(i));
@@ -283,7 +283,7 @@ public class FormattingUtil {
     }
 
     private static boolean isEmptyComponent(Component component) {
-        return component.getContents() == ComponentContents.EMPTY && component.getSiblings().isEmpty();
+        return component.getContents() == PlainTextContents.EMPTY && component.getSiblings().isEmpty();
     }
 
     public static String formatTemperature(int temperature) {

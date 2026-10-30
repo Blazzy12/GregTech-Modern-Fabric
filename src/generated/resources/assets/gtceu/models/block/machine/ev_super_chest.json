@@ -5,7 +5,7 @@
       "type": "gtceu:quantum_chest_item"
     }
   ],
-  "loader": "gtceu:machine",
+  "fabric:type": "gtceu:machine",
   "machine": "gtceu:ev_super_chest",
   "variants": {
     "": {

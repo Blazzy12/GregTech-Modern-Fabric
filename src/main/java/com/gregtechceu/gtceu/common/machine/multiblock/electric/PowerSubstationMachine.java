@@ -23,23 +23,28 @@ import com.gregtechceu.gtceu.config.ConfigHolder;
 import com.gregtechceu.gtceu.utils.FormattingUtil;
 
 import net.minecraft.ChatFormatting;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.LongArrayTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
+import com.gregtechceu.gtceu.compat.common.util.INBTSerializable;
 
 import brachy.modularui.api.drawable.Text;
 import brachy.modularui.api.widget.IWidget;
+import brachy.modularui.drawable.GuiTextures;
+import brachy.modularui.drawable.Icon;
 import brachy.modularui.factory.PosGuiData;
 import brachy.modularui.screen.UISettings;
+import brachy.modularui.utils.Alignment;
 import brachy.modularui.value.sync.BigIntegerSyncValue;
 import brachy.modularui.value.sync.BooleanSyncValue;
 import brachy.modularui.value.sync.LongSyncValue;
 import brachy.modularui.value.sync.PanelSyncManager;
 import brachy.modularui.widget.ParentWidget;
+import brachy.modularui.widget.Widget;
+import brachy.modularui.widgets.ListWidget;
 import com.google.common.annotations.VisibleForTesting;
 import lombok.Getter;
 import org.jetbrains.annotations.NotNull;
@@ -91,14 +96,6 @@ public class PowerSubstationMachine extends WorkableMultiblockMachine
         super(info);
         this.tickSubscription = new ConditionalSubscriptionHandler(this, this::transferEnergyTick, this::isFormed);
         this.energyBank = attachTrait(new PowerStationEnergyBank(List.of()));
-    }
-
-    @Override
-    public void load(CompoundTag tag) {
-        if (tag.contains("energyBank", Tag.TAG_COMPOUND)) {
-            PowerStationEnergyBank.fixLegacyTag(tag.getCompound("energyBank"));
-        }
-        super.load(tag);
     }
 
     @Override
@@ -186,7 +183,7 @@ public class PowerSubstationMachine extends WorkableMultiblockMachine
     }
 
     protected void transferEnergyTick() {
-        if (!getLevel().isClientSide) {
+        if (!getLevel().isClientSide()) {
             if (getOffsetTimer() % 20 == 0) {
                 // active here is just used for rendering
                 getRecipeLogic()
@@ -283,6 +280,25 @@ public class PowerSubstationMachine extends WorkableMultiblockMachine
         return true;
     }
 
+    public static final int MULTI_UI_TEXT_PANEL_WIDTH = 172;
+    public static final int MULTI_UI_TEXT_PANEL_HEIGHT = 136;
+
+    public Widget<?> getMainTextPanel(PanelSyncManager syncManager) {
+        var parentWidget = new ParentWidget<>();
+        var listWidget = new ListWidget<>()
+                .width(MULTI_UI_TEXT_PANEL_WIDTH - 6)
+                .height(MULTI_UI_TEXT_PANEL_HEIGHT - 6)
+                .childSeparator(Icon.EMPTY_2PX)
+                .crossAxisAlignment(Alignment.CrossAxis.START)
+                .collapseDisabledChildren()
+                .posRel(Alignment.CenterLeft);
+        parentWidget.size(MULTI_UI_TEXT_PANEL_WIDTH, MULTI_UI_TEXT_PANEL_HEIGHT).background(GuiTextures.DISPLAY);
+
+        listWidget.children(getWidgetsForDisplay(syncManager));
+        parentWidget.child(listWidget.left(3).top(3));
+        return parentWidget;
+    }
+
     @Override
     public void buildMainUI(ParentWidget<?> mainWidget, PosGuiData guiData, PanelSyncManager syncManager,
                             UISettings settings) {
@@ -375,7 +391,7 @@ public class PowerSubstationMachine extends WorkableMultiblockMachine
             return Component
                     .translatable("gtceu.multiblock.power_substation.average_in",
                             avgInComponent.setStyle(STYLE_GREEN))
-                    .withStyle(Style.EMPTY.withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
+                    .withStyle(Style.EMPTY.withHoverEvent(new HoverEvent.ShowText(
                             Component.translatable("gtceu.multiblock.power_substation.average_in_hover"))));
         })
                 .asWidget()
@@ -388,7 +404,7 @@ public class PowerSubstationMachine extends WorkableMultiblockMachine
             return Component
                     .translatable("gtceu.multiblock.power_substation.average_out",
                             avgOutComponent.setStyle(STYLE_RED))
-                    .withStyle(Style.EMPTY.withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
+                    .withStyle(Style.EMPTY.withHoverEvent(new HoverEvent.ShowText(
                             Component.translatable("gtceu.multiblock.power_substation.average_out_hover"))));
         })
                 .asWidget()
@@ -421,16 +437,13 @@ public class PowerSubstationMachine extends WorkableMultiblockMachine
         return widgets;
     }
 
-    public static class PowerStationEnergyBank extends MachineTrait {
+    public static class PowerStationEnergyBank extends MachineTrait implements INBTSerializable<CompoundTag> {
 
-        // Legacy keys for compat
         private static final String NBT_SIZE = "Size";
         private static final String NBT_STORED = "Stored";
         private static final String NBT_MAX = "Max";
 
-        @SaveField
         private long[] storage;
-        @SaveField
         private long[] maximums;
         @Getter
         private BigInteger capacity;
@@ -451,31 +464,36 @@ public class PowerSubstationMachine extends WorkableMultiblockMachine
             index = 0;
         }
 
-        @Override
-        public void onMachineLoad() {
-            super.onMachineLoad();
+        public void deserializeNBT(HolderLookup.Provider lookup, CompoundTag storageTag) {
+            int size = storageTag.getIntOr(NBT_SIZE, 0);
+            storage = new long[size];
+            maximums = new long[size];
+            for (int i = 0; i < size; i++) {
+                CompoundTag subtag = storageTag.getCompoundOrEmpty(String.valueOf(i));
+                if (subtag.contains(NBT_STORED)) {
+                    storage[i] = subtag.getLongOr(NBT_STORED, 0L);
+                }
+                maximums[i] = subtag.getLongOr(NBT_MAX, 0L);
+            }
             capacity = summarize(maximums);
             index = 0;
-            for (int i = 0; i < storage.length; i++) {
+            for (int i = 0; i < size; i++) {
                 if (storage[i] > 0) index = i;
             }
         }
 
-        private static void fixLegacyTag(CompoundTag bankTag) {
-            if (!bankTag.contains(NBT_SIZE)) return;
-
-            int size = bankTag.getInt(NBT_SIZE);
-            long[] storage = new long[size];
-            long[] maximums = new long[size];
-            for (int i = 0; i < size; i++) {
-                CompoundTag subtag = bankTag.getCompound(String.valueOf(i));
-                storage[i] = subtag.getLong(NBT_STORED);
-                maximums[i] = subtag.getLong(NBT_MAX);
-                bankTag.remove(String.valueOf(i));
+        public CompoundTag serializeNBT(HolderLookup.Provider lookup) {
+            var compound = new CompoundTag();
+            compound.putInt(NBT_SIZE, storage.length);
+            for (int i = 0; i < storage.length; i++) {
+                CompoundTag subtag = new CompoundTag();
+                if (storage[i] > 0) {
+                    subtag.putLong(NBT_STORED, storage[i]);
+                }
+                subtag.putLong(NBT_MAX, maximums[i]);
+                compound.put(String.valueOf(i), subtag);
             }
-            bankTag.remove(NBT_SIZE);
-            bankTag.put("storage", new LongArrayTag(storage));
-            bankTag.put("maximums", new LongArrayTag(maximums));
+            return compound;
         }
 
         /**

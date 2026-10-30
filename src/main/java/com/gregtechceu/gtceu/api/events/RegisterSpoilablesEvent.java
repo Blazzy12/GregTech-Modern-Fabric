@@ -2,8 +2,8 @@ package com.gregtechceu.gtceu.api.events;
 
 import com.gregtechceu.gtceu.common.item.behavior.SpoilableBehavior;
 
-import net.minecraftforge.eventbus.api.Event;
-import net.minecraftforge.fml.event.IModBusEvent;
+import com.gregtechceu.gtceu.compat.bus.Event;
+import com.gregtechceu.gtceu.compat.fml.event.IModBusEvent;
 
 import java.util.function.Supplier;
 

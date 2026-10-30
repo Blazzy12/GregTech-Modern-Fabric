@@ -64,7 +64,7 @@ public class ExhaustVentMachineTrait extends MachineTrait implements IRecipeLogi
         BlockPos ventingBlockPos = getBlockPos().relative(getVentingDirection());
         BlockState state = getLevel().getBlockState(ventingBlockPos);
 
-        return state.canOcclude() || Shapes.blockOccudes(state.getCollisionShape(getLevel(), ventingBlockPos),
+        return state.canOcclude() || Shapes.blockOccludes(state.getCollisionShape(getLevel(), ventingBlockPos),
                 Shapes.block(), getVentingDirection().getOpposite());
     }
 
@@ -97,7 +97,7 @@ public class ExhaustVentMachineTrait extends MachineTrait implements IRecipeLogi
         for (LivingEntity entity : getLevel().getEntitiesOfClass(LivingEntity.class,
                 new AABB(getBlockPos().relative(getVentingDirection())),
                 entity -> !(entity instanceof Player player) || !player.isSpectator() && !player.isCreative())) {
-            entity.hurt(GTDamageTypes.HEAT.source(getLevel()), ventingDamageAmount);
+            entity.hurt(getLevel().damageSources().source(GTDamageTypes.HEAT), ventingDamageAmount);
         }
     }
 
@@ -108,7 +108,7 @@ public class ExhaustVentMachineTrait extends MachineTrait implements IRecipeLogi
         double posX = pos.getX() + 0.5 + ventingDirection.getStepX() * 0.6;
         double posY = pos.getY() + 0.5 + ventingDirection.getStepY() * 0.6;
         double posZ = pos.getZ() + 0.5 + ventingDirection.getStepZ() * 0.6;
-        var count = 7 + level.random.nextInt(3);
+        var count = 7 + level.getRandom().nextInt(3);
         if (level instanceof ServerLevel serverLevel) {
             serverLevel.sendParticles(ParticleTypes.CLOUD, posX, posY, posZ,
                     count,
@@ -117,12 +117,12 @@ public class ExhaustVentMachineTrait extends MachineTrait implements IRecipeLogi
                     ventingDirection.getStepZ() / 2.0, 0.1);
         } else {
             for (int i = 0; i < count; ++i) {
-                double d1 = level.random.nextGaussian() * (double) ventingDirection.getStepX() / 2.0;
-                double d3 = level.random.nextGaussian() * (double) ventingDirection.getStepY() / 2.0;
-                double d5 = level.random.nextGaussian() * (double) ventingDirection.getStepZ() / 2.0;
-                double d6 = level.random.nextGaussian() * 0.1;
-                double d7 = level.random.nextGaussian() * 0.1;
-                double d8 = level.random.nextGaussian() * 0.1;
+                double d1 = level.getRandom().nextGaussian() * (double) ventingDirection.getStepX() / 2.0;
+                double d3 = level.getRandom().nextGaussian() * (double) ventingDirection.getStepY() / 2.0;
+                double d5 = level.getRandom().nextGaussian() * (double) ventingDirection.getStepZ() / 2.0;
+                double d6 = level.getRandom().nextGaussian() * 0.1;
+                double d7 = level.getRandom().nextGaussian() * 0.1;
+                double d8 = level.getRandom().nextGaussian() * 0.1;
                 try {
                     level.addParticle(ParticleTypes.CLOUD, posX + d1, posY + d3, posZ + d5, d6, d7, d8);
                     continue;

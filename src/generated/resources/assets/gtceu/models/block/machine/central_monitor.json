@@ -5,7 +5,7 @@
       "type": "gtceu:central_monitor"
     }
   ],
-  "loader": "gtceu:machine",
+  "fabric:type": "gtceu:machine",
   "machine": "gtceu:central_monitor",
   "texture_overrides": {
     "all": "gtceu:block/casings/solid/machine_casing_frost_proof"

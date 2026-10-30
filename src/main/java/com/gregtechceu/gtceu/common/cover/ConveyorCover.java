@@ -1,5 +1,7 @@
 package com.gregtechceu.gtceu.common.cover;
 
+import com.gregtechceu.gtceu.core.fabric.ItemStackNbt;
+
 import com.gregtechceu.gtceu.api.GTValues;
 import com.gregtechceu.gtceu.api.capability.IControllable;
 import com.gregtechceu.gtceu.api.capability.ICoverable;
@@ -11,7 +13,7 @@ import com.gregtechceu.gtceu.api.machine.ConditionalSubscriptionHandler;
 import com.gregtechceu.gtceu.api.sync_system.annotations.RerenderOnChanged;
 import com.gregtechceu.gtceu.api.sync_system.annotations.SaveField;
 import com.gregtechceu.gtceu.api.sync_system.annotations.SyncToClient;
-import com.gregtechceu.gtceu.api.transfer.item.ITransferAmountLimiter;
+import com.gregtechceu.gtceu.api.transfer.item.IBundleInsertable;
 import com.gregtechceu.gtceu.api.transfer.item.ItemHandlerDelegate;
 import com.gregtechceu.gtceu.common.blockentity.ItemPipeBlockEntity;
 import com.gregtechceu.gtceu.common.cover.data.DistributionMode;
@@ -19,10 +21,9 @@ import com.gregtechceu.gtceu.common.cover.data.ManualIOMode;
 import com.gregtechceu.gtceu.common.mui.GTMuiCoverUtil;
 import com.gregtechceu.gtceu.common.mui.GTMuiWidgets;
 import com.gregtechceu.gtceu.utils.GTTransferUtils;
-import com.gregtechceu.gtceu.utils.GTUtil;
 import com.gregtechceu.gtceu.utils.ItemStackHashStrategy;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -30,9 +31,9 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
-import net.minecraftforge.items.IItemHandler;
-import net.minecraftforge.items.IItemHandlerModifiable;
-import net.minecraftforge.items.ItemHandlerHelper;
+import com.gregtechceu.gtceu.compat.items.IItemHandler;
+import com.gregtechceu.gtceu.compat.items.IItemHandlerModifiable;
+import com.gregtechceu.gtceu.compat.items.ItemHandlerHelper;
 
 import brachy.modularui.api.drawable.Text;
 import brachy.modularui.factory.SidedPosGuiData;
@@ -50,7 +51,6 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.Map;
-import java.util.function.ToIntFunction;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 
@@ -122,7 +122,7 @@ public class ConveyorCover extends CoverBehavior implements IIOCover, IMuiCover,
 
     protected @Nullable IItemHandler getAdjacentItemHandler() {
         return GTTransferUtils.getAdjacentItemHandler(coverHolder.getLevel(), coverHolder.getBlockPos(), attachedSide)
-                .resolve().orElse(null);
+                .orElse(null);
     }
 
     //////////////////////////////////////
@@ -258,7 +258,7 @@ public class ConveyorCover extends CoverBehavior implements IIOCover, IMuiCover,
             int slotIndex = itemInfo.slots.getInt(i);
             ItemStack extractedStack = sourceInventory.extractItem(slotIndex, itemsLeftToExtract, true);
             if (!extractedStack.isEmpty() &&
-                    GTUtil.isSameItemSameTags(resultStack, extractedStack)) {
+                    ItemStack.isSameItemSameComponents(resultStack, extractedStack)) {
                 totalExtractedCount += extractedStack.getCount();
                 itemsLeftToExtract -= extractedStack.getCount();
             }
@@ -276,13 +276,13 @@ public class ConveyorCover extends CoverBehavior implements IIOCover, IMuiCover,
 
         // now, see how much we can insert into destination inventory
         // if we can't insert as much as itemInfo requires, and remainder is empty, abort, abort
-        ItemStack remainder = GTTransferUtils.insertItemBundle(targetInventory, resultStack, true);
+        ItemStack remainder = insertWhole(targetInventory, resultStack, true);
         if (!remainder.isEmpty()) {
             return false;
         }
 
         // otherwise, perform real insertion and then remove items from the source inventory
-        GTTransferUtils.insertItemBundle(targetInventory, resultStack, false);
+        insertWhole(targetInventory, resultStack, false);
 
         // perform real extraction of the items from the source inventory now
         itemsLeftToExtract = itemInfo.totalCount;
@@ -290,7 +290,7 @@ public class ConveyorCover extends CoverBehavior implements IIOCover, IMuiCover,
             int slotIndex = itemInfo.slots.getInt(i);
             ItemStack extractedStack = sourceInventory.extractItem(slotIndex, itemsLeftToExtract, false);
             if (!extractedStack.isEmpty() &&
-                    GTUtil.isSameItemSameTags(resultStack, extractedStack)) {
+                    ItemStack.isSameItemSameComponents(resultStack, extractedStack)) {
                 itemsLeftToExtract -= extractedStack.getCount();
             }
             if (itemsLeftToExtract == 0) {
@@ -298,6 +298,57 @@ public class ConveyorCover extends CoverBehavior implements IIOCover, IMuiCover,
             }
         }
         return true;
+    }
+
+    /// Uses {@link IBundleInsertable} when the target supports it to allow correctly handling transfer mode
+    /// for aggregate inventories (like item pipes).
+    private static ItemStack insertWhole(IItemHandler targetInventory, ItemStack stack, boolean simulate) {
+        return targetInventory instanceof IBundleInsertable bundle ?
+                bundle.insertItemBundle(stack, simulate) :
+                ItemHandlerHelper.insertItem(targetInventory, stack, simulate);
+    }
+
+    protected int moveInventoryItems(IItemHandler sourceInventory, IItemHandler targetInventory,
+                                     Map<ItemStack, GroupItemInfo> itemInfos, int maxTransferAmount) {
+        Filter<ItemStack> filter = filterHandler.getFilter();
+        int itemsLeftToTransfer = maxTransferAmount;
+
+        for (int i = 0; i < sourceInventory.getSlots(); i++) {
+            ItemStack itemStack = sourceInventory.getStackInSlot(i);
+            if (itemStack.isEmpty() || !filter.test(itemStack) || !itemInfos.containsKey(itemStack)) {
+                continue;
+            }
+
+            GroupItemInfo itemInfo = itemInfos.get(itemStack);
+
+            ItemStack extractedStack = sourceInventory.extractItem(i,
+                    Math.min(itemInfo.totalCount, itemsLeftToTransfer), true);
+
+            ItemStack remainderStack = ItemHandlerHelper.insertItemStacked(targetInventory, extractedStack, true);
+            int amountToInsert = extractedStack.getCount() - remainderStack.getCount();
+
+            if (amountToInsert > 0) {
+                extractedStack = sourceInventory.extractItem(i, amountToInsert, false);
+
+                if (!extractedStack.isEmpty()) {
+
+                    ItemHandlerHelper.insertItemStacked(targetInventory, extractedStack, false);
+                    itemsLeftToTransfer -= extractedStack.getCount();
+                    itemInfo.totalCount -= extractedStack.getCount();
+
+                    if (itemInfo.totalCount == 0) {
+                        itemInfos.remove(itemStack);
+                        if (itemInfos.isEmpty()) {
+                            break;
+                        }
+                    }
+                    if (itemsLeftToTransfer == 0) {
+                        break;
+                    }
+                }
+            }
+        }
+        return maxTransferAmount - itemsLeftToTransfer;
     }
 
     protected Map<ItemStack, TypeItemInfo> countInventoryItemsByType(IItemHandler inventory) {
@@ -320,11 +371,36 @@ public class ConveyorCover extends CoverBehavior implements IIOCover, IMuiCover,
         return result;
     }
 
+    protected Map<ItemStack, GroupItemInfo> countInventoryItemsByMatchSlot(IItemHandler inventory) {
+        Filter<ItemStack> filter = filterHandler.getFilter();
+        Map<ItemStack, GroupItemInfo> result = new Object2ObjectOpenCustomHashMap<>(
+                ItemStackHashStrategy.comparingAllButCount());
+
+        for (int srcIndex = 0; srcIndex < inventory.getSlots(); srcIndex++) {
+            ItemStack itemStack = inventory.getStackInSlot(srcIndex);
+            if (itemStack.isEmpty() || !filter.test(itemStack)) {
+                continue;
+            }
+
+            var itemInfo = result.computeIfAbsent(itemStack, s -> new GroupItemInfo(s, 0));
+
+            itemInfo.totalCount += itemStack.getCount();
+        }
+        return result;
+    }
+
     @AllArgsConstructor
     protected static class TypeItemInfo {
 
         public final ItemStack itemStack;
         public final IntList slots;
+        public int totalCount;
+    }
+
+    @AllArgsConstructor
+    protected static class GroupItemInfo {
+
+        public final ItemStack itemStack;
         public int totalCount;
     }
 
@@ -457,42 +533,6 @@ public class ConveyorCover extends CoverBehavior implements IIOCover, IMuiCover,
             }
             return simulate ? result : super.extractItem(slot, amount, false);
         }
-
-        @Override
-        public ItemStack insertItemBundle(ItemStack stack, boolean simulate) {
-            if (io == IO.OUT) {
-                if (manualIOMode == ManualIOMode.DISABLED) {
-                    return stack;
-                }
-                if (manualIOMode == ManualIOMode.UNFILTERED) {
-                    return super.insertItemBundle(stack, simulate);
-                }
-            }
-            if (!filterHandler.test(stack)) {
-                return stack;
-            }
-            return super.insertItemBundle(stack, simulate);
-        }
-
-        @Override
-        public void stockInventoryItems(IItemHandler sourceInventory, ITransferAmountLimiter transferAmountLimiter,
-                                        ToIntFunction<ItemStack> itemKeepAmountProvider) {
-            ToIntFunction<ItemStack> wrappedItemKeepAmountProvider = itemStack -> {
-                if (io == IO.OUT) {
-                    if (manualIOMode == ManualIOMode.DISABLED) {
-                        return 0;
-                    }
-                    if (manualIOMode == ManualIOMode.UNFILTERED) {
-                        return itemKeepAmountProvider.applyAsInt(itemStack);
-                    }
-                }
-                if (!filterHandler.test(itemStack)) {
-                    return 0;
-                }
-                return itemKeepAmountProvider.applyAsInt(itemStack);
-            };
-            super.stockInventoryItems(sourceInventory, transferAmountLimiter, wrappedItemKeepAmountProvider);
-        }
     }
 
     @Override
@@ -501,16 +541,17 @@ public class ConveyorCover extends CoverBehavior implements IIOCover, IMuiCover,
         tag.putInt("io", getIo().ordinal());
         tag.putInt("distributionMode", getDistributionMode().ordinal());
         tag.putInt("manualIO", getManualIOMode().ordinal());
-        tag.put("filter", filterHandler.getFilterItem().serializeNBT());
+        tag.put("filter", ItemStackNbt.save(filterHandler.getFilterItem(), coverHolder.getLevel().registryAccess()));
     }
 
     @Override
     public void pasteConfig(ServerPlayer player, CompoundTag tag) {
-        setTransferRate(tag.getInt("transferRate"));
-        setIo(IO.values()[tag.getInt("io")]);
-        setDistributionMode(DistributionMode.values()[tag.getInt("distributionMode")]);
-        setManualIOMode(ManualIOMode.values()[tag.getInt("manualIO")]);
-        filterHandler.setFilterItem(ItemStack.of(tag.getCompound("filter")));
+        setTransferRate(tag.getIntOr("transferRate", 0));
+        setIo(IO.values()[tag.getIntOr("io", 0)]);
+        setDistributionMode(DistributionMode.values()[tag.getIntOr("distributionMode", 0)]);
+        setManualIOMode(ManualIOMode.values()[tag.getIntOr("manualIO", 0)]);
+        filterHandler.setFilterItem(ItemStackNbt.parse(coverHolder.getLevel().registryAccess(), tag.getCompoundOrEmpty("filter"))
+                .orElse(ItemStack.EMPTY));
         super.pasteConfig(player, tag);
     }
 }

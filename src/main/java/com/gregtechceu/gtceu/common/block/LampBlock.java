@@ -1,56 +1,50 @@
 package com.gregtechceu.gtceu.common.block;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.common.data.item.GTDataComponents;
+import com.gregtechceu.gtceu.common.item.LampBlockItem;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.DyeColor;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.context.BlockPlaceContext;
-import net.minecraft.world.level.BlockAndTintGetter;
-import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.storage.loot.LootParams;
-import net.minecraft.world.phys.HitResult;
 
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
-import javax.annotation.ParametersAreNonnullByDefault;
-
-@ParametersAreNonnullByDefault
-@MethodsReturnNonnullByDefault
-public class LampBlock extends Block {
+public class LampBlock extends Block implements com.gregtechceu.gtceu.core.fabric.IBlockTooltip {
 
     public static final BooleanProperty BLOOM = BlockStateProperties.BLOOM;
     public static final BooleanProperty LIGHT = BlockStateProperties.LIT;
     public static final BooleanProperty INVERTED = BlockStateProperties.INVERTED;
     public static final BooleanProperty POWERED = BlockStateProperties.POWERED;
 
-    public static final String TAG_INVERTED = "inverted";
-    public static final String TAG_BLOOM = "bloom";
-    public static final String TAG_LIGHT = "lit";
-
-    public static final int BLOOM_FLAG = 0b001;
-    public static final int LIGHT_FLAG = 0b010;
-    public static final int INVERTED_FLAG = 0b100;
+    public static final int BLOOM_FLAG = 1;
+    public static final int LIGHT_FLAG = 2;
+    public static final int INVERTED_FLAG = 4;
+    public static final int POWERED_FLAG = 8;
 
     public final DyeColor color;
     public final boolean bordered;
 
     public LampBlock(Properties properties, DyeColor color, boolean bordered) {
-        super(properties);
+        // 26.x has no per-position light hook; light comes from the state function
+        super(properties.lightLevel(state -> state.getBlock() instanceof LampBlock lamp &&
+                state.getValue(LIGHT) && lamp.isLightActive(state) ? 15 : 0));
         this.color = color;
         this.bordered = bordered;
         registerDefaultState(defaultBlockState()
@@ -64,33 +58,28 @@ public class LampBlock extends Block {
         return state.getValue(INVERTED) != state.getValue(POWERED);
     }
 
-    public static boolean isInverted(CompoundTag tag) {
-        return tag.getBoolean(TAG_INVERTED);
+    public static boolean isInverted(BlockState state) {
+        return state.getValue(INVERTED);
     }
 
-    public static boolean isLightEnabled(CompoundTag tag) {
-        return tag.getBoolean(TAG_LIGHT);
+    public static boolean isLightEnabled(BlockState state) {
+        return state.getValue(LIGHT);
     }
 
-    public static boolean isBloomEnabled(CompoundTag tag) {
-        return tag.getBoolean(TAG_BLOOM);
+    public static boolean isBloomEnabled(BlockState state) {
+        return state.getValue(BLOOM);
     }
 
-    public CompoundTag getTagFromState(BlockState state) {
-        CompoundTag tag = new CompoundTag();
-        tag.putBoolean(TAG_BLOOM, state.getValue(BLOOM));
-        tag.putBoolean(TAG_LIGHT, state.getValue(LIGHT));
-        tag.putBoolean(TAG_INVERTED, state.getValue(INVERTED));
-        return tag;
+    public LampBlockItem.LampData getDataFromState(BlockState state) {
+        return new LampBlockItem.LampData(state.getValue(INVERTED), state.getValue(BLOOM), state.getValue(LIGHT));
     }
 
     public ItemStack getStackFromIndex(int i) {
-        CompoundTag tag = new CompoundTag();
-        tag.putBoolean(LampBlock.TAG_INVERTED, (i & LampBlock.INVERTED_FLAG) != 0);
-        tag.putBoolean(LampBlock.TAG_BLOOM, (i & LampBlock.BLOOM_FLAG) != 0);
-        tag.putBoolean(LampBlock.TAG_LIGHT, (i & LampBlock.LIGHT_FLAG) != 0);
         ItemStack stack = new ItemStack(this);
-        stack.setTag(tag);
+        LampBlockItem.LampData data = new LampBlockItem.LampData((i & LampBlock.INVERTED_FLAG) == 0,
+                (i & LampBlock.BLOOM_FLAG) == 0,
+                (i & LampBlock.LIGHT_FLAG) == 0);
+        stack.set(GTDataComponents.LAMP_DATA, data);
         return stack;
     }
 
@@ -107,12 +96,8 @@ public class LampBlock extends Block {
     }
 
     @Override
-    public int getLightEmission(BlockState state, BlockGetter level, BlockPos pos) {
-        return state.getValue(LIGHT) && isLightActive(state) ? 15 : 0;
-    }
-
-    @Override
-    public BlockState getAppearance(BlockState state, BlockAndTintGetter level, BlockPos pos, Direction side,
+    public BlockState getAppearance(BlockState state, net.minecraft.world.level.BlockAndLightGetter level, BlockPos pos,
+                                    Direction side,
                                     @Nullable BlockState queryState, @Nullable BlockPos queryPos) {
         return state.getBlock().defaultBlockState();
     }
@@ -124,47 +109,41 @@ public class LampBlock extends Block {
     }
 
     @Override
-    @SuppressWarnings("deprecation")
-    public void neighborChanged(BlockState state, Level level, BlockPos pos, Block neighborBlock, BlockPos neighborPos,
-                                boolean movedByPiston) {
-        if (!level.isClientSide) {
+    protected void neighborChanged(BlockState state, Level level, BlockPos pos, Block neighborBlock,
+            @org.jetbrains.annotations.Nullable net.minecraft.world.level.redstone.Orientation orientation, boolean movedByPiston) {
+        if (!level.isClientSide()) {
             update(state, level, pos);
         }
     }
 
     @Override
-    @SuppressWarnings("deprecation")
     public void tick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
         update(state, level, pos);
     }
 
     @Override
-    public ItemStack getCloneItemStack(BlockState state, HitResult target,
-                                       BlockGetter level, BlockPos pos, Player player) {
-        ItemStack stack = super.getCloneItemStack(state, target, level, pos, player);
-        stack.setTag(getTagFromState(state));
+    protected ItemStack getCloneItemStack(LevelReader level, BlockPos pos, BlockState state, boolean includeData) {
+        ItemStack stack = super.getCloneItemStack(level, pos, state, includeData);
+        stack.set(GTDataComponents.LAMP_DATA.get(), getDataFromState(state));
         return stack;
     }
 
-    @Override
-    public void appendHoverText(ItemStack stack, @Nullable BlockGetter level, List<Component> tooltip,
-                                TooltipFlag flag) {
-        if (stack.hasTag()) {
-            var tag = stack.getTag();
-
-            if (isInverted(tag)) tooltip.add(Component.translatable("block.gtceu.lamp.tooltip.inverted"));
-            if (!isBloomEnabled(tag)) tooltip.add(Component.translatable("block.gtceu.lamp.tooltip.no_bloom"));
-            if (!isLightEnabled(tag)) tooltip.add(Component.translatable("block.gtceu.lamp.tooltip.no_light"));
-        }
+    public void appendHoverText(ItemStack stack, Item.TooltipContext pContext, List<Component> tooltip, TooltipFlag flag) {
+        LampBlockItem.LampData data = stack.getOrDefault(GTDataComponents.LAMP_DATA, LampBlockItem.LampData.EMPTY);
+        if (data.inverted())
+            tooltip.add(Component.translatable("block.gtceu.lamp.tooltip.inverted"));
+        if (!data.bloom())
+            tooltip.add(Component.translatable("block.gtceu.lamp.tooltip.no_bloom"));
+        if (!data.lit())
+            tooltip.add(Component.translatable("block.gtceu.lamp.tooltip.no_light"));
     }
 
     @Override
-    @SuppressWarnings("deprecation")
     public List<ItemStack> getDrops(BlockState state, LootParams.Builder params) {
         List<ItemStack> returnValue = super.getDrops(state, params);
         for (ItemStack stack : returnValue) {
             if (stack.is(this.asItem())) {
-                stack.setTag(this.getTagFromState(state));
+                stack.set(GTDataComponents.LAMP_DATA.get(), getDataFromState(state));
                 break;
             }
         }

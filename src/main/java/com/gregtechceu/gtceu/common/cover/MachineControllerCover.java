@@ -12,7 +12,7 @@ import com.gregtechceu.gtceu.common.cover.data.ControllerMode;
 import com.gregtechceu.gtceu.common.mui.GTGuiTextures;
 import com.gregtechceu.gtceu.common.mui.GTMuiWidgets;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -49,7 +49,7 @@ import javax.annotation.ParametersAreNonnullByDefault;
 
 @ParametersAreNonnullByDefault
 @MethodsReturnNonnullByDefault
-public class MachineControllerCover extends CoverBehavior implements IMuiCover {// IUICover {
+public class MachineControllerCover extends CoverBehavior implements IMuiCover {
 
     @SaveField
     @Getter
@@ -83,7 +83,7 @@ public class MachineControllerCover extends CoverBehavior implements IMuiCover {
         super.onAttached(itemStack, player);
 
         var allowedModes = getAllowedModes();
-        setControllerMode(allowedModes.isEmpty() ? null : allowedModes.get(0));
+        setControllerMode(allowedModes.isEmpty() ? null : allowedModes.getFirst());
     }
 
     @Override
@@ -326,9 +326,9 @@ public class MachineControllerCover extends CoverBehavior implements IMuiCover {
 
     @Override
     public void pasteConfig(ServerPlayer player, CompoundTag tag) {
-        setInverted(tag.getBoolean("inverted"));
-        setMinRedstoneStrength(tag.getInt("redstoneLvl"));
-        preventPowerFail = tag.getBoolean("preventPowerfail");
+        setInverted(tag.getBooleanOr("inverted", false));
+        setMinRedstoneStrength(tag.getIntOr("redstoneLvl", 0));
+        preventPowerFail = tag.getBooleanOr("preventPowerfail", false);
         super.pasteConfig(player, tag);
     }
 }

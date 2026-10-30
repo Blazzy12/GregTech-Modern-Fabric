@@ -10,7 +10,8 @@ import com.gregtechceu.gtceu.api.pipenet.IMaterialPipeType;
 import com.gregtechceu.gtceu.api.registry.registrate.provider.GTBlockstateProvider;
 import com.gregtechceu.gtceu.client.model.pipe.PipeModel;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.core.Holder;
+import net.minecraft.resources.Identifier;
 
 import lombok.Getter;
 
@@ -26,7 +27,7 @@ public enum ItemPipeType implements IMaterialPipeType<ItemPipeProperties> {
     RESTRICTIVE_LARGE("large_restrictive", 0.625f, TagPrefix.pipeLargeRestrictive, 2f, 75f),
     RESTRICTIVE_HUGE("huge_restrictive", 0.75f, TagPrefix.pipeHugeRestrictive, 4f, 50f);
 
-    public static final ResourceLocation TYPE_ID = GTCEu.id("item");
+    public static final Identifier TYPE_ID = GTCEu.id("item");
     public static final ItemPipeType[] VALUES = values();
 
     @Getter
@@ -37,12 +38,13 @@ public enum ItemPipeType implements IMaterialPipeType<ItemPipeProperties> {
     private final float rateMultiplier;
     private final float resistanceMultiplier;
     @Getter
-    private final TagPrefix tagPrefix;
+    private final Holder<TagPrefix> tagPrefix;
 
-    ItemPipeType(String name, float thickness, TagPrefix orePrefix, float rateMultiplier, float resistanceMultiplier) {
+    ItemPipeType(String name, float thickness, Holder<TagPrefix> tagPrefix, float rateMultiplier,
+                 float resistanceMultiplier) {
         this.name = name;
         this.thickness = thickness;
-        this.tagPrefix = orePrefix;
+        this.tagPrefix = tagPrefix;
         this.rateMultiplier = rateMultiplier;
         this.resistanceMultiplier = resistanceMultiplier;
     }
@@ -70,13 +72,13 @@ public enum ItemPipeType implements IMaterialPipeType<ItemPipeProperties> {
     }
 
     @Override
-    public ResourceLocation type() {
+    public Identifier type() {
         return TYPE_ID;
     }
 
     public PipeModel createPipeModel(PipeBlock<?, ?, ?> block, Material material, GTBlockstateProvider provider) {
-        ResourceLocation sideTexture = GTCEu.id("block/pipe/pipe_side");
-        ResourceLocation endTexture = GTCEu.id("block/pipe/pipe_%s_in"
+        Identifier sideTexture = GTCEu.id("block/pipe/pipe_side");
+        Identifier endTexture = GTCEu.id("block/pipe/pipe_%s_in"
                 .formatted(this.isRestrictive() ? values()[this.ordinal() - 4].name : name));
         if (material.hasProperty(PropertyKey.WOOD)) {
             sideTexture = sideTexture.withSuffix("_wood");

@@ -2,12 +2,10 @@ package com.gregtechceu.gtceu.data.recipe.serialized.chemistry;
 
 import com.gregtechceu.gtceu.common.data.GTBlocks;
 
-import net.minecraft.data.recipes.FinishedRecipe;
+import net.minecraft.data.recipes.RecipeOutput;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
-
-import java.util.function.Consumer;
 
 import static com.gregtechceu.gtceu.api.GTValues.*;
 import static com.gregtechceu.gtceu.api.data.tag.TagPrefix.*;
@@ -18,7 +16,7 @@ import static com.gregtechceu.gtceu.common.data.GTRecipeTypes.*;
 
 public class SeparationRecipes {
 
-    public static void init(Consumer<FinishedRecipe> provider) {
+    public static void init(RecipeOutput provider) {
         // Centrifuge
         CENTRIFUGE_RECIPES.recipeBuilder("refinery_gas_separation")
                 .inputFluids(RefineryGas.getFluid(8000))
@@ -50,13 +48,13 @@ public class SeparationRecipes {
         CENTRIFUGE_RECIPES.recipeBuilder("oilsands_ore_separation")
                 .inputItems(ore, Oilsands)
                 .chancedOutput(new ItemStack(Blocks.SAND), 7500)
-                .outputFluids(OilHeavy.getFluid(2000))
+                .outputFluids(HeavyOil.getFluid(2000))
                 .duration(200).EUt(30).save(provider);
 
         CENTRIFUGE_RECIPES.recipeBuilder("oilsands_dust_separation")
                 .inputItems(dust, Oilsands)
                 .chancedOutput(new ItemStack(Blocks.SAND), 7500)
-                .outputFluids(OilHeavy.getFluid(2000))
+                .outputFluids(HeavyOil.getFluid(2000))
                 .duration(200).EUt(30).save(provider);
 
         CENTRIFUGE_RECIPES.recipeBuilder("nether_wart_separation").duration(144).EUt(5)

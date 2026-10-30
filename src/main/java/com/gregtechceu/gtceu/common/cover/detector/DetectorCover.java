@@ -7,9 +7,9 @@ import com.gregtechceu.gtceu.api.cover.CoverDefinition;
 import com.gregtechceu.gtceu.api.machine.TickableSubscription;
 import com.gregtechceu.gtceu.api.sync_system.annotations.SaveField;
 import com.gregtechceu.gtceu.api.sync_system.annotations.SyncToClient;
+import com.gregtechceu.gtceu.common.data.item.GTItemAbilities;
 import com.gregtechceu.gtceu.utils.ExtendedUseOnContext;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -19,10 +19,6 @@ import net.minecraft.world.InteractionResult;
 import lombok.Getter;
 import lombok.Setter;
 
-import javax.annotation.ParametersAreNonnullByDefault;
-
-@ParametersAreNonnullByDefault
-@MethodsReturnNonnullByDefault
 public abstract class DetectorCover extends CoverBehavior implements IControllable {
 
     @SaveField
@@ -75,6 +71,9 @@ public abstract class DetectorCover extends CoverBehavior implements IControllab
         if (superResult != InteractionResult.PASS) {
             return superResult;
         }
+        if (!context.getItemInHand().canPerformAction(GTItemAbilities.SCREWDRIVER_CONFIGURE)) {
+            return InteractionResult.FAIL;
+        }
 
         if (!this.coverHolder.isRemote()) {
             toggleInvertedWithNotification();
@@ -84,7 +83,7 @@ public abstract class DetectorCover extends CoverBehavior implements IControllab
             context.getPlayer().sendSystemMessage(Component.translatable(translationKey));
         }
 
-        return InteractionResult.sidedSuccess(context.getLevel().isClientSide);
+        return InteractionResult.SUCCESS;
     }
 
     @Override
@@ -104,7 +103,7 @@ public abstract class DetectorCover extends CoverBehavior implements IControllab
 
     @Override
     public void pasteConfig(ServerPlayer player, CompoundTag tag) {
-        setInverted(tag.getBoolean("inverted"));
+        setInverted(tag.getBooleanOr("inverted", false));
         super.pasteConfig(player, tag);
     }
 }

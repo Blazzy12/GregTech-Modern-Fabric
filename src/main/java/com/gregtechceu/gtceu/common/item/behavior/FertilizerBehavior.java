@@ -3,7 +3,7 @@ package com.gregtechceu.gtceu.common.item.behavior;
 import com.gregtechceu.gtceu.api.item.component.IInteractionItem;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.BlockSource;
+import net.minecraft.core.dispenser.BlockSource;
 import net.minecraft.core.dispenser.OptionalDispenseItemBehavior;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.BoneMealItem;
@@ -23,21 +23,21 @@ public class FertilizerBehavior implements IInteractionItem {
         Level level = context.getLevel();
         BlockPos blockPos = context.getClickedPos();
         BlockPos blockPos2 = blockPos.relative(context.getClickedFace());
-        if (BoneMealItem.applyBonemeal(context.getItemInHand(), level, blockPos, context.getPlayer())) {
-            if (!level.isClientSide) {
+        if (BoneMealItem.growCrop(context.getItemInHand(), level, blockPos)) {
+            if (!level.isClientSide()) {
                 level.levelEvent(1505, blockPos, 0);
             }
-            return InteractionResult.sidedSuccess(level.isClientSide);
+            return InteractionResult.SUCCESS;
         } else {
             BlockState blockState = level.getBlockState(blockPos);
             boolean bl = blockState.isFaceSturdy(level, blockPos, context.getClickedFace());
             if (bl &&
                     BoneMealItem.growWaterPlant(context.getItemInHand(), level, blockPos2, context.getClickedFace())) {
-                if (!level.isClientSide) {
+                if (!level.isClientSide()) {
                     level.levelEvent(1505, blockPos2, 0);
                 }
 
-                return InteractionResult.sidedSuccess(level.isClientSide);
+                return InteractionResult.SUCCESS;
             } else {
                 return InteractionResult.PASS;
             }
@@ -52,12 +52,12 @@ public class FertilizerBehavior implements IInteractionItem {
             @Override
             protected @NotNull ItemStack execute(@NotNull BlockSource source, @NotNull ItemStack stack) {
                 this.setSuccess(true);
-                var level = source.getLevel();
-                var blockpos = source.getPos().relative(source.getBlockState().getValue(DispenserBlock.FACING));
+                var level = source.level();
+                var blockpos = source.pos().relative(source.state().getValue(DispenserBlock.FACING));
                 if (!BoneMealItem.growCrop(stack, level, blockpos) &&
                         !BoneMealItem.growWaterPlant(stack, level, blockpos, null)) {
                     this.setSuccess(false);
-                } else if (!level.isClientSide) {
+                } else if (!level.isClientSide()) {
                     level.levelEvent(1505, blockpos, 0);
                 }
                 return stack;

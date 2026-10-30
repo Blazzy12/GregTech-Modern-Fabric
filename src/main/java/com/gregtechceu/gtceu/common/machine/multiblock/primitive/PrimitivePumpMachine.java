@@ -8,25 +8,30 @@ import com.gregtechceu.gtceu.api.machine.feature.IMuiMachine;
 import com.gregtechceu.gtceu.api.machine.multiblock.MultiblockControllerMachine;
 import com.gregtechceu.gtceu.api.machine.multiblock.part.MultiblockPartMachine;
 import com.gregtechceu.gtceu.api.machine.trait.notifiable.NotifiableFluidTank;
-import com.gregtechceu.gtceu.api.recipe.ingredient.FluidIngredient;
 import com.gregtechceu.gtceu.common.data.GTMaterials;
 import com.gregtechceu.gtceu.common.mui.GTMultiblockTextUtil;
 import com.gregtechceu.gtceu.utils.FormattingUtil;
 import com.gregtechceu.gtceu.utils.GTUtil;
 
 import net.minecraft.ChatFormatting;
-import net.minecraft.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
 import net.minecraft.world.level.biome.Biome.Precipitation;
-import net.minecraftforge.fluids.FluidType;
+import com.gregtechceu.gtceu.compat.fluids.FluidType;
+import com.gregtechceu.gtceu.compat.fluids.crafting.SizedFluidIngredient;
 
 import brachy.modularui.api.drawable.Text;
 import brachy.modularui.api.widget.IWidget;
+import brachy.modularui.drawable.GuiTextures;
+import brachy.modularui.drawable.Icon;
 import brachy.modularui.factory.PosGuiData;
 import brachy.modularui.screen.UISettings;
+import brachy.modularui.utils.Alignment;
 import brachy.modularui.value.sync.BooleanSyncValue;
 import brachy.modularui.value.sync.IntSyncValue;
 import brachy.modularui.value.sync.PanelSyncManager;
 import brachy.modularui.widget.ParentWidget;
+import brachy.modularui.widget.Widget;
+import brachy.modularui.widgets.ListWidget;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -108,7 +113,7 @@ public class PrimitivePumpMachine extends MultiblockControllerMachine implements
                 if (fluidTank == null) initializeTank();
                 if (fluidTank != null) {
                     fluidTank.handleRecipe(IO.OUT, null,
-                            List.of(FluidIngredient.of(GTMaterials.Water.getFluid(getFluidProduction()))), false);
+                            List.of(SizedFluidIngredient.of(GTMaterials.Water.getFluid(getFluidProduction()))), false);
                 }
             }
         }
@@ -120,7 +125,7 @@ public class PrimitivePumpMachine extends MultiblockControllerMachine implements
     }
 
     private Precipitation getBiomePrecipitation() {
-        return getLevel().getBiome(getBlockPos()).value().getPrecipitationAt(getBlockPos());
+        return getLevel().getBiome(getBlockPos()).value().getPrecipitationAt(getBlockPos(), getLevel().getSeaLevel());
     }
 
     public int getFluidProduction() {
@@ -129,6 +134,26 @@ public class PrimitivePumpMachine extends MultiblockControllerMachine implements
             value = value * 3 / 2;
         }
         return value;
+    }
+
+    public Widget<?> getMainTextPanel(PanelSyncManager syncManager, int width, int height) {
+        var parentWidget = new ParentWidget<>();
+        var listWidget = new ListWidget<>();
+        listWidget
+                .width(width - 6)
+                .height(height - 6)
+                .childSeparator(Icon.EMPTY_2PX)
+                .crossAxisAlignment(Alignment.CrossAxis.START)
+                .collapseDisabledChildren()
+                .posRel(Alignment.CenterLeft)
+                .left(3)
+                .top(3);
+        parentWidget.size(width, height)
+                .background(GuiTextures.DISPLAY);
+
+        listWidget.children(getWidgetsForDisplay(syncManager));
+        parentWidget.child(listWidget.left(3).top(3));
+        return parentWidget;
     }
 
     @Override

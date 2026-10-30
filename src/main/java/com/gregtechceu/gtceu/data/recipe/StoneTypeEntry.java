@@ -3,6 +3,7 @@ package com.gregtechceu.gtceu.data.recipe;
 import com.gregtechceu.gtceu.api.GTValues;
 import com.gregtechceu.gtceu.api.data.chemical.material.Material;
 
+import net.minecraft.core.Holder;
 import net.minecraft.world.item.Item;
 
 import org.jetbrains.annotations.NotNull;
@@ -34,15 +35,15 @@ public class StoneTypeEntry {
     public final Item pressurePlate;
     @Nullable
     public final Item wall;
-    public final @Nullable Material material;
+    public final @Nullable Holder<Material> material;
     public final long materialAmount;
-    public final boolean addStoneOreDict;
-    public final boolean addPolishedStoneOreDict;
-    public final boolean addSlabOreDict;
-    public final boolean addStairOreDict;
-    public final boolean addButtonOreDict;
-    public final boolean addWallOreDict;
-    public final boolean addPressurePlateOreDict;
+    public final boolean addStoneTag;
+    public final boolean addPolishedStoneTag;
+    public final boolean addSlabTag;
+    public final boolean addStairTag;
+    public final boolean addButtonTag;
+    public final boolean addWallTag;
+    public final boolean addPressurePlateTag;
     public final boolean addStoneMaterialInfo;
     public final boolean addPolishedStoneMaterialInfo;
     public final boolean addSmeltStoneMaterialInfo;
@@ -60,11 +61,11 @@ public class StoneTypeEntry {
                            @Nullable Item crackedStone, @Nullable Item slab,
                            @Nullable Item stair, @Nullable Item button,
                            @Nullable Item wall, @Nullable Item pressurePlate,
-                           @Nullable Material material, long materialAmount,
-                           boolean addStoneOreDict, boolean addPolishedStoneOreDict,
-                           boolean addSlabOreDict,
-                           boolean addStairOreDict, boolean addButtonOreDict,
-                           boolean addWallOreDict, boolean addPressurePlateOreDict,
+                           @Nullable Holder<Material> material, long materialAmount,
+                           boolean addStoneTag, boolean addPolishedStoneTag,
+                           boolean addSlabTag,
+                           boolean addStairTag, boolean addButtonTag,
+                           boolean addWallTag, boolean addPressurePlateTag,
                            boolean addStoneMaterialInfo, boolean addPolishedStoneMaterialInfo,
                            boolean addSmeltStoneMaterialInfo, boolean addChiselStoneMaterialInfo,
                            boolean addCrackedStoneMaterialInfo, boolean addSlabMaterialInfo,
@@ -84,13 +85,13 @@ public class StoneTypeEntry {
         this.pressurePlate = pressurePlate;
         this.material = material;
         this.materialAmount = materialAmount;
-        this.addStoneOreDict = addStoneOreDict;
-        this.addPolishedStoneOreDict = addPolishedStoneOreDict;
-        this.addSlabOreDict = addSlabOreDict;
-        this.addStairOreDict = addStairOreDict;
-        this.addButtonOreDict = addButtonOreDict;
-        this.addWallOreDict = addWallOreDict;
-        this.addPressurePlateOreDict = addPressurePlateOreDict;
+        this.addStoneTag = addStoneTag;
+        this.addPolishedStoneTag = addPolishedStoneTag;
+        this.addSlabTag = addSlabTag;
+        this.addStairTag = addStairTag;
+        this.addButtonTag = addButtonTag;
+        this.addWallTag = addWallTag;
+        this.addPressurePlateTag = addPressurePlateTag;
         this.addStoneMaterialInfo = addStoneMaterialInfo;
         this.addPolishedStoneMaterialInfo = addPolishedStoneMaterialInfo;
         this.addChiselStoneMaterialInfo = addChiselStoneMaterialInfo;
@@ -118,15 +119,15 @@ public class StoneTypeEntry {
         public Item wall = null;
         public Item pressurePlate = null;
         @Nullable
-        private Material material = null;
+        private Holder<Material> material = null;
         private long materialAmount = GTValues.M;
-        public boolean addStoneOreDict = false;
-        public boolean addPolishedStoneOreDict = false;
-        public boolean addSlabOreDict = false;
-        public boolean addStairOreDict = false;
-        public boolean addButtonOreDict = false;
-        public boolean addWallOreDict = false;
-        public boolean addPressurePlateOreDict = false;
+        public boolean addStoneTag = false;
+        public boolean addPolishedStoneTag = false;
+        public boolean addSlabTag = false;
+        public boolean addStairTag = false;
+        public boolean addButtonTag = false;
+        public boolean addWallTag = false;
+        public boolean addPressurePlateTag = false;
         public boolean addStoneMaterialInfo = false;
         public boolean addPolishedStoneMaterialInfo = false;
         public boolean addSmeltStoneMaterialInfo = false;
@@ -193,11 +194,11 @@ public class StoneTypeEntry {
             return this;
         }
 
-        public Builder material(@NotNull Material material) {
+        public Builder material(@NotNull Holder<Material> material) {
             return material(material, GTValues.M);
         }
 
-        public Builder material(@NotNull Material material, long materialAmount) {
+        public Builder material(@Nullable Holder<Material> material, long materialAmount) {
             this.material = material;
             this.materialAmount = materialAmount;
             return this;
@@ -227,8 +228,8 @@ public class StoneTypeEntry {
                     stone, polishedStone, smeltStone, chiselStone, crackedStone, slab, stair, button, wall,
                     pressurePlate,
                     material, materialAmount,
-                    addStoneOreDict, addPolishedStoneOreDict, addSlabOreDict, addStairOreDict,
-                    addButtonOreDict, addWallOreDict, addPressurePlateOreDict,
+                    addStoneTag, addPolishedStoneTag, addSlabTag, addStairTag,
+                    addButtonTag, addWallTag, addPressurePlateTag,
                     addStoneMaterialInfo, addPolishedStoneMaterialInfo, addSmeltStoneMaterialInfo,
                     addChiselStoneMaterialInfo, addCrackedStoneMaterialInfo, addSlabMaterialInfo,
                     addStairMaterialInfo, addButtonMaterialInfo,

@@ -1,20 +1,20 @@
 package com.gregtechceu.gtceu.common.block;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.api.data.chemical.material.Material;
 import com.gregtechceu.gtceu.api.item.SurfaceRockBlockItem;
 import com.gregtechceu.gtceu.client.model.runtimegen.SurfaceRockModelGenerator;
 import com.gregtechceu.gtceu.integration.map.cache.server.ServerCache;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
-import net.minecraft.client.color.block.BlockColor;
-import net.minecraft.client.color.item.ItemColor;
+import com.gregtechceu.gtceu.compat.client.color.BlockColor;
+import com.gregtechceu.gtceu.compat.client.color.ItemColor;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.context.BlockPlaceContext;
@@ -26,24 +26,18 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
-import net.minecraft.world.level.block.state.properties.DirectionProperty;
-import net.minecraft.world.level.material.FluidState;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
+import net.minecraft.world.level.redstone.Orientation;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 
 import lombok.Getter;
 import org.jetbrains.annotations.Nullable;
 
-import javax.annotation.ParametersAreNonnullByDefault;
-
-@MethodsReturnNonnullByDefault
-@ParametersAreNonnullByDefault
 public class SurfaceRockBlock extends Block {
 
-    public static final DirectionProperty FACING = BlockStateProperties.FACING;
+    public static final EnumProperty<Direction> FACING = BlockStateProperties.FACING;
 
     private static final VoxelShape AABB_NORTH = Block.box(2, 2, 0, 14, 14, 3);
     private static final VoxelShape AABB_SOUTH = Block.box(2, 2, 13, 14, 14, 16);
@@ -67,23 +61,21 @@ public class SurfaceRockBlock extends Block {
     }
 
     @Override
-    public boolean onDestroyedByPlayer(BlockState state, Level level, BlockPos pos, Player player, boolean willHarvest,
-                                       FluidState fluid) {
-        if (!level.isClientSide) {
+    public BlockState playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {
+        if (!level.isClientSide()) {
             ServerCache.instance.prospectSurfaceRockMaterial(
                     level.dimension(),
                     this.material,
                     pos,
                     (ServerPlayer) player);
         }
-        return super.onDestroyedByPlayer(state, level, pos, player, willHarvest, fluid);
+        return super.playerWillDestroy(level, pos, state, player);
     }
 
     @Override
-    @SuppressWarnings("deprecation")
-    public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand,
-                                 BlockHitResult hit) {
-        if (!level.isClientSide) {
+    protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos,
+                                               Player player, BlockHitResult hitResult) {
+        if (!level.isClientSide()) {
             ServerCache.instance.prospectSurfaceRockMaterial(
                     level.dimension(),
                     this.material,
@@ -97,7 +89,6 @@ public class SurfaceRockBlock extends Block {
     }
 
     @Override
-    @SuppressWarnings("deprecation")
     public VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
         return switch (state.getValue(FACING)) {
             case DOWN -> AABB_DOWN;
@@ -110,19 +101,11 @@ public class SurfaceRockBlock extends Block {
     }
 
     @Override
-    @SuppressWarnings("deprecation")
-    public boolean isCollisionShapeFullBlock(BlockState state, BlockGetter level, BlockPos pos) {
+    protected boolean isCollisionShapeFullBlock(BlockState state, BlockGetter level, BlockPos pos) {
         return false;
     }
 
     @Override
-    @SuppressWarnings("deprecation")
-    public boolean isOcclusionShapeFullBlock(BlockState state, BlockGetter view, BlockPos pos) {
-        return false;
-    }
-
-    @Override
-    @SuppressWarnings("deprecation")
     public boolean canSurvive(BlockState state, LevelReader level, BlockPos pos) {
         var facing = state.getValue(FACING);
         var attachedBlock = pos.relative(facing);
@@ -131,9 +114,9 @@ public class SurfaceRockBlock extends Block {
     }
 
     @Override
-    public void neighborChanged(BlockState state, Level level, BlockPos pos, Block neighborBlock, BlockPos neighborPos,
-                                boolean movedByPiston) {
-        super.neighborChanged(state, level, pos, neighborBlock, neighborPos, movedByPiston);
+    protected void neighborChanged(BlockState state, Level level, BlockPos pos, Block neighborBlock,
+                                   @Nullable Orientation orientation, boolean movedByPiston) {
+        super.neighborChanged(state, level, pos, neighborBlock, orientation, movedByPiston);
 
         if (!canSurvive(state, level, pos)) {
             Block.updateOrDestroy(state, Blocks.AIR.defaultBlockState(), level, pos, Block.UPDATE_ALL);
@@ -150,7 +133,7 @@ public class SurfaceRockBlock extends Block {
         return defaultBlockState().setValue(FACING, direction);
     }
 
-    @OnlyIn(Dist.CLIENT)
+    @Environment(EnvType.CLIENT)
     public static BlockColor tintedBlockColor() {
         return (state, reader, pos, tintIndex) -> {
             if (state.getBlock() instanceof SurfaceRockBlock block) {
@@ -160,7 +143,7 @@ public class SurfaceRockBlock extends Block {
         };
     }
 
-    @OnlyIn(Dist.CLIENT)
+    @Environment(EnvType.CLIENT)
     public static ItemColor tintedItemColor() {
         return (stack, tintIndex) -> {
             if (stack.getItem() instanceof SurfaceRockBlockItem surfaceRock) {
@@ -177,12 +160,7 @@ public class SurfaceRockBlock extends Block {
     }
 
     @Override
-    public String getDescriptionId() {
-        return "block.surface_rock";
-    }
-
-    @Override
     public MutableComponent getName() {
-        return Component.translatable("block.surface_rock", material.getLocalizedName());
+        return Component.translatable("block.gtceu.surface_rock", material.getLocalizedName());
     }
 }

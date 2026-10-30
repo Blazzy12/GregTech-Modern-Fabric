@@ -2,13 +2,16 @@ package com.gregtechceu.gtceu.api.data.chemical.material.properties;
 
 import com.gregtechceu.gtceu.api.capability.recipe.FluidRecipeCapability;
 import com.gregtechceu.gtceu.api.recipe.content.ContentModifier;
-import com.gregtechceu.gtceu.api.recipe.ingredient.FluidIngredient;
+import com.gregtechceu.gtceu.api.recipe.ingredient.SizedIngredientExtensions;
 import com.gregtechceu.gtceu.common.data.GTMaterials;
+
+import com.gregtechceu.gtceu.compat.fluids.crafting.SizedFluidIngredient;
 
 import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.experimental.ExtensionMethod;
 
 public class BlastProperty implements IMaterialProperty {
 
@@ -118,33 +121,34 @@ public class BlastProperty implements IMaterialProperty {
         }
     }
 
+    @ExtensionMethod(SizedIngredientExtensions.class)
     public enum GasTier {
 
         // Tiers used by GTCEu
-        LOW(() -> FluidIngredient.of(GTMaterials.Nitrogen.getFluidTag(), 1000)),
-        MID(() -> FluidIngredient.of(GTMaterials.Helium.getFluidTag(), 100)),
-        HIGH(() -> FluidIngredient.of(GTMaterials.Argon.getFluidTag(), 50)),
+        LOW(() -> SizedFluidIngredient.of(GTMaterials.Nitrogen.getFluidTag(), 1000)),
+        MID(() -> SizedFluidIngredient.of(GTMaterials.Helium.getFluidTag(), 100)),
+        HIGH(() -> SizedFluidIngredient.of(GTMaterials.Argon.getFluidTag(), 50)),
 
         // Tiers reserved for addons
-        HIGHER(() -> FluidIngredient.of(GTMaterials.Neon.getFluidTag(), 25)),
-        HIGHEST(() -> FluidIngredient.of(GTMaterials.Krypton.getFluidTag(), 10));
+        HIGHER(() -> SizedFluidIngredient.of(GTMaterials.Neon.getFluidTag(), 25)),
+        HIGHEST(() -> SizedFluidIngredient.of(GTMaterials.Krypton.getFluidTag(), 10));
 
         public static final GasTier[] VALUES = values();
-        private Supplier<FluidIngredient> fluid;
+        private Supplier<SizedFluidIngredient> fluid;
 
-        GasTier(Supplier<FluidIngredient> fluid) {
+        GasTier(Supplier<SizedFluidIngredient> fluid) {
             this.fluid = Suppliers.memoize(fluid);
         }
 
-        public void setFluid(Supplier<FluidIngredient> fluid) {
+        public void setFluid(Supplier<SizedFluidIngredient> fluid) {
             this.fluid = Suppliers.memoize(fluid);
         }
 
-        public FluidIngredient getFluid() {
+        public SizedFluidIngredient getFluid() {
             return fluid.get().copy();
         }
 
-        public FluidIngredient getFluid(int outputAmount) {
+        public SizedFluidIngredient getFluid(int outputAmount) {
             return FluidRecipeCapability.CAP.copyWithModifier(fluid.get(), ContentModifier.multiplier(outputAmount));
         }
     }

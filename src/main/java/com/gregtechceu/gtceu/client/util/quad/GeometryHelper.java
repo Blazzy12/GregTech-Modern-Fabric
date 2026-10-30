@@ -18,7 +18,7 @@ package com.gregtechceu.gtceu.client.util.quad;
 import com.gregtechceu.gtceu.client.model.quad.QuadView;
 import com.gregtechceu.gtceu.utils.GTUtil;
 
-import net.minecraft.client.renderer.block.model.BakedQuad;
+import com.gregtechceu.gtceu.compat.client.model.BakedQuad;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Direction.Axis;
 import net.minecraft.core.Vec3i;
@@ -138,7 +138,7 @@ public class GeometryHelper {
         final Direction nominalFace = q.nominalFace();
 
         if (isQuadParallelToFace(nominalFace, q)) {
-            Vec3i vec = nominalFace.getNormal();
+            Vec3i vec = nominalFace.getUnitVec3i();
             saveTo.set(vec.getX(), vec.getY(), vec.getZ());
             return;
         }

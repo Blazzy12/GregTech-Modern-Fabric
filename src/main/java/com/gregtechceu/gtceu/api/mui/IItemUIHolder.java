@@ -1,17 +1,15 @@
 package com.gregtechceu.gtceu.api.mui;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import com.gregtechceu.gtceu.api.item.component.IInteractionItem;
 
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 
 import brachy.modularui.api.IUIHolder;
 import brachy.modularui.factory.PlayerInventoryGuiData;
@@ -26,27 +24,28 @@ public interface IItemUIHolder extends IUIHolder<PlayerInventoryGuiData<?>>, IIn
     }
 
     @Override
-    default InteractionResultHolder<ItemStack> use(Item item, Level level, Player player, InteractionHand usedHand) {
+    default InteractionResult use(ItemStack item, Level level, Player player,
+                                                   InteractionHand usedHand) {
         if (!shouldOpenUI()) return IInteractionItem.super.use(item, level, player, usedHand);
 
-        if (!level.isClientSide) {
+        if (!level.isClientSide()) {
             PlayerInventoryUIFactory.INSTANCE.openFromHand(player, usedHand);
         }
-        return InteractionResultHolder.sidedSuccess(player.getItemInHand(usedHand), level.isClientSide);
+        return InteractionResult.SUCCESS.heldItemTransformedTo(player.getItemInHand(usedHand));
     }
 
     @Override
     default InteractionResult useOn(UseOnContext context) {
         if (!shouldOpenUI()) return IInteractionItem.super.useOn(context);
 
-        if (!context.getLevel().isClientSide) {
+        if (!context.getLevel().isClientSide()) {
             PlayerInventoryUIFactory.INSTANCE.openFromHand(context.getPlayer(), context.getHand());
         }
-        return InteractionResult.sidedSuccess(context.getLevel().isClientSide);
+        return InteractionResult.SUCCESS;
     }
 
     @Override
-    @OnlyIn(Dist.CLIENT)
+    @Environment(EnvType.CLIENT)
     default ModularScreen createScreen(PlayerInventoryGuiData<?> data, ModularPanel<?> mainPanel) {
         return new GTGuiScreen(mainPanel);
     }

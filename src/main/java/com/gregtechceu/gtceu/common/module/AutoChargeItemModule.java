@@ -13,7 +13,7 @@ import com.gregtechceu.gtceu.common.machine.owner.PlayerOwner;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -35,6 +35,7 @@ import brachy.modularui.widgets.Dialog;
 import brachy.modularui.widgets.ListWidget;
 import brachy.modularui.widgets.layout.Flow;
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import lombok.Getter;
 import org.jetbrains.annotations.Nullable;
@@ -44,12 +45,12 @@ import java.util.Optional;
 
 public class AutoChargeItemModule extends TieredItemModule {
 
-    public AutoChargeItemModule(ResourceLocation id, int tier) {
+    public AutoChargeItemModule(Identifier id, int tier) {
         super(id, tier);
     }
 
     @Override
-    public Codec<? extends ModuleData> moduleDataCodec() {
+    public MapCodec<? extends ModuleData> moduleDataCodec() {
         return AutoChargeModuleData.CODEC;
     }
 
@@ -72,7 +73,7 @@ public class AutoChargeItemModule extends TieredItemModule {
     public void onInventoryTick(ModuleContext moduleContext, Player player) {
         super.onInventoryTick(moduleContext, player);
         if (!isEnabled(moduleContext)) return;
-        MetaMachine machine = getLinkedMachine(player.getServer(), moduleContext);
+        MetaMachine machine = getLinkedMachine(player.level().getServer(), moduleContext);
         IElectricItem electricItem = GTCapabilityHelper.getElectricItem(moduleContext.getAppliedTo());
         if (electricItem == null) return;
         AutoChargeModuleData data = moduleContext.getData(AutoChargeModuleData.class);
@@ -150,8 +151,8 @@ public class AutoChargeItemModule extends TieredItemModule {
         if (linkedPos == null) return null;
         Level level = server.getLevel(linkedPos.dimension());
 
-        var chunkPos = new ChunkPos(linkedPos.pos());
-        if (level == null || !level.hasChunk(chunkPos.x, chunkPos.z)) return null;
+        var chunkPos = ChunkPos.containing(linkedPos.pos());
+        if (level == null || !level.hasChunk(chunkPos.x(), chunkPos.z())) return null;
         if (level.getBlockEntity(linkedPos.pos()) instanceof MetaMachine m) {
             return m;
         }
@@ -182,12 +183,12 @@ public class AutoChargeItemModule extends TieredItemModule {
     public static class AutoChargeModuleData extends ModuleData {
 
         // spotless:off
-        public static final Codec<AutoChargeModuleData> CODEC = RecordCodecBuilder.create(instance -> baseCodec(instance).and(instance.group(
+        public static final MapCodec<AutoChargeModuleData> CODEC = RecordCodecBuilder.mapCodec(instance -> baseCodec(instance).and(instance.group(
                 GlobalPos.CODEC.optionalFieldOf("linked_pos").forGetter(AutoChargeModuleData::getLinkedPosOptional),
                 Codec.intRange(0, GTValues.TIER_COUNT - 1).optionalFieldOf("voltage_tier").forGetter(data -> Optional.of(data.getVoltageTier())),
                 Codec.intRange(1, 16).optionalFieldOf("amperage", 1).forGetter(AutoChargeModuleData::getAmperage)
         )).apply(instance, AutoChargeModuleData::new));
-        // spotless:on
+        //spotless:on
 
         @Getter
         private final @Nullable GlobalPos linkedPos;
@@ -204,6 +205,12 @@ public class AutoChargeItemModule extends TieredItemModule {
                     voltageTier.orElse(((TieredItemModule) module).getTier()), amperage);
         }
 
+        @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
+        public AutoChargeModuleData(int slot, ItemModule module, ItemStack moduleItem, boolean enabled,
+                                    Optional<GlobalPos> globalPos) {
+            this(slot, module, moduleItem, enabled, globalPos.orElse(null));
+        }
+
         public AutoChargeModuleData(int slot, ItemModule module, ItemStack moduleItem, boolean enabled,
                                     @Nullable GlobalPos globalPos) {
             this(slot, module, moduleItem, enabled, globalPos, ((TieredItemModule) module).getTier(), 1);
@@ -218,7 +225,7 @@ public class AutoChargeItemModule extends TieredItemModule {
         }
 
         public AutoChargeModuleData(int slot, ItemModule module, ItemStack moduleItem) {
-            this(slot, module, moduleItem, true, null);
+            this(slot, module, moduleItem, true, (GlobalPos) null);
         }
 
         public Optional<GlobalPos> getLinkedPosOptional() {
@@ -226,12 +233,12 @@ public class AutoChargeItemModule extends TieredItemModule {
         }
 
         @Override
-        public ModuleData withEnabled(boolean enabled) {
+        public ModuleData withModuleItem(ItemStack moduleItem) {
             return new AutoChargeModuleData(slot, module, moduleItem, enabled, linkedPos, voltageTier, amperage);
         }
 
         @Override
-        public ModuleData withModuleItem(ItemStack moduleItem) {
+        public ModuleData withEnabled(boolean enabled) {
             return new AutoChargeModuleData(slot, module, moduleItem, enabled, linkedPos, voltageTier, amperage);
         }
 

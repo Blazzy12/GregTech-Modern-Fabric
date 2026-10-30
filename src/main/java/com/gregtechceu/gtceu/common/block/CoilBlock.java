@@ -7,23 +7,20 @@ import com.gregtechceu.gtceu.api.data.chemical.material.Material;
 import com.gregtechceu.gtceu.common.data.GTMaterials;
 import com.gregtechceu.gtceu.utils.GTUtil;
 
+import net.minecraft.core.Holder;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.StringRepresentable;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.level.BlockGetter;
 
 import lombok.Getter;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
-import javax.annotation.ParametersAreNonnullByDefault;
-
-@ParametersAreNonnullByDefault
-public class CoilBlock extends ActiveBlock {
+public class CoilBlock extends ActiveBlock implements com.gregtechceu.gtceu.core.fabric.IBlockTooltip {
 
     public ICoilType coilType;
 
@@ -32,10 +29,7 @@ public class CoilBlock extends ActiveBlock {
         this.coilType = coilType;
     }
 
-    @Override
-    public void appendHoverText(ItemStack stack, @Nullable BlockGetter level, List<Component> tooltip,
-                                TooltipFlag flag) {
-        super.appendHoverText(stack, level, tooltip, flag);
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
         if (GTUtil.isShiftDown()) {
             int coilTier = coilType.getTier();
             tooltip.add(Component.translatable("block.gtceu.wire_coil.tooltip_heat", coilType.getCoilTemperature()));
@@ -43,7 +37,7 @@ public class CoilBlock extends ActiveBlock {
             tooltip.add(
                     Component.translatable("block.gtceu.wire_coil.tooltip_parallel_smelter", coilType.getLevel() * 32));
             tooltip.add(Component.translatable("block.gtceu.wire_coil.tooltip_energy_smelter",
-                    Math.max(1, (4 * coilType.getLevel() * 32 / (8 * coilType.getEnergyDiscount())))));
+                    Math.max(1, 16 / coilType.getEnergyDiscount())));
             tooltip.add(Component.translatable("block.gtceu.wire_coil.tooltip_pyro"));
             tooltip.add(Component.translatable("block.gtceu.wire_coil.tooltip_speed_pyro",
                     coilTier == 0 ? 75 : 50 * (coilTier + 1)));
@@ -56,17 +50,16 @@ public class CoilBlock extends ActiveBlock {
 
     public enum CoilType implements StringRepresentable, ICoilType {
 
-        CUPRONICKEL("cupronickel", 1800, 1, 1, GTMaterials.Cupronickel,
-                GTCEu.id("block/casings/coils/machine_coil_cupronickel")),
-        KANTHAL("kanthal", 2700, 2, 1, GTMaterials.Kanthal, GTCEu.id("block/casings/coils/machine_coil_kanthal")),
-        NICHROME("nichrome", 3600, 2, 2, GTMaterials.Nichrome, GTCEu.id("block/casings/coils/machine_coil_nichrome")),
-        RTMALLOY("rtm_alloy", 4500, 4, 2, GTMaterials.RTMAlloy, GTCEu.id("block/casings/coils/machine_coil_rtm_alloy")),
-        HSSG("hssg", 5400, 4, 4, GTMaterials.HSSG, GTCEu.id("block/casings/coils/machine_coil_hssg")),
-        NAQUADAH("naquadah", 7200, 8, 4, GTMaterials.Naquadah, GTCEu.id("block/casings/coils/machine_coil_naquadah")),
-        TRINIUM("trinium", 9001, 8, 8, GTMaterials.Trinium, GTCEu.id("block/casings/coils/machine_coil_trinium")),
-        TRITANIUM("tritanium", 10800, 16, 8, GTMaterials.Tritanium,
-                GTCEu.id("block/casings/coils/machine_coil_tritanium"));
-
+        // spotless:off
+        CUPRONICKEL("cupronickel", 1800, 1, 1, GTMaterials.Cupronickel.getDelegate(), GTCEu.id("block/casings/coils/machine_coil_cupronickel")),
+        KANTHAL("kanthal", 2700, 2, 1, GTMaterials.Kanthal.getDelegate(), GTCEu.id("block/casings/coils/machine_coil_kanthal")),
+        NICHROME("nichrome", 3600, 2, 2, GTMaterials.Nichrome.getDelegate(), GTCEu.id("block/casings/coils/machine_coil_nichrome")),
+        RTMALLOY("rtm_alloy", 4500, 4, 2, GTMaterials.RTMAlloy.getDelegate(), GTCEu.id("block/casings/coils/machine_coil_rtm_alloy")),
+        HSSG("hssg", 5400, 4, 4, GTMaterials.HSSG.getDelegate(), GTCEu.id("block/casings/coils/machine_coil_hssg")),
+        NAQUADAH("naquadah", 7200, 8, 4, GTMaterials.Naquadah.getDelegate(), GTCEu.id("block/casings/coils/machine_coil_naquadah")),
+        TRINIUM("trinium", 9001, 8, 8, GTMaterials.Trinium.getDelegate(), GTCEu.id("block/casings/coils/machine_coil_trinium")),
+        TRITANIUM("tritanium", 10800, 16, 8, GTMaterials.Tritanium.getDelegate(), GTCEu.id("block/casings/coils/machine_coil_tritanium"));
+        // spotless:on
         @NotNull
         @Getter
         private final String name;
@@ -80,13 +73,13 @@ public class CoilBlock extends ActiveBlock {
         private final int energyDiscount;
         @NotNull
         @Getter
-        private final Material material;
+        private final Holder<Material> material;
         @NotNull
         @Getter
-        private final ResourceLocation texture;
+        private final Identifier texture;
 
-        CoilType(String name, int coilTemperature, int level, int energyDiscount, Material material,
-                 ResourceLocation texture) {
+        CoilType(String name, int coilTemperature, int level, int energyDiscount, Holder<Material> material,
+                 Identifier texture) {
             this.name = name;
             this.coilTemperature = coilTemperature;
             this.level = level;

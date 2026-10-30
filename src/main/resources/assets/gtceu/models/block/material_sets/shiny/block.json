@@ -1,6 +1,6 @@
 {
   "parent": "block/block",
-  "loader": "forge:composite",
+  "fabric:type": "gtceu:composite",
   "textures": {
     "particle": "gtceu:block/material_sets/shiny/block"
   },

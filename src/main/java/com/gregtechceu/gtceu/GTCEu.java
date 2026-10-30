@@ -1,61 +1,83 @@
 package com.gregtechceu.gtceu;
 
+import com.gregtechceu.gtceu.compat.network.event.RegisterPayloadHandlersEvent;
+
 import com.gregtechceu.gtceu.api.GTCEuAPI;
 import com.gregtechceu.gtceu.api.GTValues;
-import com.gregtechceu.gtceu.client.ClientProxy;
 import com.gregtechceu.gtceu.common.CommonProxy;
+import com.gregtechceu.gtceu.common.network.GTNetwork;
+import com.gregtechceu.gtceu.config.ConfigHolder;
 import com.gregtechceu.gtceu.utils.FormattingUtil;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.fml.ModList;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.loading.FMLEnvironment;
-import net.minecraftforge.fml.loading.FMLLoader;
-import net.minecraftforge.fml.loading.FMLPaths;
-import net.minecraftforge.server.ServerLifecycleHooks;
+import com.gregtechceu.gtceu.compat.bus.IEventBus;
+import com.gregtechceu.gtceu.compat.fml.ModList;
+import com.gregtechceu.gtceu.compat.fml.loading.FMLEnvironment;
+import com.gregtechceu.gtceu.compat.fml.loading.FMLLoader;
+import com.gregtechceu.gtceu.compat.fml.loading.FMLPaths;
+import com.gregtechceu.gtceu.compat.data.loading.DatagenModLoader;
+import com.gregtechceu.gtceu.compat.server.ServerLifecycleHooks;
 
-import dev.emi.emi.config.EmiConfig;
+import com.mojang.serialization.Codec;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.ApiStatus;
 
 import java.nio.file.Path;
 
-@Mod(GTCEu.MOD_ID)
 public class GTCEu {
 
     public static final String MOD_ID = "gtceu";
-    private static final ResourceLocation TEMPLATE_LOCATION = ResourceLocation.fromNamespaceAndPath(MOD_ID, "");
-    public static final String NAME = "GregTechCEu";
-    public static final Logger LOGGER = LogManager.getLogger(NAME);
+    private static final Identifier TEMPLATE_LOCATION = Identifier.fromNamespaceAndPath(MOD_ID, "");
+    public static final Codec<Identifier> GTCEU_ID = Codec.STRING.comapFlatMap(
+            str -> Identifier.read(appendIdString(str)),
+            s -> s.getNamespace().equals(MOD_ID) ? s.getPath() : s.toString());
 
+    public static final String NAME = "GTCEu";
+    public static final Logger LOGGER = LogManager.getLogger(NAME);
     public static final Path GTCEU_FOLDER = getGameDir().resolve("gtceu");
 
-    public GTCEu() {
-        GTCEu.init();
-        GTCEuAPI.instance = this;
-        DistExecutor.unsafeRunForDist(() -> ClientProxy::new, () -> CommonProxy::new);
+    @ApiStatus.Internal
+    public static IEventBus gtModBus;
+
+    private GTCEu() {}
+
+    /** Sets up GregTech's content; called from {@link GTCEuFabric}. */
+    public static void init(IEventBus modBus) {
+        GTCEuAPI.instance = new GTCEu();
+        GTCEu.gtModBus = modBus;
+        ConfigHolder.init();
+
+        // must be set here because of KubeJS compat
+        // trying to read this before the pre-init stage
+        GTCEuAPI.initializeHighTier();
+        if (GTCEu.isDev()) {
+            ConfigHolder.INSTANCE.recipes.generateLowQualityGems = true;
+            ConfigHolder.INSTANCE.compat.energy.enableFEConverters = true;
+        }
+        CommonProxy.init(modBus);
+
+        modBus.addListener(RegisterPayloadHandlersEvent.class, GTNetwork::registerPayloads);
     }
 
-    public static void init() {
-        LOGGER.info("{} is initializing...", NAME);
-    }
-
-    public static ResourceLocation id(String path) {
+    public static Identifier id(String path) {
         if (path.isBlank()) {
             return TEMPLATE_LOCATION;
         }
 
         int i = path.indexOf(':');
         if (i > 0) {
-            return ResourceLocation.parse(path);
+            return Identifier.tryParse(path);
         } else if (i == 0) {
             path = path.substring(i + 1);
         }
         // only convert it to camel_case if it has any uppercase to begin with
         if (FormattingUtil.hasUpperCase(path)) {
+            GTCEu.LOGGER.warn(
+                    "Resource location {} has uppercase characters, which are not allowed. Renaming resource location to {}",
+                    path, FormattingUtil.toLowerCaseUnderscore(path));
             path = FormattingUtil.toLowerCaseUnderscore(path);
         }
         return TEMPLATE_LOCATION.withPath(path);
@@ -90,7 +112,7 @@ public class GTCEu {
      * @return if we're running data generation
      */
     public static boolean isDataGen() {
-        return FMLLoader.getLaunchHandler().isData();
+        return DatagenModLoader.isRunningDataGen();
     }
 
     /**
@@ -107,9 +129,7 @@ public class GTCEu {
      * @return if the mod whose id is {@code modId} is loaded or not
      */
     public static boolean isModLoaded(String modId) {
-        ModList modList = ModList.get();
-        if (modList != null) return modList.isLoaded(modId);
-        else return FMLLoader.getLoadingModList().getModFileById(modId) != null;
+        return ModList.get().isLoaded(modId);
     }
 
     /**
@@ -117,8 +137,9 @@ public class GTCEu {
      *
      * @return if the current thread is the client thread
      */
+    @SuppressWarnings("ConstantValue")
     public static boolean isClientThread() {
-        return isClientSide() && Minecraft.getInstance().isSameThread();
+        return isClientSide() && Minecraft.getInstance() != null && Minecraft.getInstance().isSameThread();
     }
 
     /**
@@ -155,13 +176,18 @@ public class GTCEu {
 
     public static class Mods {
 
+        public static boolean isAnyRecipeViewerLoaded() {
+            return isModLoaded(GTValues.MODID_EMI) || isModLoaded(GTValues.MODID_JEI) ||
+                    isModLoaded(GTValues.MODID_REI);
+        }
+
         public static boolean isJEILoaded() {
-            return !isModLoaded(GTValues.MODID_EMI) &&
+            return !(isModLoaded(GTValues.MODID_EMI) || isModLoaded(GTValues.MODID_REI)) &&
                     isModLoaded(GTValues.MODID_JEI);
         }
 
         public static boolean isEMILoaded() {
-            return isModLoaded(GTValues.MODID_EMI) && (!isClientSide() || EmiConfig.enabled);
+            return isModLoaded(GTValues.MODID_EMI);
         }
 
         public static boolean isKubeJSLoaded() {
@@ -214,6 +240,10 @@ public class GTCEu {
 
         public static boolean isCreateLoaded() {
             return isModLoaded(GTValues.MODID_CREATE);
+        }
+
+        public static boolean isSableLoaded() {
+            return isModLoaded(GTValues.MODID_SABLE);
         }
     }
 }

@@ -1,11 +1,33 @@
 package com.gregtechceu.gtceu.client;
 
+import net.fabricmc.fabric.api.client.particle.v1.ParticleProviderRegistry;
+
+import net.fabricmc.fabric.api.client.rendering.v1.ExtractItemDecorationsCallback;
+
+import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
+
+import com.gregtechceu.gtceu.client.bloom.BloomRenderer;
+
+import com.gregtechceu.gtceu.client.renderer.item.FacadeSpecialRenderer;
+
+import com.gregtechceu.gtceu.client.renderer.item.MachineItemSpecialRenderer;
+
+import com.gregtechceu.gtceu.client.renderer.item.LampSpecialRenderer;
+
+import net.minecraft.client.renderer.special.SpecialModelRenderers;
+
+import com.gregtechceu.gtceu.client.model.composite.CompositeModel;
+
+import com.gregtechceu.gtceu.compat.client.model.geometry.GeometryLoaderModel;
+
+import net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry;
+import net.fabricmc.fabric.api.client.rendering.v1.ModelLayerRegistry;
+import net.minecraft.client.model.object.boat.BoatModel;
+import net.minecraft.client.renderer.entity.BoatRenderer;
+
 import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.api.GTValues;
 import com.gregtechceu.gtceu.api.cosmetics.event.RegisterGTCapesEvent;
-import com.gregtechceu.gtceu.api.data.worldgen.GTOreDefinition;
-import com.gregtechceu.gtceu.api.data.worldgen.bedrockfluid.BedrockFluidDefinition;
-import com.gregtechceu.gtceu.api.data.worldgen.bedrockore.BedrockOreDefinition;
 import com.gregtechceu.gtceu.api.item.IComponentItem;
 import com.gregtechceu.gtceu.api.item.IGTTool;
 import com.gregtechceu.gtceu.client.model.item.CustomItemRendererWrapperModel;
@@ -17,7 +39,6 @@ import com.gregtechceu.gtceu.client.model.runtimegen.*;
 import com.gregtechceu.gtceu.client.particle.GTParticleManager;
 import com.gregtechceu.gtceu.client.particle.HazardParticle;
 import com.gregtechceu.gtceu.client.particle.MufflerParticle;
-import com.gregtechceu.gtceu.client.renderer.entity.GTBoatRenderer;
 import com.gregtechceu.gtceu.client.renderer.entity.GTExplosiveRenderer;
 import com.gregtechceu.gtceu.client.renderer.item.decorator.GTComponentItemDecorator;
 import com.gregtechceu.gtceu.client.renderer.item.decorator.GTLampItemOverlayRenderer;
@@ -28,150 +49,127 @@ import com.gregtechceu.gtceu.client.renderer.machine.impl.*;
 import com.gregtechceu.gtceu.client.renderer.machine.impl.BoilerMultiPartRender;
 import com.gregtechceu.gtceu.client.util.ModelEventHelper;
 import com.gregtechceu.gtceu.common.CommonEventListener;
-import com.gregtechceu.gtceu.common.CommonProxy;
-import com.gregtechceu.gtceu.common.data.*;
+import com.gregtechceu.gtceu.common.data.GTEntityTypes;
+import com.gregtechceu.gtceu.common.data.GTFluids;
+import com.gregtechceu.gtceu.common.data.GTMaterialBlocks;
+import com.gregtechceu.gtceu.common.data.GTParticleTypes;
 import com.gregtechceu.gtceu.common.data.models.GTModels;
-import com.gregtechceu.gtceu.common.entity.GTBoat;
 import com.gregtechceu.gtceu.common.item.DrumMachineItem;
 import com.gregtechceu.gtceu.common.item.LampBlockItem;
 import com.gregtechceu.gtceu.common.item.QuantumTankMachineItem;
-import com.gregtechceu.gtceu.common.machine.owner.MachineOwner;
 import com.gregtechceu.gtceu.common.mui.GTGuiTextures;
 import com.gregtechceu.gtceu.common.mui.GTGuiTheme;
 import com.gregtechceu.gtceu.config.ConfigHolder;
 import com.gregtechceu.gtceu.data.model.builder.PipeModelBuilder;
 import com.gregtechceu.gtceu.data.pack.event.RegisterDynamicResourcesEvent;
-import com.gregtechceu.gtceu.integration.embeddium.GTEmbeddiumCompat;
-import com.gregtechceu.gtceu.integration.kjs.GregTechKubeJSPlugin;
 import com.gregtechceu.gtceu.integration.map.ClientCacheManager;
 import com.gregtechceu.gtceu.integration.map.cache.client.GTClientCache;
-import com.gregtechceu.gtceu.integration.map.ftbchunks.FTBChunksPlugin;
 import com.gregtechceu.gtceu.integration.map.layer.Layers;
 import com.gregtechceu.gtceu.integration.map.layer.builtin.FluidRenderLayer;
 import com.gregtechceu.gtceu.integration.map.layer.builtin.OreRenderLayer;
 import com.gregtechceu.gtceu.utils.data.RuntimeBlockstateProvider;
 import com.gregtechceu.gtceu.utils.input.SyncedKeyMapping;
 
-import net.minecraft.client.Timer;
-import net.minecraft.client.model.BoatModel;
-import net.minecraft.client.model.ChestBoatModel;
-import net.minecraft.client.renderer.blockentity.HangingSignRenderer;
-import net.minecraft.client.renderer.blockentity.SignRenderer;
 import net.minecraft.client.renderer.entity.ThrownItemRenderer;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
-import net.minecraftforge.client.event.*;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.world.item.alchemy.PotionContents;
+import com.gregtechceu.gtceu.compat.bus.EventPriority;
+import com.gregtechceu.gtceu.compat.bus.IEventBus;
+import com.gregtechceu.gtceu.compat.bus.SubscribeEvent;
+import com.gregtechceu.gtceu.compat.fml.event.lifecycle.FMLClientSetupEvent;
+import com.gregtechceu.gtceu.compat.client.event.*;
+import com.gregtechceu.gtceu.compat.client.extensions.common.IClientFluidTypeExtensions;
+import com.gregtechceu.gtceu.compat.client.extensions.common.RegisterClientExtensionsEvent;
+import com.gregtechceu.gtceu.compat.common.NeoForge;
+import com.gregtechceu.gtceu.compat.fluids.FluidStack;
 
-import com.google.common.collect.BiMap;
-import com.google.common.collect.HashBiMap;
-import lombok.Getter;
+import org.jetbrains.annotations.NotNull;
 
-public class ClientProxy extends CommonProxy {
+public class ClientProxy {
 
-    @Getter
-    private static final Timer timer60Fps = new Timer(60f, 0);
-
-    public static final BiMap<ResourceLocation, GTOreDefinition> CLIENT_ORE_VEINS = HashBiMap.create();
-    public static final BiMap<ResourceLocation, BedrockFluidDefinition> CLIENT_FLUID_VEINS = HashBiMap.create();
-    public static final BiMap<ResourceLocation, BedrockOreDefinition> CLIENT_BEDROCK_ORE_VEINS = HashBiMap.create();
-
-    public ClientProxy() {
-        super();
-        init();
-    }
-
+    /** GregTech's client setup, called from the client entrypoint. */
     public static void init() {
-        if (!GTCEu.isDataGen()) {
+        ClientCacheManager.registerClientCache(GTClientCache.instance, "gtceu");
+        Layers.registerLayer(OreRenderLayer::new, "ore_veins");
+        Layers.registerLayer(FluidRenderLayer::new, "bedrock_fluids");
+        CommonEventListener.registerCapes(new RegisterGTCapesEvent());
 
-            ClientCacheManager.registerClientCache(GTClientCache.instance, "gtceu");
-            Layers.registerLayer(OreRenderLayer::new, "ore_veins");
-            Layers.registerLayer(FluidRenderLayer::new, "bedrock_fluids");
-            CommonEventListener.registerCapes(new RegisterGTCapesEvent());
-
-            if (GTCEu.Mods.isSodiumEmbeddiumLoaded()) {
-                GTEmbeddiumCompat.init();
-            }
-        }
+        registerModelLoaders();
+        registerSpecialItemRenderers();
         initializeDynamicRenders();
         ModelEventHelper.initInternalAssetReloadListeners();
 
-        MinecraftForge.EVENT_BUS.register(GTParticleManager.INSTANCE);
+        GTParticleManager.init();
+        BloomRenderer.init();
         GTGuiTextures.init();
-        FMLJavaModLoadingContext.get().getModEventBus().addListener(GTGuiTheme::onReloadThemes);
+        GTGuiTheme.registerThemes();
+
+        registerEntityRenderers();
+        registerKeyBindings();
+        registerItemDecorations();
+        HudElementRegistry.addLast(GTCEu.id("hud"), new HudGuiOverlay());
+        registerParticleProviders();
+        ClientEventListener.init();
     }
 
-    @SubscribeEvent
-    public void onRegisterEntityRenderers(EntityRenderersEvent.RegisterRenderers event) {
-        event.registerEntityRenderer(GTEntityTypes.DYNAMITE.get(), ThrownItemRenderer::new);
-        event.registerEntityRenderer(GTEntityTypes.POWDERBARREL.get(), GTExplosiveRenderer::new);
-        event.registerEntityRenderer(GTEntityTypes.INDUSTRIAL_TNT.get(), GTExplosiveRenderer::new);
+    public static final net.minecraft.client.model.geom.ModelLayerLocation RUBBER_BOAT_LAYER = boatLayer("boat/rubber");
+    public static final net.minecraft.client.model.geom.ModelLayerLocation RUBBER_CHEST_BOAT_LAYER = boatLayer(
+            "chest_boat/rubber");
+    public static final net.minecraft.client.model.geom.ModelLayerLocation TREATED_WOOD_BOAT_LAYER = boatLayer(
+            "boat/treated_wood");
+    public static final net.minecraft.client.model.geom.ModelLayerLocation TREATED_WOOD_CHEST_BOAT_LAYER = boatLayer(
+            "chest_boat/treated_wood");
 
-        event.registerBlockEntityRenderer(GTBlockEntities.GT_SIGN.get(), SignRenderer::new);
-        event.registerBlockEntityRenderer(GTBlockEntities.GT_HANGING_SIGN.get(), HangingSignRenderer::new);
-
-        event.registerEntityRenderer(GTEntityTypes.BOAT.get(), c -> new GTBoatRenderer(c, false));
-        event.registerEntityRenderer(GTEntityTypes.CHEST_BOAT.get(), c -> new GTBoatRenderer(c, true));
+    private static net.minecraft.client.model.geom.ModelLayerLocation boatLayer(String path) {
+        return new net.minecraft.client.model.geom.ModelLayerLocation(GTCEu.id(path), "main");
     }
 
-    @SubscribeEvent
-    public void onRegisterEntityLayerDefinitions(EntityRenderersEvent.RegisterLayerDefinitions event) {
-        for (var type : GTBoat.BoatType.values()) {
-            event.registerLayerDefinition(GTBoatRenderer.getBoatModelName(type), BoatModel::createBodyModel);
-            event.registerLayerDefinition(GTBoatRenderer.getChestBoatModelName(type),
-                    ChestBoatModel::createBodyModel);
-        }
+    /** Called from the client entrypoint. Boat textures follow the layer id: {@code textures/entity/boat/*.png}. */
+    public static void registerEntityRenderers() {
+        EntityRendererRegistry.register(GTEntityTypes.DYNAMITE.get(), ThrownItemRenderer::new);
+        EntityRendererRegistry.register(GTEntityTypes.POWDERBARREL.get(), GTExplosiveRenderer::new);
+        EntityRendererRegistry.register(GTEntityTypes.INDUSTRIAL_TNT.get(), GTExplosiveRenderer::new);
+
+        ModelLayerRegistry.registerModelLayer(RUBBER_BOAT_LAYER, BoatModel::createBoatModel);
+        ModelLayerRegistry.registerModelLayer(TREATED_WOOD_BOAT_LAYER, BoatModel::createBoatModel);
+        ModelLayerRegistry.registerModelLayer(RUBBER_CHEST_BOAT_LAYER, BoatModel::createChestBoatModel);
+        ModelLayerRegistry.registerModelLayer(TREATED_WOOD_CHEST_BOAT_LAYER, BoatModel::createChestBoatModel);
+        EntityRendererRegistry.register(GTEntityTypes.RUBBER_BOAT.get(), c -> new BoatRenderer(c, RUBBER_BOAT_LAYER));
+        EntityRendererRegistry.register(GTEntityTypes.TREATED_WOOD_BOAT.get(),
+                c -> new BoatRenderer(c, TREATED_WOOD_BOAT_LAYER));
+        EntityRendererRegistry.register(GTEntityTypes.RUBBER_CHEST_BOAT.get(),
+                c -> new BoatRenderer(c, RUBBER_CHEST_BOAT_LAYER));
+        EntityRendererRegistry.register(GTEntityTypes.TREATED_WOOD_CHEST_BOAT.get(),
+                c -> new BoatRenderer(c, TREATED_WOOD_CHEST_BOAT_LAYER));
     }
 
-    @SubscribeEvent
-    public void onRegisterItemDecorations(RegisterItemDecorationsEvent event) {
-        for (Item item : ForgeRegistries.ITEMS) {
-            if (item instanceof IComponentItem) {
-                event.register(item, GTComponentItemDecorator.INSTANCE);
-            }
-            if (item instanceof IGTTool) {
-                event.register(item, GTToolBarRenderer.INSTANCE);
-            }
-            if (item instanceof LampBlockItem) {
-                event.register(item, GTLampItemOverlayRenderer.INSTANCE);
-            }
-            if (item instanceof DrumMachineItem) {
-                event.register(item, GTTankItemFluidPreview.DRUM);
-            }
+    /** Draws GregTech's item overlays (charge bars, tool durability, lamp state, tank contents). */
+    private static void registerItemDecorations() {
+        ExtractItemDecorationsCallback.EVENT.register((graphics, font, stack, x, y) -> {
+            Item item = stack.getItem();
+            if (item instanceof IComponentItem) GTComponentItemDecorator.INSTANCE.render(graphics, font, stack, x, y);
+            if (item instanceof IGTTool) GTToolBarRenderer.INSTANCE.render(graphics, font, stack, x, y);
+            if (item instanceof LampBlockItem) GTLampItemOverlayRenderer.INSTANCE.render(graphics, font, stack, x, y);
+            if (item instanceof DrumMachineItem) GTTankItemFluidPreview.DRUM.render(graphics, font, stack, x, y);
             if (item instanceof QuantumTankMachineItem) {
-                event.register(item, GTTankItemFluidPreview.QUANTUM_TANK);
+                GTTankItemFluidPreview.QUANTUM_TANK.render(graphics, font, stack, x, y);
             }
-        }
+        });
     }
 
-    @SubscribeEvent
-    public void registerKeyBindings(RegisterKeyMappingsEvent event) {
-        SyncedKeyMapping.onRegisterKeyBinds(event);
+    /** Called from the client entrypoint. */
+    public static void registerKeyBindings() {
+        SyncedKeyMapping.registerClient();
     }
 
-    @SubscribeEvent
-    public void onRegisterGuiOverlays(RegisterGuiOverlaysEvent event) {
-        event.registerAboveAll("hud", new HudGuiOverlay());
-    }
-
-    @SubscribeEvent
-    public void onRegisterParticleProviders(RegisterParticleProvidersEvent event) {
-        event.registerSpriteSet(GTParticleTypes.HAZARD_PARTICLE.get(), HazardParticle.Provider::new);
-        event.registerSpriteSet(GTParticleTypes.MUFFLER_PARTICLE.get(), MufflerParticle.Provider::new);
-    }
-
-    @SubscribeEvent
-    public void onClientSetup(FMLClientSetupEvent event) {
-        MachineOwner.init();
-        if (ConfigHolder.INSTANCE.compat.minimap.toggle.ftbChunksIntegration &&
-                GTCEu.isModLoaded(GTValues.MODID_FTB_CHUNKS)) {
-            FTBChunksPlugin.addEventListeners();
-        }
+    private static void registerParticleProviders() {
+        ParticleProviderRegistry.getInstance().register(GTParticleTypes.HAZARD_PARTICLE.get(),
+                HazardParticle.Provider::new);
+        ParticleProviderRegistry.getInstance().register(GTParticleTypes.MUFFLER_PARTICLE.get(),
+                MufflerParticle.Provider::new);
     }
 
     private static void initializeDynamicRenders() {
@@ -188,21 +186,53 @@ public class ClientProxy extends CommonProxy {
         DynamicRenderManager.register(GTCEu.id("central_monitor"), CentralMonitorRender.TYPE);
     }
 
-    @SubscribeEvent
-    public void onRegisterModelLoaders(ModelEvent.RegisterGeometryLoaders event) {
-        event.register(MachineModelLoader.ID.getPath(), MachineModelLoader.INSTANCE);
-        event.register(PipeModelLoader.ID.getPath(), PipeModelLoader.INSTANCE);
-        event.register("facade", FacadeUnbakedModel.Loader.INSTANCE);
-        event.register(CustomItemRendererWrapperModel.ID.getPath(), CustomItemRendererWrapperModel.Loader.INSTANCE);
+    /** Registers GregTech's special item renderers ({@code "minecraft:special"} item models). */
+    public static void registerSpecialItemRenderers() {
+        SpecialModelRenderers.ID_MAPPER.put(GTCEu.id("lamp"), LampSpecialRenderer.Unbaked.MAP_CODEC);
+        SpecialModelRenderers.ID_MAPPER.put(GTCEu.id("machine_dynamic"), MachineItemSpecialRenderer.Unbaked.MAP_CODEC);
+        SpecialModelRenderers.ID_MAPPER.put(GTCEu.id("facade"), FacadeSpecialRenderer.Unbaked.MAP_CODEC);
+    }
+
+    /** Registers GregTech's custom model types ({@code "fabric:type"} in model JSON). */
+    public static void registerModelLoaders() {
+        GeometryLoaderModel.register(MachineModelLoader.ID, MachineModelLoader.INSTANCE);
+        GeometryLoaderModel.register(PipeModelLoader.ID, PipeModelLoader.INSTANCE);
+        GeometryLoaderModel.register(GTCEu.id("facade"), FacadeUnbakedModel.Loader.INSTANCE);
+        GeometryLoaderModel.register(CustomItemRendererWrapperModel.ID, CustomItemRendererWrapperModel.Loader.INSTANCE);
+        GeometryLoaderModel.register(CompositeModel.ID, CompositeModel.Loader.INSTANCE);
+    }
+
+    /** The client extensions of GregTech's fluid types; called from {@link #init}. */
+    public static void registerClientExtensions(RegisterClientExtensionsEvent event) {
+        event.registerFluidType(new IClientFluidTypeExtensions() {
+
+            private static final Identifier TEXTURE = GTCEu.id("block/fluids/fluid.potion");
+
+            @Override
+            public @NotNull Identifier getStillTexture() {
+                return TEXTURE;
+            }
+
+            @Override
+            public @NotNull Identifier getFlowingTexture() {
+                return TEXTURE;
+            }
+
+            @Override
+            public int getTintColor(@NotNull FluidStack stack) {
+                return stack.getOrDefault(DataComponents.POTION_CONTENTS, PotionContents.EMPTY)
+                        .getColor() | 0xff000000;
+            }
+        }, GTFluids.POTION.getType());
     }
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
-    public void preRegisterDynamicAssets(RegisterDynamicResourcesEvent event) {
+    public static void preRegisterDynamicAssets(RegisterDynamicResourcesEvent event) {
         PipeModel.DYNAMIC_MODELS.clear();
     }
 
     @SubscribeEvent
-    public void registerDynamicAssets(RegisterDynamicResourcesEvent event) {
+    public static void registerDynamicAssets(RegisterDynamicResourcesEvent event) {
         // regenerate all pipe models in case their textures changed
         // cables may do this, others too if something's removed
         for (var block : GTMaterialBlocks.CABLE_BLOCKS.values()) {
@@ -228,13 +258,10 @@ public class ClientProxy extends CommonProxy {
     }
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
-    public void postRegisterDynamicAssets(RegisterDynamicResourcesEvent event) {
+    public static void postRegisterDynamicAssets(RegisterDynamicResourcesEvent event) {
         // do this last so addons can easily add new variants to the registered model set
         PipeModel.initDynamicModels();
 
-        if (GTCEu.Mods.isKubeJSLoaded()) {
-            GregTechKubeJSPlugin.generateMachineBlockModels();
-        }
         RuntimeBlockstateProvider.INSTANCE.run();
         PipeModelBuilder.clearRestrictorModelCache();
     }

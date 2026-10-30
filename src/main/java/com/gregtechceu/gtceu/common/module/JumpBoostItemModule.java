@@ -5,13 +5,14 @@ import com.gregtechceu.gtceu.api.item.module.*;
 import com.gregtechceu.gtceu.api.item.module.ui.ItemModuleSettingsBuilder;
 
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
 
 import brachy.modularui.api.drawable.Text;
 import brachy.modularui.value.sync.PanelSyncManager;
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import lombok.Getter;
 
@@ -19,12 +20,12 @@ import java.util.Objects;
 
 public class JumpBoostItemModule extends TieredItemModule implements IJumpBoostItemModule {
 
-    public JumpBoostItemModule(ResourceLocation id, int tier) {
+    public JumpBoostItemModule(Identifier id, int tier) {
         super(id, tier);
     }
 
     @Override
-    public Codec<? extends ModuleData> moduleDataCodec() {
+    public MapCodec<? extends ModuleData> moduleDataCodec() {
         return JumpBoostModuleData.CODEC;
     }
 
@@ -77,22 +78,18 @@ public class JumpBoostItemModule extends TieredItemModule implements IJumpBoostI
     public static class JumpBoostModuleData extends ModuleData {
 
         // spotless:off
-        public static final Codec<JumpBoostModuleData> CODEC = RecordCodecBuilder.create(instance -> baseCodec(instance).and(
+        public static final MapCodec<JumpBoostModuleData> CODEC = RecordCodecBuilder.mapCodec(instance -> baseCodec(instance).and(
                 Codec.FLOAT.fieldOf("jump_boost").forGetter(JumpBoostModuleData::getJumpBoost)
         ).apply(instance, JumpBoostModuleData::new));
-        // spotless:on
+        //spotless:on
 
         @Getter
-        private float jumpBoost;
+        private final float jumpBoost;
 
         public JumpBoostModuleData(int slot, ItemModule module, ItemStack moduleItem, boolean enabled,
                                    float jumpBoost) {
             super(slot, module, moduleItem, enabled);
             this.jumpBoost = jumpBoost;
-        }
-
-        public JumpBoostModuleData withJumpBoost(float jumpBoost) {
-            return new JumpBoostModuleData(slot, module, moduleItem, enabled, jumpBoost);
         }
 
         @Override
@@ -101,12 +98,16 @@ public class JumpBoostItemModule extends TieredItemModule implements IJumpBoostI
         }
 
         @Override
-        public ModuleData withEnabled(boolean enabled) {
+        public ModuleData withModuleItem(ItemStack moduleItem) {
+            return new JumpBoostModuleData(slot, module, moduleItem, enabled, jumpBoost);
+        }
+
+        public JumpBoostModuleData withJumpBoost(float jumpBoost) {
             return new JumpBoostModuleData(slot, module, moduleItem, enabled, jumpBoost);
         }
 
         @Override
-        public ModuleData withModuleItem(ItemStack moduleItem) {
+        public ModuleData withEnabled(boolean enabled) {
             return new JumpBoostModuleData(slot, module, moduleItem, enabled, jumpBoost);
         }
 

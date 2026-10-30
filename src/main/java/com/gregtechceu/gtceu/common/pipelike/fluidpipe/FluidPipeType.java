@@ -10,7 +10,8 @@ import com.gregtechceu.gtceu.api.pipenet.IMaterialPipeType;
 import com.gregtechceu.gtceu.api.registry.registrate.provider.GTBlockstateProvider;
 import com.gregtechceu.gtceu.client.model.pipe.PipeModel;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.core.Holder;
+import net.minecraft.resources.Identifier;
 
 import lombok.Getter;
 
@@ -26,24 +27,24 @@ public enum FluidPipeType implements IMaterialPipeType<FluidPipeProperties> {
     QUADRUPLE("quadruple", 0.875f, 2, pipeQuadrupleFluid, 4),
     NONUPLE("nonuple", 0.875f, 2, pipeNonupleFluid, 9);
 
-    public static final ResourceLocation TYPE_ID = GTCEu.id("fluid");
+    public static final Identifier TYPE_ID = GTCEu.id("fluid");
 
     public final String name;
     public final float thickness;
     public final int capacityMultiplier;
     @Getter
-    public final TagPrefix tagPrefix;
+    public final Holder<TagPrefix> tagPrefix;
     public final int channels;
 
-    FluidPipeType(String name, float thickness, int capacityMultiplier, TagPrefix TagPrefix) {
-        this(name, thickness, capacityMultiplier, TagPrefix, 1);
+    FluidPipeType(String name, float thickness, int capacityMultiplier, Holder<TagPrefix> tagPrefix) {
+        this(name, thickness, capacityMultiplier, tagPrefix, 1);
     }
 
-    FluidPipeType(String name, float thickness, int capacityMultiplier, TagPrefix TagPrefix, int channels) {
+    FluidPipeType(String name, float thickness, int capacityMultiplier, Holder<TagPrefix> tagPrefix, int channels) {
         this.name = name;
         this.thickness = thickness;
         this.capacityMultiplier = capacityMultiplier;
-        this.tagPrefix = TagPrefix;
+        this.tagPrefix = tagPrefix;
         this.channels = channels;
     }
 
@@ -70,7 +71,7 @@ public enum FluidPipeType implements IMaterialPipeType<FluidPipeProperties> {
     }
 
     @Override
-    public ResourceLocation type() {
+    public Identifier type() {
         return TYPE_ID;
     }
 

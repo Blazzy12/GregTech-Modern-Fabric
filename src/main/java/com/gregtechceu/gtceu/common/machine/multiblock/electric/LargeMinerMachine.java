@@ -25,15 +25,16 @@ import com.gregtechceu.gtceu.utils.GTTransferUtils;
 import com.gregtechceu.gtceu.utils.GTUtil;
 
 import net.minecraft.ChatFormatting;
-import net.minecraft.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
 import net.minecraft.core.Direction;
+import net.minecraft.core.Holder;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
-import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.capability.IFluidHandler;
+import com.gregtechceu.gtceu.compat.fluids.FluidStack;
+import com.gregtechceu.gtceu.compat.fluids.capability.IFluidHandler;
 
 import brachy.modularui.api.drawable.Text;
 import brachy.modularui.api.widget.IWidget;
@@ -84,7 +85,7 @@ public class LargeMinerMachine extends WorkableElectricMultiblockMachine
         return (LargeMinerLogic) super.getRecipeLogic();
     }
 
-    public static Material getMaterial(int tier) {
+    public static Holder<Material> getMaterial(int tier) {
         if (tier == GTValues.EV) return GTMaterials.Steel;
         if (tier == GTValues.IV) return GTMaterials.Titanium;
         if (tier == GTValues.LuV) return GTMaterials.TungstenSteel;
@@ -178,7 +179,7 @@ public class LargeMinerMachine extends WorkableElectricMultiblockMachine
             FluidStack drillingFluid = DrillingFluid
                     .getFluid(this.drillingFluidConsumePerTick * getRecipeLogic().getOverclockAmount());
             FluidStack fluidStack = inputFluidInventory.getFluidInTank(0);
-            if (fluidStack != FluidStack.EMPTY && fluidStack.isFluidEqual(DrillingFluid.getFluid(1)) &&
+            if (fluidStack != FluidStack.EMPTY && fluidStack.is(DrillingFluid.getFluid()) &&
                     fluidStack.getAmount() >= drillingFluid.getAmount()) {
                 if (!simulate) {
                     GTTransferUtils.drainFluidAccountNotifiableList(inputFluidInventory, drillingFluid,
@@ -195,7 +196,7 @@ public class LargeMinerMachine extends WorkableElectricMultiblockMachine
     public ModularPanel<?> buildUI(PosGuiData data, PanelSyncManager syncManager, UISettings settings) {
         var panelBuilder = getPanelBuilder(data, syncManager, settings);
         panelBuilder.mainContents(parent -> buildMainUI(parent, data, syncManager, settings));
-        var machinePanel = panelBuilder.build(data, syncManager, settings);
+        var machinePanel = panelBuilder.build(syncManager, settings);
 
         BooleanSyncValue silk = syncManager.getOrCreateSyncHandler("silkTouch", BooleanSyncValue.class,
                 () -> new BooleanSyncValue(() -> getRecipeLogic().isSilkTouchMode(),
@@ -293,58 +294,6 @@ public class LargeMinerMachine extends WorkableElectricMultiblockMachine
 
         return widgets;
     }
-
-    //////////////////////////////////////
-    // *********** GUI ***********//
-    //////////////////////////////////////
-    // @Override
-    // public void addDisplayText(List<Component> textList) {
-    // super.addDisplayText(textList);
-    // if (this.isFormed()) {
-    // int workingAreaChunks = getRecipeLogic().getCurrentRadius() * 2 / CHUNK_LENGTH;
-    // int workingArea = IMiner.getWorkingArea(getRecipeLogic().getCurrentRadius());
-    // textList.add(Component.translatable("gtceu.machine.miner.startx",
-    // getRecipeLogic().getX() == Integer.MAX_VALUE ? 0 : getRecipeLogic().getX()));
-    // textList.add(Component.translatable("gtceu.machine.miner.starty",
-    // getRecipeLogic().getY() == Integer.MAX_VALUE ? 0 : getRecipeLogic().getY()));
-    // textList.add(Component.translatable("gtceu.machine.miner.startz",
-    // getRecipeLogic().getZ() == Integer.MAX_VALUE ? 0 : getRecipeLogic().getZ()));
-    // textList.add(Component.translatable("gtceu.universal.tooltip.silk_touch")
-    // .append(ComponentPanelWidget.withButton(Component.literal("[")
-    // .append(getRecipeLogic().isSilkTouchMode() ?
-    // Component.translatable("gtceu.creative.activity.on") :
-    // Component.translatable("gtceu.creative.activity.off"))
-    // .append(Component.literal("]")), "silk_touch")));
-    // textList.add(Component.translatable("gtceu.universal.tooltip.chunk_mode")
-    // .append(ComponentPanelWidget.withButton(Component.literal("[")
-    // .append(getRecipeLogic().isChunkMode() ?
-    // Component.translatable("gtceu.creative.activity.on") :
-    // Component.translatable("gtceu.creative.activity.off"))
-    // .append(Component.literal("]")), "chunk_mode")));
-    // if (getRecipeLogic().isChunkMode()) {
-    // textList.add(Component.translatable("gtceu.universal.tooltip.working_area_chunks", workingAreaChunks,
-    // workingAreaChunks));
-    // } else {
-    // textList.add(Component.translatable("gtceu.universal.tooltip.working_area", workingArea, workingArea));
-    // }
-    // if (getRecipeLogic().isDone()) {
-    // textList.add(Component.translatable("gtceu.multiblock.large_miner.done")
-    // .setStyle(Style.EMPTY.withColor(ChatFormatting.GREEN)));
-    // }
-    // }
-    // }
-    //
-    // @Override
-    // public void handleDisplayClick(String componentData, ClickData clickData) {
-    // if (!clickData.isRemote) {
-    // if (componentData.equals("chunk_mode")) {
-    // getRecipeLogic().setChunkMode(!getRecipeLogic().isChunkMode());
-    // }
-    // if (componentData.equals("silk_touch")) {
-    // getRecipeLogic().setSilkTouchMode(!getRecipeLogic().isSilkTouchMode());
-    // }
-    // }
-    // }
 
     //////////////////////////////////////
     // ******* Interaction *******//

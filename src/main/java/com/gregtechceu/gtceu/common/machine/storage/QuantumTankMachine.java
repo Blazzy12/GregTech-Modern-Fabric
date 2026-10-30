@@ -3,6 +3,7 @@ package com.gregtechceu.gtceu.common.machine.storage;
 import com.gregtechceu.gtceu.api.blockentity.BlockEntityCreationInfo;
 import com.gregtechceu.gtceu.api.capability.IControllable;
 import com.gregtechceu.gtceu.api.capability.recipe.IO;
+import com.gregtechceu.gtceu.api.item.datacomponents.LargeFluidContent;
 import com.gregtechceu.gtceu.api.machine.*;
 import com.gregtechceu.gtceu.api.machine.feature.IMuiMachine;
 import com.gregtechceu.gtceu.api.machine.trait.MachineTrait;
@@ -10,6 +11,7 @@ import com.gregtechceu.gtceu.api.sync_system.annotations.SaveField;
 import com.gregtechceu.gtceu.api.sync_system.annotations.SyncToClient;
 import com.gregtechceu.gtceu.api.transfer.fluid.CustomFluidTank;
 import com.gregtechceu.gtceu.api.transfer.fluid.IFluidHandlerModifiable;
+import com.gregtechceu.gtceu.common.data.item.GTDataComponents;
 import com.gregtechceu.gtceu.common.machine.trait.AutoOutputTrait;
 import com.gregtechceu.gtceu.common.mui.GTGuiTextures;
 import com.gregtechceu.gtceu.common.mui.GTMuiWidgets;
@@ -20,14 +22,15 @@ import com.gregtechceu.gtceu.utils.GTTransferUtils;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.Direction;
-import net.minecraft.nbt.CompoundTag;
+import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionResult;
-import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.FluidUtil;
-import net.minecraftforge.fluids.IFluidTank;
-import net.minecraftforge.fluids.capability.IFluidHandler;
-import net.minecraftforge.items.IItemHandlerModifiable;
+import com.gregtechceu.gtceu.compat.fluids.FluidStack;
+import com.gregtechceu.gtceu.compat.fluids.FluidType;
+import com.gregtechceu.gtceu.compat.fluids.FluidUtil;
+import com.gregtechceu.gtceu.compat.fluids.IFluidTank;
+import com.gregtechceu.gtceu.compat.fluids.capability.IFluidHandler;
+import com.gregtechceu.gtceu.compat.items.IItemHandlerModifiable;
 
 import brachy.modularui.api.drawable.Text;
 import brachy.modularui.api.widget.IWidget;
@@ -95,8 +98,20 @@ public class QuantumTankMachine extends TieredMachine implements IControllable,
     }
 
     @Override
-    public void onLoad() {
-        super.onLoad();
+    protected void applyImplicitComponents(net.minecraft.core.component.DataComponentGetter componentInput) {
+        super.applyImplicitComponents(componentInput);
+        LargeFluidContent storage = componentInput.get(GTDataComponents.LARGE_FLUID_CONTENT.get());
+        if (storage != null) {
+            stored = storage.stored();
+            storedAmount = storage.amount();
+        }
+    }
+
+    @Override
+    public void collectImplicitComponents(DataComponentMap.Builder components) {
+        super.collectImplicitComponents(components);
+        if (!stored.isEmpty() && storedAmount != 0)
+            components.set(GTDataComponents.LARGE_FLUID_CONTENT.get(), new LargeFluidContent(stored, storedAmount));
     }
 
     protected void onFluidChanged() {
@@ -161,7 +176,7 @@ public class QuantumTankMachine extends TieredMachine implements IControllable,
 
     protected void setLocked(boolean locked) {
         if (!stored.isEmpty() && locked) {
-            var copied = new FluidStack(stored, 1000);
+            var copied = stored.copyWithAmount(FluidType.BUCKET_VOLUME);
             lockedFluid.setFluid(copied);
         } else if (!locked) {
             lockedFluid.setFluid(FluidStack.EMPTY);
@@ -172,25 +187,12 @@ public class QuantumTankMachine extends TieredMachine implements IControllable,
     protected void setLocked(FluidStack fluid) {
         if (fluid.isEmpty()) setLocked(false);
         else if (stored.isEmpty()) lockedFluid.setFluid(fluid);
-        else if (stored.isFluidEqual(fluid)) setLocked(true);
+        else if (stored.is(fluid.getFluid())) setLocked(true);
         syncDataHolder.markClientSyncFieldDirty("lockedFluid");
     }
 
     public FluidStack getLockedFluid() {
         return lockedFluid.getFluid();
-    }
-
-    @Override
-    public void saveToItem(CompoundTag tag, boolean clone) {
-        if (clone || stored.isEmpty()) return;
-        tag.put("stored", stored.writeToNBT(new CompoundTag()));
-        tag.putLong("storedAmount", storedAmount);
-    }
-
-    @Override
-    public void loadFromItem(CompoundTag tag) {
-        stored = FluidStack.loadFluidStackFromNBT(tag.getCompound("stored"));
-        storedAmount = tag.getLong("storedAmount");
     }
 
     //////////////////////////////////////
@@ -232,7 +234,7 @@ public class QuantumTankMachine extends TieredMachine implements IControllable,
                                 .child(createPhantomLockedFluidSlot(syncManager))));
     }
 
-    protected IWidget createFluidSlot(PanelSyncManager syncManager) {
+    private IWidget createFluidSlot(PanelSyncManager syncManager) {
         syncManager.syncValue("fluid_slot",
                 SyncHandlers.fluidSlot(new FluidCacheTankWrapper(cache)).controlsAmount(false));
         return new FluidSlot().syncHandler("fluid_slot", 0).background(GTGuiTextures.FLUID_SLOT);
@@ -246,7 +248,8 @@ public class QuantumTankMachine extends TieredMachine implements IControllable,
 
     protected class FluidCache extends MachineTrait implements IFluidHandler {
 
-        private final Predicate<FluidStack> filter = f -> !isLocked() || getLockedFluid().isFluidEqual(f);
+        private final Predicate<FluidStack> filter = f -> !isLocked() ||
+                FluidStack.isSameFluidSameComponents(getLockedFluid(), f);
 
         public FluidCache() {
             super();
@@ -254,18 +257,18 @@ public class QuantumTankMachine extends TieredMachine implements IControllable,
 
         @Override
         public FluidStack getFluidInTank(int tank) {
-            return new FluidStack(stored, GTMath.saturatedCast(storedAmount));
+            return stored.copyWithAmount(GTMath.saturatedCast(storedAmount));
         }
 
         @Override
         public int fill(FluidStack resource, FluidAction action) {
             long free = isVoiding ? Long.MAX_VALUE : maxAmount - storedAmount;
             long canFill = 0;
-            if ((stored.isEmpty() || stored.isFluidEqual(resource)) && filter.test(resource)) {
+            if ((stored.isEmpty() || FluidStack.isSameFluidSameComponents(resource, stored)) && filter.test(resource)) {
                 canFill = Math.min(resource.getAmount(), free);
             }
             if (action.execute() && canFill > 0) {
-                if (stored.isEmpty()) stored = new FluidStack(resource, 1000);
+                if (stored.isEmpty()) stored = resource.copyWithAmount(FluidType.BUCKET_VOLUME);
                 storedAmount = Math.min(maxAmount, storedAmount + canFill);
                 onFluidChanged();
             }
@@ -276,7 +279,7 @@ public class QuantumTankMachine extends TieredMachine implements IControllable,
         public FluidStack drain(int maxDrain, FluidAction action) {
             if (stored.isEmpty()) return FluidStack.EMPTY;
             long toDrain = Math.min(storedAmount, maxDrain);
-            var copy = new FluidStack(stored, (int) toDrain);
+            var copy = stored.copyWithAmount((int) toDrain);
             if (action.execute() && toDrain > 0) {
                 storedAmount -= toDrain;
                 if (storedAmount == 0) stored = FluidStack.EMPTY;
@@ -287,7 +290,7 @@ public class QuantumTankMachine extends TieredMachine implements IControllable,
 
         @Override
         public FluidStack drain(FluidStack resource, FluidAction action) {
-            if (!resource.isFluidEqual(stored)) return FluidStack.EMPTY;
+            if (!FluidStack.isSameFluidSameComponents(resource, stored)) return FluidStack.EMPTY;
             return drain(resource.getAmount(), action);
         }
 

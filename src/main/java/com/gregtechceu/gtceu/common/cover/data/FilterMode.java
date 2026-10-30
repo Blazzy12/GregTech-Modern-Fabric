@@ -2,7 +2,7 @@ package com.gregtechceu.gtceu.common.cover.data;
 
 import com.gregtechceu.gtceu.api.capability.recipe.IO;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 

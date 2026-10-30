@@ -1,23 +1,44 @@
 package com.gregtechceu.gtceu.common.data;
 
+import net.minecraft.world.item.equipment.ArmorType;
+
 import com.gregtechceu.gtceu.api.data.chemical.ChemicalHelper;
 import com.gregtechceu.gtceu.api.data.chemical.material.Material;
 import com.gregtechceu.gtceu.api.data.chemical.material.info.MaterialFlags;
+import com.gregtechceu.gtceu.api.data.chemical.material.properties.ArmorProperty;
 import com.gregtechceu.gtceu.api.data.chemical.material.properties.PropertyKey;
+import com.gregtechceu.gtceu.api.data.chemical.material.properties.ToolProperty;
 import com.gregtechceu.gtceu.api.data.chemical.material.stack.MaterialEntry;
 import com.gregtechceu.gtceu.api.data.tag.TagPrefix;
 import com.gregtechceu.gtceu.api.item.IGTTool;
 import com.gregtechceu.gtceu.api.item.TagPrefixItem;
+import com.gregtechceu.gtceu.api.item.datacomponents.ToolBehaviors;
 import com.gregtechceu.gtceu.api.item.tool.GTToolType;
+import com.gregtechceu.gtceu.api.item.tool.IGTToolDefinition;
+import com.gregtechceu.gtceu.api.item.tool.MaterialToolTier;
 import com.gregtechceu.gtceu.api.registry.GTRegistries;
 import com.gregtechceu.gtceu.api.registry.registrate.GTRegistrate;
+import com.gregtechceu.gtceu.common.data.item.GTDataComponents;
 import com.gregtechceu.gtceu.common.item.armor.GTArmorItem;
-import com.gregtechceu.gtceu.common.item.armor.GTDyeableArmorItem;
+import com.gregtechceu.gtceu.common.item.datacomponents.ResolvableItemEnchantments;
 
-import net.minecraft.world.item.ArmorItem;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.item.Items;
+import net.minecraft.core.Holder;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.tags.TagKey;
+import net.minecraft.util.Unit;
+import net.minecraft.world.entity.EquipmentSlotGroup;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.item.*;
+import net.minecraft.world.item.component.ItemAttributeModifiers;
+import net.minecraft.world.item.component.Tool;
+import net.minecraft.world.item.component.TooltipDisplay;
+import net.minecraft.core.HolderGetter;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.level.ItemLike;
+import net.minecraft.world.level.block.Block;
+import com.gregtechceu.gtceu.compat.client.extensions.common.IClientItemExtensions;
 
 import com.google.common.collect.ArrayTable;
 import com.google.common.collect.ImmutableTable;
@@ -26,56 +47,60 @@ import com.tterrag.registrate.providers.ProviderType;
 import com.tterrag.registrate.util.entry.ItemEntry;
 import com.tterrag.registrate.util.entry.ItemProviderEntry;
 import com.tterrag.registrate.util.nullness.NonNullBiConsumer;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import org.jetbrains.annotations.ApiStatus;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Supplier;
 
 import static com.gregtechceu.gtceu.common.data.GTCreativeModeTabs.MATERIAL_ITEM;
 import static com.gregtechceu.gtceu.common.data.GTCreativeModeTabs.TOOL;
 import static com.gregtechceu.gtceu.common.registry.GTRegistration.REGISTRATE;
 
-@SuppressWarnings("UnstableApiUsage")
 public class GTMaterialItems {
 
+    // spotless:off
+
     // Reference Table Builders
-    static ImmutableTable.Builder<TagPrefix, Material, ItemEntry<? extends Item>> MATERIAL_ITEMS_BUILDER = ImmutableTable
-            .builder();
+    static ImmutableTable.Builder<TagPrefix, Material, ItemEntry<? extends Item>> MATERIAL_ITEMS_BUILDER = ImmutableTable.builder();
 
     // Reference Maps
     public static final Map<MaterialEntry, Supplier<? extends ItemLike>> toUnify = new HashMap<>();
-    public static final Map<TagPrefix, TagPrefix> purifyMap = new HashMap<>();
-
+    public static final Map<Holder<TagPrefix>, Holder<TagPrefix>> purifyMap = new HashMap<>();
     static {
-        purifyMap.put(TagPrefix.crushed, TagPrefix.crushedPurified);
-        purifyMap.put(TagPrefix.dustImpure, TagPrefix.dust);
-        purifyMap.put(TagPrefix.dustPure, TagPrefix.dust);
+        purifyMap.put(TagPrefix.crushed.getDelegate(), TagPrefix.crushedPurified);
+        purifyMap.put(TagPrefix.dustImpure.getDelegate(), TagPrefix.dust);
+        purifyMap.put(TagPrefix.dustPure.getDelegate(), TagPrefix.dust);
     }
 
     // Reference Tables
 
     /**
-     * Use {@link ChemicalHelper#getItem(TagPrefix, Material)} instead.
+     * Use {@link ChemicalHelper#getItem(TagPrefix, Material)} instead of querying this table directly.
      */
     @ApiStatus.Internal
     public static Table<TagPrefix, Material, ItemEntry<? extends Item>> MATERIAL_ITEMS;
-    public static final Table<Material, GTToolType, ItemProviderEntry<IGTTool>> TOOL_ITEMS = ArrayTable.create(
-            GTRegistries.MATERIALS.values().stream()
+
+    public static final Table<Material, GTToolType, ItemProviderEntry<Item, ? extends IGTTool>> TOOL_ITEMS = ArrayTable.create(
+            GTRegistries.MATERIALS.stream()
                     .filter(mat -> mat.hasProperty(PropertyKey.TOOL))
                     .toList(),
             GTToolType.getTypes().values().stream().toList());
-    public static final Table<Material, ArmorItem.Type, ItemEntry<? extends ArmorItem>> ARMOR_ITEMS = ArrayTable.create(
-            GTRegistries.MATERIALS.values().stream()
+
+    public static final Table<Material, ArmorType, ItemEntry<? extends com.gregtechceu.gtceu.api.item.armor.GTArmorBaseItem>> ARMOR_ITEMS = ArrayTable.create(
+            GTRegistries.MATERIALS.stream()
                     .filter(mat -> mat.hasProperty(PropertyKey.ARMOR))
                     .toList(),
-            Arrays.asList(ArmorItem.Type.values()));
+            Arrays.asList(ArmorType.values()));
+
+    public static final Set<Item> ITEMS_WITHOUT_MATERIAL = new ObjectOpenHashSet<>();
+
+    // spotless:on
 
     // Material Items
     public static void generateMaterialItems() {
-        REGISTRATE.creativeModeTab(() -> MATERIAL_ITEM);
-        for (var tagPrefix : GTRegistries.TAG_PREFIXES) {
+        REGISTRATE.creativeModeTab(MATERIAL_ITEM);
+        for (TagPrefix tagPrefix : GTRegistries.TAG_PREFIXES) {
             if (tagPrefix.doGenerateItem()) {
                 for (Material material : GTRegistries.MATERIALS) {
                     if (tagPrefix.doGenerateItem(material)) {
@@ -105,7 +130,7 @@ public class GTMaterialItems {
 
     // Material Tools
     public static void generateTools() {
-        REGISTRATE.creativeModeTab(() -> TOOL);
+        REGISTRATE.creativeModeTab(TOOL);
         for (GTToolType toolType : GTToolType.getTypes().values()) {
             for (Material material : GTRegistries.MATERIALS) {
                 if (material.hasProperty(PropertyKey.TOOL)) {
@@ -119,24 +144,110 @@ public class GTMaterialItems {
         }
     }
 
-    @SuppressWarnings("unchecked")
-    private static void generateTool(Material material, GTToolType toolType, GTRegistrate registrate) {
-        var tier = material.getToolTier();
-        TOOL_ITEMS.put(material, toolType, (ItemProviderEntry<IGTTool>) (ItemProviderEntry<?>) registrate
-                .item(toolType.idFormat.formatted(tier.material.getName()),
-                        p -> toolType.constructor.apply(toolType, tier, material,
-                                toolType.toolDefinition, p).asItem())
-                .properties(p -> p.craftRemainder(Items.AIR))
+    @SuppressWarnings({ "unchecked", "RedundantCast" })
+    private static void generateTool(final Material material, final GTToolType toolType, GTRegistrate registrate) {
+        final MaterialToolTier tier = material.getToolTier();
+        // spotless:off
+        TOOL_ITEMS.put(material, toolType, (ItemProviderEntry<Item, ? extends IGTTool>) (ItemProviderEntry<Item, ?>) registrate
+                .item(toolType.idFormat.formatted(tier.material.getName()), p -> toolType.constructor.create(toolType, tier, material, toolType.toolDefinition, p).asItem())
+                .properties(p -> {
+                    p.component(GTDataComponents.MAX_AOE.get(), toolType.toolDefinition.getAoEDefinition());
+                    p.component(GTDataComponents.AOE.get(), toolType.toolDefinition.getAoEDefinition());
+
+                    IGTToolDefinition toolStats = toolType.toolDefinition;
+                    // Set other tool stats (durability)
+                    ToolProperty toolProperty = material.getProperty(PropertyKey.TOOL);
+
+                    Tool tool = toolStats.getTool();
+                    List<Tool.Rule> rules = new ArrayList<>(tool.rules());
+                    HolderGetter<Block> blocks = BuiltInRegistries.acquireBootstrapRegistrationLookup(BuiltInRegistries.BLOCK);
+                    rules.add(Tool.Rule.deniesDrops(blocks.getOrThrow(tier.getIncorrectBlocksForDrops())));
+
+                    float harvestSpeed = toolStats.getEfficiencyMultiplier() * tier.getSpeed() + toolStats.getBaseEfficiency();
+                    for (TagKey<Block> tag : toolType.harvestTags) {
+                        rules.add(Tool.Rule.minesAndDrops(blocks.getOrThrow(tag), harvestSpeed));
+                    }
+                    p.component(DataComponents.TOOL, new Tool(rules, tool.defaultMiningSpeed(), tool.damagePerBlock(), tool.canDestroyBlocksInCreative()));
+                    p.component(GTDataComponents.TOOL_BEHAVIORS.get(), new ToolBehaviors(toolType.toolDefinition.getBehaviors()));
+
+
+                    float baseDamage = toolStats.getBaseDamage();
+                    float attackDamage = 0;
+                    // represents a tool that should always have an attack damage value of 0
+                    // formatted like this to have attackDamage be final for the lambda.
+                    if (baseDamage != Float.MIN_VALUE) {
+                        attackDamage = toolProperty.getAttackDamage() + baseDamage;
+                    }
+                    ItemAttributeModifiers modifiers = ItemAttributeModifiers.builder()
+                            .add(Attributes.ATTACK_DAMAGE,
+                                    new AttributeModifier(Item.BASE_ATTACK_DAMAGE_ID, attackDamage, AttributeModifier.Operation.ADD_VALUE),
+                                    EquipmentSlotGroup.MAINHAND)
+                            .add(Attributes.ATTACK_SPEED,
+                                    new AttributeModifier(Item.BASE_ATTACK_SPEED_ID,
+                                            toolStats.getEfficiencyMultiplier() * toolProperty.getAttackSpeed() + toolStats.getAttackSpeed(),
+                                            AttributeModifier.Operation.ADD_VALUE),
+                                    EquipmentSlotGroup.MAINHAND)
+                            .build();
+                    p.attributes(modifiers);
+                    // don't show the normal vanilla damage and attack speed tooltips, we handle those ourselves
+                    p.component(DataComponents.TOOLTIP_DISPLAY,
+                            TooltipDisplay.DEFAULT.withHidden(DataComponents.ATTRIBUTE_MODIFIERS, true));
+
+                    // Durability formula we are working with:
+                    // Final Durability = (material durability * material durability
+                    // multiplier) + (tool definition durability *
+                    // definition durability multiplier) - 1
+                    // Subtracts 1 internally since Minecraft treats "0" as a valid
+                    // durability, but we don't want to display this.
+
+                    int durability = toolProperty.getDurability() * toolProperty.getDurabilityMultiplier();
+
+                    // Most Tool Definitions do not set a base durability, which will lead
+                    // to ignoring the multiplier if present. So
+                    // apply the multiplier to the material durability if that would happen
+                    if (toolStats.getBaseDurability() == 0) {
+                        durability *= (int) toolStats.getDurabilityMultiplier();
+                    } else {
+                        durability += (int) (toolStats.getBaseDurability() * toolStats.getDurabilityMultiplier());
+                    }
+
+                    p.durability(durability - 1);
+                    if (toolProperty.isUnbreakable()) {
+                        p.component(DataComponents.UNBREAKABLE, Unit.INSTANCE);
+                    }
+
+                    // Set behaviours
+                    if (toolProperty.isMagnetic()) {
+                        p.component(GTDataComponents.RELOCATE_MINED_BLOCKS.get(), Unit.INSTANCE);
+                        p.component(GTDataComponents.RELOCATE_MOB_DROPS.get(), Unit.INSTANCE);
+                    }
+
+                    // Set tool and material enchantments
+                    if (!toolStats.getDefaultEnchantments().isEmpty() || !toolProperty.getEnchantments().isEmpty()) {
+                        var innateEnchantments = new ResolvableItemEnchantments.Mutable();
+                        toolStats.getDefaultEnchantments().forEach(innateEnchantments::upgrade);
+                        toolProperty.getEnchantments().forEach(innateEnchantments::upgrade);
+                        p.component(GTDataComponents.INNATE_ENCHANTMENTS.get(), innateEnchantments.toImmutable());
+                    } else {
+                        p.component(GTDataComponents.INNATE_ENCHANTMENTS.get(), ResolvableItemEnchantments.EMPTY);
+                    }
+
+                    return p;
+                })
                 .setData(ProviderType.LANG, NonNullBiConsumer.noop())
                 .model(NonNullBiConsumer.noop())
-                .color(() -> IGTTool::tintColor)
+                .color(() -> () -> IGTTool::tintColor)
                 .register());
+        // spotless:on
     }
 
     // Material Armors
     public static void generateArmors() {
-        REGISTRATE.creativeModeTab(() -> TOOL);
-        for (ArmorItem.Type type : ArmorItem.Type.values()) {
+        REGISTRATE.creativeModeTab(TOOL);
+        for (ArmorType type : ArmorType.values()) {
+            // skip animal armor
+            if (type == ArmorType.BODY) continue;
+
             for (Material material : GTRegistries.MATERIALS) {
                 if (material.hasProperty(PropertyKey.ARMOR)) {
                     generateArmor(material, type, GTRegistrate.createIgnoringListenerErrors(material.getModid()));
@@ -145,26 +256,28 @@ public class GTMaterialItems {
         }
     }
 
-    private static void generateArmor(final Material material, final ArmorItem.Type type, GTRegistrate registrate) {
-        var property = material.getProperty(PropertyKey.ARMOR);
-        if (property.isDyeable()) {
-            ARMOR_ITEMS.put(material, type, registrate
-                    .item("%s_%s".formatted(material.getName(), type.getName()),
-                            p -> new GTDyeableArmorItem(property.getArmorMaterial(), type, p,
-                                    material, property))
-                    .setData(ProviderType.LANG, NonNullBiConsumer.noop())
-                    .model(NonNullBiConsumer.noop())
-                    .color(() -> GTArmorItem::tintColor)
-                    .register());
-        } else {
-            ARMOR_ITEMS.put(material, type, registrate
-                    .item("%s_%s".formatted(material.getName(), type.getName()),
-                            p -> new GTArmorItem(property.getArmorMaterial(), type, p,
-                                    material, property))
-                    .setData(ProviderType.LANG, NonNullBiConsumer.noop())
-                    .model(NonNullBiConsumer.noop())
-                    .color(() -> GTArmorItem::tintColor)
-                    .register());
-        }
+    private static void generateArmor(final Material material, final ArmorType type, GTRegistrate registrate) {
+        final ArmorProperty property = material.getProperty(PropertyKey.ARMOR);
+        String id = "%s_%s".formatted(material.getName(), type.getName());
+        ARMOR_ITEMS.put(material, type, registrate
+                .item(id, p -> new GTArmorItem(type, p, material, property))
+                .properties(p -> p.durability(type.getDurability(property.getDurabilityMultiplier())))
+                .setData(ProviderType.LANG, NonNullBiConsumer.noop())
+                .model(NonNullBiConsumer.noop())
+                .clientExtension(() -> () -> new IClientItemExtensions() {
+
+                    @Override
+                    public int getArmorLayerTintColor(ItemStack stack, LivingEntity entity,
+                                                      com.gregtechceu.gtceu.api.item.armor.ArmorLayer layer, int layerIdx, int fallbackColor) {
+                        int maxColors = material.getMaterialInfo().getColors().size();
+                        if (layerIdx >= 0 && layerIdx < maxColors) {
+                            return material.getLayerARGB(layerIdx);
+                        }
+                        return IClientItemExtensions.super.getArmorLayerTintColor(stack, entity, layer, layerIdx,
+                                fallbackColor);
+                    }
+                })
+                .color(() -> () -> TagPrefixItem.tintColor(material))
+                .register());
     }
 }

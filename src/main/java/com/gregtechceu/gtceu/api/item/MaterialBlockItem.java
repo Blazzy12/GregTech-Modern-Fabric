@@ -1,5 +1,7 @@
 package com.gregtechceu.gtceu.api.item;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import com.gregtechceu.gtceu.api.GTValues;
 import com.gregtechceu.gtceu.api.block.MaterialBlock;
 import com.gregtechceu.gtceu.api.data.chemical.material.Material;
@@ -7,14 +9,12 @@ import com.gregtechceu.gtceu.api.data.chemical.material.properties.DustProperty;
 import com.gregtechceu.gtceu.api.data.chemical.material.properties.PropertyKey;
 import com.gregtechceu.gtceu.api.data.tag.TagPrefix;
 
-import net.minecraft.client.color.item.ItemColor;
+import com.gregtechceu.gtceu.compat.client.color.ItemColor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.block.Block;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -28,11 +28,8 @@ public class MaterialBlockItem extends BlockItem {
         super(block, properties);
         this.tagPrefix = tagPrefix;
         this.material = material;
-    }
-
-    @Override
-    public int getBurnTime(ItemStack itemStack, @Nullable RecipeType<?> recipeType) {
-        return getItemBurnTime();
+        // 26.x fuels are an item component, not a getBurnTime override
+        com.gregtechceu.gtceu.compat.registries.datamaps.builtin.NeoForgeDataMaps.setBurnTime(this, getItemBurnTime());
     }
 
     @Override
@@ -41,23 +38,12 @@ public class MaterialBlockItem extends BlockItem {
         return (MaterialBlock) super.getBlock();
     }
 
-    @OnlyIn(Dist.CLIENT)
+    @Environment(EnvType.CLIENT)
     public static ItemColor tintColor(Material material) {
         return (itemStack, index) -> material.getLayerARGB(index);
     }
 
-    @Override
-    public @NotNull String getDescriptionId() {
-        return getBlock().getDescriptionId();
-    }
-
-    @Override
-    public String getDescriptionId(ItemStack stack) {
-        return getDescriptionId();
-    }
-
-    @Override
-    public Component getDescription() {
+        public Component getDescription() {
         return getBlock().getName();
     }
 
@@ -67,10 +53,11 @@ public class MaterialBlockItem extends BlockItem {
     }
 
     public int getItemBurnTime() {
-        DustProperty property = material == null ? null : material.getProperty(PropertyKey.DUST);
+        DustProperty property = material.getProperty(PropertyKey.DUST);
         if (property != null) {
             return (int) (property.getBurnTime() * tagPrefix.getMaterialAmount(material) / GTValues.M);
+        } else {
+            return 0;
         }
-        return -1;
     }
 }

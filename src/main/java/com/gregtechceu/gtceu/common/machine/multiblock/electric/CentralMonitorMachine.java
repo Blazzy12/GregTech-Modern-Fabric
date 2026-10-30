@@ -27,16 +27,18 @@ import com.gregtechceu.gtceu.common.item.behavior.PortableScannerBehavior;
 import com.gregtechceu.gtceu.common.machine.multiblock.electric.monitor.MonitorGroup;
 import com.gregtechceu.gtceu.common.machine.trait.CentralMonitorLogic;
 import com.gregtechceu.gtceu.common.mui.GTGuiTextures;
-import com.gregtechceu.gtceu.common.network.GTNetwork;
 import com.gregtechceu.gtceu.common.network.packets.SCPacketMonitorGroupNBTChange;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
+import com.gregtechceu.gtceu.compat.network.PacketDistributor;
 
 import brachy.modularui.api.drawable.IDrawable;
 import it.unimi.dsi.fastutil.ints.IntIntPair;
@@ -110,7 +112,7 @@ public class CentralMonitorMachine extends WorkableElectricMultiblockMachine
 
     public void tick() {
         Level level = getLevel();
-        if (level == null) {
+        if (!(level instanceof ServerLevel serverLevel)) {
             return;
         }
 
@@ -125,7 +127,7 @@ public class CentralMonitorMachine extends WorkableElectricMultiblockMachine
                     continue;
                 }
                 module.tick(stack, this, group);
-                GTNetwork.sendToAllPlayersTrackingChunk(level.getChunkAt(getBlockPos()),
+                PacketDistributor.sendToPlayersTrackingChunk(serverLevel, ChunkPos.containing(getBlockPos()),
                         new SCPacketMonitorGroupNBTChange(stack, group, this));
             }
         }
@@ -263,7 +265,7 @@ public class CentralMonitorMachine extends WorkableElectricMultiblockMachine
         return MultiblockPatternBuilder.start()
                 .slice(slice)
                 .where('B', getMultiPredicate())
-                .where('C', Predicates.controller(Predicates.blocks(this.getDefinition().get())))
+                .where('C', Predicates.controller(this.getDefinition()))
                 .build();
     }
 

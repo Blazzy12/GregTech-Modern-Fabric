@@ -13,6 +13,7 @@ import com.gregtechceu.gtceu.config.ConfigHolder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
@@ -22,7 +23,7 @@ import brachy.modularui.api.drawable.Text;
 import brachy.modularui.integration.recipeviewer.RecipeSlotRole;
 import brachy.modularui.integration.recipeviewer.RecipeViewerSlotWidget;
 import brachy.modularui.widgets.layout.Flow;
-import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -32,7 +33,7 @@ import org.jetbrains.annotations.NotNull;
 public class DimensionCondition extends RecipeCondition<DimensionCondition> {
 
     // spotless:off
-    public static final Codec<DimensionCondition> CODEC = RecordCodecBuilder.create(instance -> RecipeCondition.isReverse(instance).and(
+    public static final MapCodec<DimensionCondition> CODEC = RecordCodecBuilder.mapCodec(instance -> RecipeCondition.isReverse(instance).and(
             ResourceKey.codec(Registries.DIMENSION).fieldOf("dimension").forGetter(DimensionCondition::getDimension)
     ).apply(instance, DimensionCondition::new));
     // spotless:on
@@ -51,7 +52,7 @@ public class DimensionCondition extends RecipeCondition<DimensionCondition> {
 
     @Override
     public RecipeConditionType<DimensionCondition> getType() {
-        return GTRecipeConditions.DIMENSION;
+        return GTRecipeConditions.DIMENSION.value();
     }
 
     @Override
@@ -61,15 +62,15 @@ public class DimensionCondition extends RecipeCondition<DimensionCondition> {
 
     @Override
     public Component getTooltips() {
-        return Component.translatable("recipe.condition.dimension.tooltip", dimension);
+        return Component.translatableEscape("recipe.condition.dimension.tooltip", getDimensionName(this.dimension));
     }
 
     @Override
     public RecipeUIModifier modifyUI() {
         return (recipe, widget) -> {
-            DimensionMarker dimMarker = GTRegistries.DIMENSION_MARKERS.getOrDefault(this.dimension.location(),
+            DimensionMarker dimMarker = GTRegistries.DIMENSION_MARKERS.getOptional(this.dimension.identifier()).orElse(
                     new DimensionMarker(DimensionMarker.MAX_TIER, () -> Blocks.BARRIER,
-                            this.dimension.toString()));
+                            Component.literal(this.dimension.toString())));
             ItemStack icon = dimMarker.getIcon();
             String dimTier = "T" + (dimMarker.tier >= DimensionMarker.MAX_TIER ? "?" : dimMarker.tier);
 
@@ -95,11 +96,20 @@ public class DimensionCondition extends RecipeCondition<DimensionCondition> {
     @Override
     public boolean testCondition(@NotNull GTRecipe recipe, @NotNull RecipeLogic recipeLogic) {
         Level level = recipeLogic.getLevel();
-        return dimension.location().equals(level.dimension().location());
+        return dimension.identifier().equals(level.dimension().identifier());
     }
 
     @Override
     public DimensionCondition createTemplate() {
         return new DimensionCondition();
+    }
+
+    public static Component getDimensionName(ResourceKey<Level> dimension) {
+        return getDimensionName(dimension.identifier());
+    }
+
+    public static Component getDimensionName(Identifier dimension) {
+        return Component.translatableWithFallback(dimension.toLanguageKey("dimension"),
+                dimension.toString());
     }
 }

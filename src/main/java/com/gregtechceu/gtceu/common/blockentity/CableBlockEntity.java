@@ -1,12 +1,13 @@
 package com.gregtechceu.gtceu.common.blockentity;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import com.gregtechceu.gtceu.api.GTValues;
 import com.gregtechceu.gtceu.api.blockentity.PipeBlockEntity;
-import com.gregtechceu.gtceu.api.capability.GTCapability;
 import com.gregtechceu.gtceu.api.capability.GTCapabilityHelper;
 import com.gregtechceu.gtceu.api.capability.IEnergyContainer;
+import com.gregtechceu.gtceu.api.data.chemical.ChemicalHelper;
 import com.gregtechceu.gtceu.api.data.chemical.material.properties.WireProperties;
-import com.gregtechceu.gtceu.api.data.tag.TagPrefix;
 import com.gregtechceu.gtceu.api.item.tool.GTToolType;
 import com.gregtechceu.gtceu.api.machine.TickableSubscription;
 import com.gregtechceu.gtceu.api.machine.feature.IDataInfoProvider;
@@ -16,7 +17,7 @@ import com.gregtechceu.gtceu.api.sync_system.annotations.SyncToClient;
 import com.gregtechceu.gtceu.client.particle.GTOverheatParticle;
 import com.gregtechceu.gtceu.client.particle.GTParticleManager;
 import com.gregtechceu.gtceu.common.block.CableBlock;
-import com.gregtechceu.gtceu.common.data.GTMaterialBlocks;
+import com.gregtechceu.gtceu.common.data.item.GTItemAbilities;
 import com.gregtechceu.gtceu.common.item.behavior.PortableScannerBehavior;
 import com.gregtechceu.gtceu.common.mui.GTGuiTextures;
 import com.gregtechceu.gtceu.common.pipelike.cable.*;
@@ -25,24 +26,19 @@ import com.gregtechceu.gtceu.utils.GTMath;
 import com.gregtechceu.gtceu.utils.GTUtil;
 
 import net.minecraft.ChatFormatting;
-import net.minecraft.MethodsReturnNonnullByDefault;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.common.util.LazyOptional;
 
 import brachy.modularui.drawable.UITexture;
 import lombok.Getter;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.ref.WeakReference;
@@ -50,15 +46,11 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 
-import javax.annotation.ParametersAreNonnullByDefault;
-
-@ParametersAreNonnullByDefault
-@MethodsReturnNonnullByDefault
 public class CableBlockEntity extends PipeBlockEntity<Insulation, WireProperties> implements IDataInfoProvider {
 
     protected WeakReference<EnergyNet> currentEnergyNet = new WeakReference<>(null);
 
-    @OnlyIn(Dist.CLIENT)
+    @Environment(EnvType.CLIENT)
     private GTOverheatParticle particle;
     public static final int meltTemp = 3000;
 
@@ -76,19 +68,6 @@ public class CableBlockEntity extends PipeBlockEntity<Insulation, WireProperties
 
     public CableBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState blockState) {
         super(type, pos, blockState);
-    }
-
-    @Override
-    public @NotNull <T> LazyOptional<T> getCapability(@NotNull Capability<T> cap, @Nullable Direction side) {
-        if (cap == GTCapability.CAPABILITY_ENERGY_CONTAINER) {
-            var container = getEnergyContainer(side);
-            if (container != null) {
-                return GTCapability.CAPABILITY_ENERGY_CONTAINER.orEmpty(cap, LazyOptional.of(() -> container));
-            }
-        } else if (cap == GTCapability.CAPABILITY_COVERABLE) {
-            return GTCapability.CAPABILITY_COVERABLE.orEmpty(cap, LazyOptional.of(this::getCoverContainer));
-        }
-        return super.getCapability(cap, side);
     }
 
     @Override
@@ -161,7 +140,7 @@ public class CableBlockEntity extends PipeBlockEntity<Insulation, WireProperties
     @Override
     public void onLoad() {
         super.onLoad();
-        if (!level.isClientSide) {
+        if (!level.isClientSide()) {
             setTemperature(temperature);
             if (temperature > getDefaultTemp()) {
                 subscribeHeat();
@@ -235,18 +214,18 @@ public class CableBlockEntity extends PipeBlockEntity<Insulation, WireProperties
         return false;
     }
 
-    @OnlyIn(Dist.CLIENT)
+    @Environment(EnvType.CLIENT)
     public boolean isParticleAlive() {
         return particle != null && particle.isAlive();
     }
 
-    @OnlyIn(Dist.CLIENT)
+    @Environment(EnvType.CLIENT)
     public void createParticle() {
         particle = new GTOverheatParticle(this, meltTemp, getPipeType().isCable());
         GTParticleManager.INSTANCE.addEffect(particle);
     }
 
-    @OnlyIn(Dist.CLIENT)
+    @Environment(EnvType.CLIENT)
     public void killParticle() {
         if (isParticleAlive()) {
             particle.setExpired();
@@ -256,7 +235,7 @@ public class CableBlockEntity extends PipeBlockEntity<Insulation, WireProperties
 
     public void applyHeat(int amount) {
         heatQueue += amount;
-        if (!level.isClientSide && heatSubs == null && temperature + heatQueue > getDefaultTemp()) {
+        if (!getLevel().isClientSide() && heatSubs == null && temperature + heatQueue > getDefaultTemp()) {
             subscribeHeat();
         }
     }
@@ -296,11 +275,12 @@ public class CableBlockEntity extends PipeBlockEntity<Insulation, WireProperties
         int oldTemperature = temperature;
         setTemperature(getDefaultTemp());
 
-        TagPrefix uninsulatedPrefix = getPipeType().getUninsulated().tagPrefix;
-        CableBlock newBlock = GTMaterialBlocks.CABLE_BLOCKS.get(uninsulatedPrefix, getPipeBlock().material).get();
-        level.setBlockAndUpdate(getBlockPos(), newBlock.defaultBlockState());
+        CableBlock newBlock = (CableBlock) ChemicalHelper.getBlock(getPipeType().getUninsulated().tagPrefix,
+                getPipeBlock().material);
+        if (newBlock == null) return;
+        getLevel().setBlockAndUpdate(getBlockPos(), newBlock.defaultBlockState());
 
-        CableBlockEntity newCable = (CableBlockEntity) level.getBlockEntity(getBlockPos());
+        CableBlockEntity newCable = (CableBlockEntity) getLevel().getBlockEntity(getBlockPos());
         if (newCable != null) { // should never be null
             newCable.setTemperature(oldTemperature);
             newCable.subscribeHeat();
@@ -339,20 +319,18 @@ public class CableBlockEntity extends PipeBlockEntity<Insulation, WireProperties
             float yPos = Direction.UP.getStepY() * 0.76f + getBlockPos().getY() + 0.25f;
             float zPos = Direction.UP.getStepZ() * 0.76f + getBlockPos().getZ() + 0.25f;
 
-            float horizontalDirection = getLevel().random.nextFloat() * 2 * Mth.PI;
+            float horizontalDirection = getLevel().getRandom().nextFloat() * 2 * Mth.PI;
             float xSpd = Mth.sin(horizontalDirection) * 0.1f;
-            float ySpd = Direction.UP.getStepY() * 0.1f + 0.2f + 0.1f * level.random.nextFloat();
+            float ySpd = Direction.UP.getStepY() * 0.1f + 0.2f + 0.1f * getLevel().getRandom().nextFloat();
             float zSpd = Mth.cos(horizontalDirection) * 0.1f;
 
             level.addParticle(ParticleTypes.SMOKE,
-                    xPos + level.random.nextFloat() * 0.5f,
-                    yPos + level.random.nextFloat() * 0.5f,
-                    zPos + level.random.nextFloat() * 0.5f,
+                    xPos + level.getRandom().nextFloat() * 0.5f,
+                    yPos + level.getRandom().nextFloat() * 0.5f,
+                    zPos + level.getRandom().nextFloat() * 0.5f,
                     xSpd, ySpd, zSpd);
         }
     }
-
-    public static void onBlockEntityRegister(BlockEntityType<CableBlockEntity> cableBlockEntityBlockEntityType) {}
 
     //////////////////////////////////////
     // ******* Interaction *******//
@@ -366,6 +344,11 @@ public class CableBlockEntity extends PipeBlockEntity<Insulation, WireProperties
     @Override
     public GTToolType getPipeTuneTool() {
         return GTToolType.WIRE_CUTTER;
+    }
+
+    @Override
+    public boolean hasCorrectAction(ItemStack stack) {
+        return stack.canPerformAction(GTItemAbilities.WIRE_CUTTER_CONNECT);
     }
 
     @Override

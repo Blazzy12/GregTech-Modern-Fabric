@@ -1,14 +1,12 @@
 package com.gregtechceu.gtceu.api.multiblock.error;
 
-import com.gregtechceu.gtceu.GTCEu;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.block.Block;
 
 import brachy.modularui.api.drawable.Text;
-import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import lombok.Getter;
 
@@ -17,13 +15,12 @@ import java.util.List;
 
 public class BlockMatchingError extends PatternError {
 
-    public static final Codec<BlockMatchingError> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-            BlockPos.CODEC.fieldOf("pos").forGetter(PatternError::pos),
-            BuiltInRegistries.BLOCK.byNameCodec().listOf().fieldOf("blocks")
-                    .forGetter(BlockMatchingError::getBlocks))
-            .apply(instance, BlockMatchingError::new));
-
-    public static final PatternErrorType TYPE = new PatternErrorType(GTCEu.id("block_matching_error"), CODEC);
+    // spotless:off
+    public static final MapCodec<BlockMatchingError> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
+            BlockPos.CODEC.fieldOf("pos").forGetter(PatternError::getPos),
+            BuiltInRegistries.BLOCK.byNameCodec().listOf().fieldOf("blocks").forGetter(BlockMatchingError::getBlocks))
+    .apply(instance, BlockMatchingError::new));
+    //spotless:on
 
     @Getter
     private final List<Block> blocks;
@@ -47,6 +44,6 @@ public class BlockMatchingError extends PatternError {
 
     @Override
     public PatternErrorType type() {
-        return TYPE;
+        return GTPatternErrors.BLOCK_MATCHING_ERROR.value();
     }
 }

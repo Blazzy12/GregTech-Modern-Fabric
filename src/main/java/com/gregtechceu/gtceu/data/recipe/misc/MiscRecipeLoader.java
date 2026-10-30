@@ -10,18 +10,16 @@ import com.gregtechceu.gtceu.data.recipe.CustomTags;
 import com.gregtechceu.gtceu.data.recipe.VanillaRecipeHelper;
 import com.gregtechceu.gtceu.data.recipe.builder.GTRecipeBuilder;
 
-import net.minecraft.data.recipes.FinishedRecipe;
+import net.minecraft.data.recipes.RecipeOutput;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraftforge.common.Tags;
+import com.gregtechceu.gtceu.compat.common.Tags;
 
 import com.tterrag.registrate.util.entry.ItemEntry;
-
-import java.util.function.Consumer;
 
 import static com.gregtechceu.gtceu.api.GTValues.*;
 import static com.gregtechceu.gtceu.api.data.tag.TagPrefix.*;
@@ -31,7 +29,7 @@ import static com.gregtechceu.gtceu.common.data.GTRecipeTypes.*;
 
 public class MiscRecipeLoader {
 
-    public static void init(Consumer<FinishedRecipe> provider) {
+    public static void init(RecipeOutput provider) {
         // Basic Terminal Recipe
         VanillaRecipeHelper.addShapedRecipe(provider, true, "basic_terminal", TERMINAL.asStack(),
                 "SGS", "PBP", "PWP", 'S', new MaterialEntry(screw, WroughtIron), 'G', Tags.Items.GLASS_PANES, 'B',
@@ -175,8 +173,8 @@ public class MiscRecipeLoader {
                 .save(provider);
 
         ROCK_BREAKER_RECIPES.recipeBuilder("red_granite")
-                .notConsumable(rock, GraniteRed)
-                .outputItems(rock, GraniteRed)
+                .notConsumable(rock, RedGranite)
+                .outputItems(rock, RedGranite)
                 .adjacentFluids(FluidTags.LAVA, FluidTags.WATER)
                 .duration(16)
                 .EUt(VHA[EV])
@@ -366,13 +364,13 @@ public class MiscRecipeLoader {
 
         // Dyed Lens Decomposition
         for (ItemEntry<Item> item : GLASS_LENSES.values()) {
-            EXTRACTOR_RECIPES.recipeBuilder("extract_" + item.get()).EUt(VA[LV]).duration(15)
+            EXTRACTOR_RECIPES.recipeBuilder(item.getId().withPrefix("extract_")).EUt(VA[LV]).duration(15)
                     .inputItems(item)
                     .outputFluids(Glass.getFluid(108))
                     .category(GTRecipeCategories.EXTRACTOR_RECYCLING)
                     .save(provider);
 
-            MACERATOR_RECIPES.recipeBuilder("macerate_" + item.get()).EUt(VA[LV]).duration(15)
+            MACERATOR_RECIPES.recipeBuilder(item.getId().withPrefix("macerate_")).EUt(VA[LV]).duration(15)
                     .inputItems(item)
                     .outputItems(dustSmall, Glass, 3)
                     .category(GTRecipeCategories.MACERATOR_RECYCLING)
@@ -402,7 +400,7 @@ public class MiscRecipeLoader {
 
         builder.copy("colorless_lens").inputFluids(DyeWhite.getFluid(dyeAmount)).outputItems(lens, Glass)
                 .save(provider);
-        VanillaRecipeHelper.addShapelessRecipe(provider, "brown_dye_from_metal_mixture", new ItemStack(Items.BROWN_DYE),
+        VanillaRecipeHelper.addShapelessRecipe(provider, "brown_dye_from_metal_mixture", new ItemStack(Items.DYE.brown()),
                 new MaterialEntry(dust, MetalMixture));
 
         // NAN Certificate
@@ -473,10 +471,10 @@ public class MiscRecipeLoader {
                 .duration(100).EUt(VA[LV]).save(provider);
 
         if (!ConfigHolder.INSTANCE.recipes.hardMiscRecipes) {
-            VanillaRecipeHelper.addShapedRecipe(provider, "flour_to_dough", new ItemStack(DOUGH, 8),
+            VanillaRecipeHelper.addShapedRecipe(provider, "flour_to_dough", new ItemStack(DOUGH.asItem(), 8),
                     "FFF", "FWF", "FFF",
                     'F', CustomTags.WHEAT_GRAINS,
-                    'W', Water.getBucket());
+                    'W', Water.value().getBucket());
 
             MIXER_RECIPES.recipeBuilder("flour_to_dough")
                     .inputItems(CustomTags.WHEAT_GRAINS, 2)
@@ -508,10 +506,10 @@ public class MiscRecipeLoader {
                     'M', new FluidContainerIngredient(Milk.getFluidTag(), 1000),
                     'D', CustomTags.DOUGHS);
         } else {
-            VanillaRecipeHelper.addShapedRecipe(provider, "flour_to_dough", new ItemStack(DOUGH, 4),
+            VanillaRecipeHelper.addShapedRecipe(provider, "flour_to_dough", new ItemStack(DOUGH.asItem(), 4),
                     "FFF", "FWF", "FFF",
                     'F', CustomTags.WHEAT_GRAINS,
-                    'W', Water.getBucket());
+                    'W', Water.value().getBucket());
 
             MIXER_RECIPES.recipeBuilder("flour_to_dough")
                     .inputItems(CustomTags.WHEAT_GRAINS, 4)
@@ -610,9 +608,9 @@ public class MiscRecipeLoader {
                 .duration(100).EUt(2).save(provider);
 
         // Lazurite and Sodalite to dye
-        VanillaRecipeHelper.addShapelessRecipe(provider, "lazurite_to_dye", new ItemStack(Items.BLUE_DYE),
+        VanillaRecipeHelper.addShapelessRecipe(provider, "lazurite_to_dye", new ItemStack(Items.DYE.blue()),
                 new MaterialEntry(gem, Lazurite));
-        VanillaRecipeHelper.addShapelessRecipe(provider, "sodalite_to_dye", new ItemStack(Items.BLUE_DYE),
+        VanillaRecipeHelper.addShapelessRecipe(provider, "sodalite_to_dye", new ItemStack(Items.DYE.blue()),
                 new MaterialEntry(gem, Sodalite));
 
         POLARIZER_RECIPES.recipeBuilder("magnetize_golden_carrot")

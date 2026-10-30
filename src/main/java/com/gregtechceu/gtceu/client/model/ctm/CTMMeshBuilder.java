@@ -1,18 +1,19 @@
 package com.gregtechceu.gtceu.client.model.ctm;
 
+import com.gregtechceu.gtceu.client.util.ModelEventHelper;
+
 import com.gregtechceu.gtceu.client.model.quad.MeshBuilder;
 import com.gregtechceu.gtceu.client.model.quad.MutableQuadView;
 
-import net.minecraft.client.renderer.block.model.BakedQuad;
+import com.gregtechceu.gtceu.compat.client.model.BakedQuad;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.util.Mth;
-import net.minecraft.world.level.BlockAndTintGetter;
+import net.minecraft.client.renderer.block.BlockAndTintGetter;
 import net.minecraft.world.level.block.state.BlockState;
 
 import org.joml.Vector2f;
-import org.joml.Vector3f;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -36,10 +37,13 @@ public class CTMMeshBuilder {
         MeshBuilder meshBuilder = MeshBuilder.getInstance();
         var emitter = meshBuilder.getEmitter();
 
-        for (BakedQuad originalQuad : base) {
+        // this is critical code; a C-style for loop has better performance
+        // noinspection ForLoopReplaceableByForEach
+        for (int i = 0; i < base.size(); i++) {
+            BakedQuad originalQuad = base.get(i);
             TextureAtlasSprite originalSprite = originalQuad.getSprite();
 
-            TextureAtlasSprite connectionSprite = CTM_SPRITE_CACHE.get(originalSprite.contents().name());
+            TextureAtlasSprite connectionSprite = ModelEventHelper.getConnectionSprite(originalSprite);
             if (connectionSprite == null) {
                 result.add(originalQuad);
                 continue;
@@ -51,18 +55,20 @@ public class CTMMeshBuilder {
                     TextureAtlasSprite ctmSprite = defaultTexture ? originalSprite : connectionSprite;
 
                     emitter.fromVanilla(originalQuad, cullFace);
-                    emitter.spriteUnbake(originalSprite, BAKE_NORMALIZED | BAKE_DEROTATE_UV);
+                    emitter.spriteUnbake(originalSprite, UNBAKE_DEROTATE_UV | UNBAKE_CANONICALIZE_WINDING);
 
                     // slice quad into the current quadrant
                     subsect(emitter, Submap.X2[xQuadrant][yQuadrant]);
                     remapUVs(emitter, connections.getSubmapFor(xQuadrant, yQuadrant));
 
-                    emitter.spriteBake(ctmSprite, BAKE_NORMALIZED);
+                    emitter.spriteBake(ctmSprite, 0);
 
                     emitter.computeGeometry();
                     emitter.populateMissingNormals();
 
-                    result.add(emitter.toBakedQuad(ctmSprite));
+                    result.add(emitter.toBakedQuad(ctmSprite)
+                            .gtceu$setTextureKey(originalQuad.gtceu$getTextureKey())
+                            .gtceu$setFaceLayer(originalQuad.gtceu$getFaceLayer()));
                     emitter.emit();
                 }
             }
@@ -79,7 +85,6 @@ public class CTMMeshBuilder {
         return new Vector2f[] { new Vector2f(), new Vector2f() };
     });
     // set in copyPos() calls
-    private static final ThreadLocal<Vector3f> position = ThreadLocal.withInitial(Vector3f::new);
     private static final ThreadLocal<Vector2f[]> xy = ThreadLocal.withInitial(() -> {
         return new Vector2f[] { new Vector2f(), new Vector2f(), new Vector2f(), new Vector2f() };
     });
@@ -132,15 +137,11 @@ public class CTMMeshBuilder {
 
         Vector2f[] xy = CTMMeshBuilder.xy.get();
         Vector2f[] newXy = CTMMeshBuilder.newXy.get();
-        Vector3f position = CTMMeshBuilder.position.get();
         for (int i = 0; i < 4; i++) {
-            // updates position
-            quad.copyPos(i, position);
-
             switch (normal.getAxis()) {
-                case X -> xy[i].set(position.z, position.y);
-                case Y -> xy[i].set(position.x, position.z);
-                case Z -> xy[i].set(position.x, position.y);
+                case X -> xy[i].set(quad.z(i), quad.y(i));
+                case Y -> xy[i].set(quad.x(i), quad.z(i));
+                case Z -> xy[i].set(quad.x(i), quad.y(i));
             }
         }
 

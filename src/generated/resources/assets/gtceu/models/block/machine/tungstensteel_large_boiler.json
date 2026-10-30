@@ -3,24 +3,22 @@
   "dynamic_renders": [
     {
       "type": "gtceu:boiler_multi_parts",
-      "casing_block": {
-        "Name": "gtceu:robust_machine_casing"
-      },
+      "casing_block": "gtceu:robust_machine_casing",
       "firebox_active": {
-        "Name": "gtceu:tungstensteel_firebox_casing",
-        "Properties": {
+        "id": "gtceu:tungstensteel_firebox_casing",
+        "properties": {
           "active": "true"
         }
       },
       "firebox_idle": {
-        "Name": "gtceu:tungstensteel_firebox_casing",
-        "Properties": {
+        "id": "gtceu:tungstensteel_firebox_casing",
+        "properties": {
           "active": "false"
         }
       }
     }
   ],
-  "loader": "gtceu:machine",
+  "fabric:type": "gtceu:machine",
   "machine": "gtceu:tungstensteel_large_boiler",
   "texture_overrides": {
     "all": "gtceu:block/casings/solid/machine_casing_robust_tungstensteel"

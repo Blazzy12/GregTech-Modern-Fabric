@@ -1,6 +1,13 @@
 package com.gregtechceu.gtceu.api.item.armor;
 
-import com.gregtechceu.gtceu.GTCEu;
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
+import com.gregtechceu.gtceu.compat.client.gui.TextColors;
+
+import net.minecraft.world.InteractionResult;
+
+import com.gregtechceu.gtceu.utils.GTUtil;
+
 import com.gregtechceu.gtceu.api.GTValues;
 import com.gregtechceu.gtceu.api.capability.GTCapabilityHelper;
 import com.gregtechceu.gtceu.api.capability.IElectricItem;
@@ -8,49 +15,39 @@ import com.gregtechceu.gtceu.api.capability.compat.FeCompat;
 import com.gregtechceu.gtceu.api.item.module.IModularItem;
 import com.gregtechceu.gtceu.api.item.module.ModuleContext;
 import com.gregtechceu.gtceu.common.data.GTSoundEntries;
+import com.gregtechceu.gtceu.common.data.item.GTDataComponents;
 import com.gregtechceu.gtceu.common.module.AdvancedJetpackModule;
 import com.gregtechceu.gtceu.common.module.SpeedItemModule;
 import com.gregtechceu.gtceu.config.ConfigHolder;
 import com.gregtechceu.gtceu.core.mixins.ServerGamePacketListenerImplAccessor;
-import com.gregtechceu.gtceu.utils.GTMath;
-import com.gregtechceu.gtceu.utils.ItemStackHashStrategy;
 import com.gregtechceu.gtceu.utils.input.SyncedKeyMappings;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
-import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.event.ForgeEventFactory;
-import net.minecraftforge.items.IItemHandler;
+import com.gregtechceu.gtceu.compat.event.EventHooks;
 
 import com.mojang.datafixers.util.Pair;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntIntPair;
 import it.unimi.dsi.fastutil.ints.IntList;
-import it.unimi.dsi.fastutil.objects.Object2IntMap;
-import it.unimi.dsi.fastutil.objects.Object2IntOpenCustomHashMap;
-import top.theillusivec4.curios.api.CuriosApi;
-import top.theillusivec4.curios.api.type.capability.ICuriosItemHandler;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
-import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-
-import javax.annotation.Nonnull;
 
 public class ArmorUtils {
 
@@ -61,8 +58,6 @@ public class ArmorUtils {
     public static final long CREDITS_PER_EU = GTValues.M;
     // 2^63 / the first double above the long range
     private static final double LONG_LIMIT = 0x1.0p63;
-
-    public static final String MODULE_ENERGY_CREDITS_KEY = "ModuleEnergyCredits";
 
     // Full strength running cost in EU/t
     public static double getModuleEnergyCost(int tier) {
@@ -87,7 +82,7 @@ public class ArmorUtils {
         if (costCredits == 0) return true;
         IElectricItem battery = GTCapabilityHelper.getElectricItem(stack);
         if (battery == null) return false;
-        long credit = GTMath.clamp(stack.getTag() != null ? stack.getTag().getLong(MODULE_ENERGY_CREDITS_KEY) : 0,
+        long credit = Math.clamp((long) stack.getOrDefault(GTDataComponents.MODULE_ENERGY_CREDIT, 0),
                 0L, CREDITS_PER_EU - 1);
         long requiredEU = costCredits / CREDITS_PER_EU;
         long remainingCredit = credit - costCredits % CREDITS_PER_EU;
@@ -104,7 +99,7 @@ public class ArmorUtils {
                 return false;
             }
         }
-        stack.getOrCreateTag().putLong(MODULE_ENERGY_CREDITS_KEY, remainingCredit);
+        stack.set(GTDataComponents.MODULE_ENERGY_CREDIT, (int) remainingCredit);
         return true;
     }
 
@@ -127,7 +122,7 @@ public class ArmorUtils {
         if (player.isPassenger() || player.isSpectator() || player.isSleeping() || player.isFallFlying() ||
                 player.isInWater() || player.isSwimming())
             return false;
-        for (ItemStack stack : player.getArmorSlots()) {
+        for (ItemStack stack : GTUtil.getArmorSlots(player)) {
             IModularItem modular = GTCapabilityHelper.getModularItem(stack);
             if (modular == null) continue;
             for (ModuleContext context : modular.getAllModuleInstances()) {
@@ -152,14 +147,6 @@ public class ArmorUtils {
         if (remaining <= 0) return;
         record Candidate(ItemStack stack, long demand) {}
         var stacks = new ArrayList<ItemStack>();
-        if (GTCEu.Mods.isCuriosLoaded()) {
-            IItemHandler curios = CuriosApi.getCuriosInventory(player)
-                    .<IItemHandler>map(ICuriosItemHandler::getEquippedCurios)
-                    .orElse(null);
-            if (curios != null) {
-                for (int i = 0; i < curios.getSlots(); i++) stacks.add(curios.getStackInSlot(i));
-            }
-        }
         var inventory = player.getInventory();
         for (int i = 0; i < inventory.getContainerSize(); i++) stacks.add(inventory.getItem(i));
         var candidates = new ArrayList<Candidate>();
@@ -230,8 +217,8 @@ public class ArmorUtils {
         List<Pair<NonNullList<ItemStack>, IntList>> inventorySlotMap = new ArrayList<>();
 
         IntList openMainSlots = new IntArrayList();
-        for (int i = 0; i < player.getInventory().items.size(); i++) {
-            ItemStack current = player.getInventory().items.get(i);
+        for (int i = 0; i < player.getInventory().getNonEquipmentItems().size(); i++) {
+            ItemStack current = player.getInventory().getNonEquipmentItems().get(i);
             IElectricItem item = GTCapabilityHelper.getElectricItem(current);
             if (item == null) continue;
 
@@ -241,12 +228,15 @@ public class ArmorUtils {
         }
 
         if (!openMainSlots.isEmpty()) {
-            inventorySlotMap.add(Pair.of(player.getInventory().items, openMainSlots));
+            inventorySlotMap.add(Pair.of(player.getInventory().getNonEquipmentItems(), openMainSlots));
         }
 
+        // armour stacks are the live equipment stacks, charging mutates them in place
+        NonNullList<ItemStack> armor = NonNullList.of(ItemStack.EMPTY,
+                GTUtil.getArmorSlots(player).toArray(ItemStack[]::new));
         IntList openArmorSlots = new IntArrayList();
-        for (int i = 0; i < player.getInventory().armor.size(); i++) {
-            ItemStack current = player.getInventory().armor.get(i);
+        for (int i = 0; i < armor.size(); i++) {
+            ItemStack current = armor.get(i);
             IElectricItem item = GTCapabilityHelper.getElectricItem(current);
             if (item == null) {
                 continue;
@@ -258,17 +248,17 @@ public class ArmorUtils {
         }
 
         if (!openArmorSlots.isEmpty()) {
-            inventorySlotMap.add(Pair.of(player.getInventory().armor, openArmorSlots));
+            inventorySlotMap.add(Pair.of(armor, openArmorSlots));
         }
 
-        ItemStack offHand = player.getInventory().offhand.get(0);
+        ItemStack offHand = player.getOffhandItem();
         IElectricItem offHandItem = GTCapabilityHelper.getElectricItem(offHand);
         if (offHandItem == null) {
             return inventorySlotMap;
         }
 
         if (isPossibleToCharge(offHand) && offHandItem.getTier() <= tier) {
-            inventorySlotMap.add(Pair.of(player.getInventory().offhand, new IntArrayList(new int[] { 0 })));
+            inventorySlotMap.add(Pair.of(NonNullList.of(ItemStack.EMPTY, offHand), new IntArrayList(new int[] { 0 })));
         }
 
         return inventorySlotMap;
@@ -277,7 +267,7 @@ public class ArmorUtils {
     /**
      * Spawn particle behind player with speedY speed
      */
-    public static void spawnParticle(Level world, Player player, ParticleOptions type, double speedY) {
+    public static void spawnParticle(Level world, Player player, @Nullable ParticleOptions type, double speedY) {
         if (type != null) {
             Vec3 forward = player.getForward();
             world.addParticle(type, player.getX() - forward.x, player.getY() + 0.5D, player.getZ() - forward.z, 0.0D,
@@ -285,7 +275,7 @@ public class ArmorUtils {
         }
     }
 
-    public static void playJetpackSound(@Nonnull Player player) {
+    public static void playJetpackSound(@NotNull Player player) {
         if (player.level().isClientSide()) {
             float cons = (float) player.getDeltaMovement().y + player.moveDist;
             cons = Mth.clamp(cons, 0.6F, 1.0F);
@@ -298,7 +288,7 @@ public class ArmorUtils {
                 cons -= 0.4F;
             }
 
-            player.playSound(GTSoundEntries.JET_ENGINE.getMainEvent(), 0.3F, cons);
+            player.playSound(GTSoundEntries.JET_ENGINE.value().getMainEvent(), 0.3F, cons);
         }
     }
 
@@ -317,54 +307,19 @@ public class ArmorUtils {
      *
      * @return result of eating food
      */
-    public static InteractionResultHolder<ItemStack> eat(Player player, ItemStack food) {
-        if (!food.isEdible()) {
-            return InteractionResultHolder.fail(food);
+    public static InteractionResult eat(Player player, ItemStack food) {
+        if (food.getFoodProperties(player) == null) {
+            return InteractionResult.FAIL;
         }
 
         FoodProperties foodItem = food.getFoodProperties(player);
         if (foodItem != null && player.getFoodData().needsFood()) {
-            ItemStack result = ForgeEventFactory.onItemUseFinish(player, food.copy(), player.getUseItemRemainingTicks(),
+            ItemStack result = EventHooks.onItemUseFinish(player, food.copy(), player.getUseItemRemainingTicks(),
                     food.finishUsingItem(player.level(), player));
-            return InteractionResultHolder.success(result);
+            return InteractionResult.SUCCESS.heldItemTransformedTo(result);
         } else {
-            return InteractionResultHolder.fail(food);
+            return InteractionResult.FAIL;
         }
-    }
-
-    /**
-     * Format itemstacks list from [1xitem@1, 1xitem@1, 1xitem@2] to
-     * [2xitem@1, 1xitem@2]
-     *
-     * @return Formated list
-     */
-    public static List<ItemStack> format(List<ItemStack> input) {
-        Object2IntMap<ItemStack> items = new Object2IntOpenCustomHashMap<>(
-                ItemStackHashStrategy.comparingAllButCount());
-        List<ItemStack> output = new ArrayList<>();
-        for (ItemStack itemStack : input) {
-            if (items.containsKey(itemStack)) {
-                int amount = items.getInt(itemStack);
-                items.replace(itemStack, ++amount);
-            } else {
-                items.put(itemStack, 1);
-            }
-        }
-        for (Object2IntMap.Entry<ItemStack> entry : items.object2IntEntrySet()) {
-            ItemStack stack = entry.getKey().copy();
-            stack.setCount(entry.getIntValue());
-            output.add(stack);
-        }
-        return output;
-    }
-
-    @Nonnull
-    public static String format(long value) {
-        return new DecimalFormat("###,###.##").format(value);
-    }
-
-    public static String format(double value) {
-        return new DecimalFormat("###,###.##").format(value);
     }
 
     /**
@@ -372,7 +327,7 @@ public class ArmorUtils {
      * now available only string rendering, if will be needed,
      * may be will add some additional functions
      */
-    @OnlyIn(Dist.CLIENT)
+    @Environment(EnvType.CLIENT)
     public static class ModularHUD {
 
         private byte stringAmount = 0;
@@ -394,7 +349,7 @@ public class ArmorUtils {
             this.stringList.add(new HudLine(columnWidth, separator, columns));
         }
 
-        public void draw(GuiGraphics guiGraphics) {
+        public void draw(GuiGraphicsExtractor guiGraphics) {
             for (int i = 0; i < stringAmount; i++) {
                 HudLine line = stringList.get(i);
                 int separatorWidth = mc.font.width(line.separator());
@@ -404,11 +359,11 @@ public class ArmorUtils {
                 int x = coords.firstInt();
                 for (int column = 0; column < line.columns().length; column++) {
                     Component text = line.columns()[column];
-                    guiGraphics.drawString(mc.font, text, x + line.columnWidth() - mc.font.width(text),
-                            coords.secondInt(), 0xFFFFFF, false);
+                    guiGraphics.text(mc.font, text, x + line.columnWidth() - mc.font.width(text),
+                            coords.secondInt(), TextColors.legacy(0xFFFFFF), false);
                     x += line.columnWidth();
                     if (column < line.columns().length - 1) {
-                        guiGraphics.drawString(mc.font, line.separator(), x, coords.secondInt(), 0xFFFFFF, false);
+                        guiGraphics.text(mc.font, line.separator(), x, coords.secondInt(), TextColors.legacy(0xFFFFFF), false);
                         x += separatorWidth;
                     }
                 }

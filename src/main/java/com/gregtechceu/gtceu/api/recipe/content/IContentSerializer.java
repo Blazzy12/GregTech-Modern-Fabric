@@ -1,33 +1,30 @@
 package com.gregtechceu.gtceu.api.recipe.content;
 
-import com.gregtechceu.gtceu.GTCEu;
-import com.gregtechceu.gtceu.api.recipe.chance.logic.ChanceLogic;
-
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 
 import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.JsonOps;
 
 public interface IContentSerializer<T> {
 
-    default void toNetwork(FriendlyByteBuf buf, T content) {
+    default void toNetwork(RegistryFriendlyByteBuf buf, T content) {
         buf.writeJsonWithCodec(codec(), content);
     }
 
-    default T fromNetwork(FriendlyByteBuf buf) {
-        return buf.readJsonWithCodec(codec());
+    default T fromNetwork(RegistryFriendlyByteBuf buf) {
+        return buf.readLenientJsonWithCodec(codec());
     }
 
-    default T fromJson(JsonElement json) {
-        return codec().parse(JsonOps.INSTANCE, json).getOrThrow(false, GTCEu.LOGGER::error);
+    default T fromJson(JsonElement json, HolderLookup.Provider provider) {
+        return codec().parse(provider.createSerializationContext(JsonOps.INSTANCE), json).getOrThrow();
     }
 
-    default JsonElement toJson(T content) {
-        return codec().encodeStart(JsonOps.INSTANCE, content).getOrThrow(false, GTCEu.LOGGER::error);
+    default JsonElement toJson(T content, HolderLookup.Provider provider) {
+        return codec().encodeStart(provider.createSerializationContext(JsonOps.INSTANCE), content).getOrThrow();
     }
 
     T of(Object o);
@@ -35,14 +32,14 @@ public interface IContentSerializer<T> {
     T defaultValue();
 
     @SuppressWarnings("unchecked")
-    default void toNetworkContent(FriendlyByteBuf buf, Content content) {
+    default void toNetworkContent(RegistryFriendlyByteBuf buf, Content content) {
         T inner = (T) content.content();
         toNetwork(buf, inner);
         buf.writeVarInt(content.chance());
         buf.writeVarInt(content.maxChance());
     }
 
-    default Content fromNetworkContent(FriendlyByteBuf buf) {
+    default Content fromNetworkContent(RegistryFriendlyByteBuf buf) {
         T inner = fromNetwork(buf);
         int chance = buf.readVarInt();
         int maxChance = buf.readVarInt();
@@ -53,29 +50,11 @@ public interface IContentSerializer<T> {
 
     Codec<T> codec();
 
-    @SuppressWarnings("unchecked")
-    default JsonElement toJsonContent(Content content) {
-        JsonObject json = new JsonObject();
-        json.add("content", toJson((T) content.content()));
-        json.addProperty("chance", content.chance());
-        json.addProperty("maxChance", content.maxChance());
-        return json;
+    default Tag toNbt(T content, HolderLookup.Provider provider) {
+        return codec().encodeStart(provider.createSerializationContext(NbtOps.INSTANCE), content).getOrThrow();
     }
 
-    default Content fromJsonContent(JsonElement json) {
-        JsonObject jsonObject = json.getAsJsonObject();
-        T inner = fromJson(jsonObject.get("content"));
-        int chance = jsonObject.has("chance") ? jsonObject.get("chance").getAsInt() : ChanceLogic.getMaxChancedValue();
-        int maxChance = jsonObject.has("maxChance") ? jsonObject.get("maxChance").getAsInt() :
-                ChanceLogic.getMaxChancedValue();
-        return new Content(inner, chance, maxChance);
-    }
-
-    default Tag toNbt(T content) {
-        return codec().encodeStart(NbtOps.INSTANCE, content).getOrThrow(false, GTCEu.LOGGER::error);
-    }
-
-    default T fromNbt(Tag tag) {
-        return codec().parse(NbtOps.INSTANCE, tag).getOrThrow(false, GTCEu.LOGGER::error);
+    default T fromNbt(Tag tag, HolderLookup.Provider provider) {
+        return codec().parse(provider.createSerializationContext(NbtOps.INSTANCE), tag).getOrThrow();
     }
 }

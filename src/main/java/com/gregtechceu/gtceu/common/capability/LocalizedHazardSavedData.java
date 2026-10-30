@@ -1,5 +1,9 @@
 package com.gregtechceu.gtceu.common.capability;
 
+import net.minecraft.nbt.IntArrayTag;
+
+import com.gregtechceu.gtceu.api.GTSavedData;
+
 import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.api.GTValues;
 import com.gregtechceu.gtceu.api.capability.GTCapabilityHelper;
@@ -11,15 +15,15 @@ import com.gregtechceu.gtceu.config.ConfigHolder;
 import com.gregtechceu.gtceu.utils.BreadthFirstBlockSearch;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.nbt.*;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtUtils;
-import net.minecraft.nbt.Tag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.RandomSource;
-import net.minecraft.world.level.saveddata.SavedData;
 
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
@@ -35,7 +39,7 @@ import java.util.stream.Stream;
  * localized, block-based environmental hazards. e.g. radiation.
  * do not use for large-scale effects, as this stores all blocks where an effect is, and thus will be too slow for that.
  */
-public class LocalizedHazardSavedData extends SavedData {
+public class LocalizedHazardSavedData extends GTSavedData {
 
     public static final int MIN_STRENGTH_FOR_SPREAD = 100;
 
@@ -48,8 +52,8 @@ public class LocalizedHazardSavedData extends SavedData {
     private final Map<BlockPos, HazardZone> hazardZones = new HashMap<>();
 
     public static LocalizedHazardSavedData getOrCreate(ServerLevel serverLevel) {
-        return serverLevel.getDataStorage().computeIfAbsent(tag -> new LocalizedHazardSavedData(serverLevel, tag),
-                () -> new LocalizedHazardSavedData(serverLevel), "gtceu_localized_hazard_tracker");
+        return serverLevel.getDataStorage()
+                .computeIfAbsent(GTSavedData.type("gtceu_localized_hazard_tracker", () -> new LocalizedHazardSavedData(serverLevel), (tag, provider) -> new LocalizedHazardSavedData(serverLevel, tag)));
     }
 
     public LocalizedHazardSavedData(ServerLevel serverLevel) {
@@ -62,12 +66,12 @@ public class LocalizedHazardSavedData extends SavedData {
             return;
         }
 
-        ListTag allHazardZones = tag.getList("zones", Tag.TAG_COMPOUND);
+        ListTag allHazardZones = tag.getListOrEmpty("zones");
         for (int i = 0; i < allHazardZones.size(); ++i) {
-            CompoundTag zoneTag = allHazardZones.getCompound(i);
+            CompoundTag zoneTag = allHazardZones.getCompoundOrEmpty(i);
 
-            BlockPos source = BlockPos.of(zoneTag.getLong("pos"));
-            HazardZone zone = HazardZone.deserializeNBT(zoneTag);
+            BlockPos source = BlockPos.of(zoneTag.getLongOr("pos", 0L));
+            HazardZone zone = HazardZone.deserializeNBT(zoneTag, serverLevel.registryAccess());
 
             this.hazardZones.put(source, zone);
         }
@@ -80,7 +84,7 @@ public class LocalizedHazardSavedData extends SavedData {
 
         Object2IntMap<BlockPos> zonesToSpread = new Object2IntOpenHashMap<>();
 
-        RandomSource random = serverLevel.random;
+        RandomSource random = serverLevel.getRandom();
         for (final var entry : hazardZones.entrySet()) {
             HazardZone zone = entry.getValue();
             if (zone.strength() < MIN_STRENGTH_FOR_SPREAD / 5) {
@@ -122,9 +126,6 @@ public class LocalizedHazardSavedData extends SavedData {
             }
 
             MedicalConditionTracker tracker = GTCapabilityHelper.getMedicalConditionTracker(player);
-            if (tracker == null) {
-                return;
-            }
             tracker.progressCondition(zone.condition(), zone.strength() / 1000f);
         });
     }
@@ -291,13 +292,13 @@ public class LocalizedHazardSavedData extends SavedData {
 
     @NotNull
     @Override
-    public CompoundTag save(@NotNull CompoundTag compoundTag) {
+    public CompoundTag save(@NotNull CompoundTag compoundTag, HolderLookup.Provider provider) {
         ListTag hazardZonesTag = new ListTag();
         for (var entry : hazardZones.entrySet()) {
             CompoundTag zoneTag = new CompoundTag();
 
             zoneTag.putLong("pos", entry.getKey().asLong());
-            entry.getValue().serializeNBT(zoneTag);
+            entry.getValue().serializeNBT(zoneTag, provider);
 
             hazardZonesTag.add(zoneTag);
         }
@@ -312,10 +313,10 @@ public class LocalizedHazardSavedData extends SavedData {
             return blocks.size();
         }
 
-        public CompoundTag serializeNBT(CompoundTag zoneTag) {
+        public CompoundTag serializeNBT(CompoundTag zoneTag, HolderLookup.Provider lookup) {
             ListTag blocksTag = new ListTag();
             blocks.stream()
-                    .map(NbtUtils::writeBlockPos)
+                    .map(pos -> new IntArrayTag(new int[] { pos.getX(), pos.getY(), pos.getZ() }))
                     .forEach(blocksTag::add);
             zoneTag.put("blocks", blocksTag);
             zoneTag.putBoolean("can_spread", canSpread);
@@ -325,22 +326,23 @@ public class LocalizedHazardSavedData extends SavedData {
             return zoneTag;
         }
 
-        public static HazardZone deserializeNBT(CompoundTag zoneTag) {
-            Set<BlockPos> blocks = zoneTag.getList("blocks", Tag.TAG_COMPOUND).stream()
-                    .map(CompoundTag.class::cast)
-                    .map(NbtUtils::readBlockPos)
+        public static HazardZone deserializeNBT(CompoundTag zoneTag, HolderLookup.Provider lookup) {
+            Set<BlockPos> blocks = zoneTag.getListOrEmpty("blocks").stream()
+                    .map(IntArrayTag.class::cast)
+                    .map(tag -> {
+                        int[] aint = tag.getAsIntArray();
+                        return aint.length == 3 ? new BlockPos(aint[0], aint[1], aint[2]) : null;
+                    })
                     .collect(Collectors.toSet());
-            boolean canSpread = zoneTag.getBoolean("can_spread");
+            boolean canSpread = zoneTag.getBooleanOr("can_spread", false);
             HazardProperty.HazardTrigger trigger = HazardProperty.HazardTrigger.ALL_TRIGGERS
                     .get(zoneTag.getString("trigger"));
 
-            ResourceLocation id = GTCEu.id(zoneTag.getString("condition"));
-            if (!GTRegistries.MEDICAL_CONDITIONS.containsKey(id)) {
-                return null;
-            }
-            MedicalCondition condition = GTRegistries.MEDICAL_CONDITIONS.get(id);
+            ResourceKey<MedicalCondition> id = ResourceKey.create(GTRegistries.Keys.MEDICAL_CONDITION,
+                    GTCEu.id(zoneTag.getStringOr("condition", "")));
 
-            return new HazardZone(blocks, canSpread, trigger, condition);
+            return lookup.get(id).map(medicalConditionReference -> new HazardZone(blocks, canSpread, trigger,
+                    medicalConditionReference.value())).orElse(null);
         }
     }
 }

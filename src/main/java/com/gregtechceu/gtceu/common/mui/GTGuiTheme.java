@@ -3,9 +3,9 @@ package com.gregtechceu.gtceu.common.mui;
 import com.gregtechceu.gtceu.api.cover.IMuiCover;
 import com.gregtechceu.gtceu.config.ConfigHolder;
 
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.event.lifecycle.FMLConstructModEvent;
+import com.gregtechceu.gtceu.compat.bus.SubscribeEvent;
+import com.gregtechceu.gtceu.compat.fml.common.EventBusSubscriber;
+import com.gregtechceu.gtceu.compat.fml.event.lifecycle.FMLConstructModEvent;
 
 import brachy.modularui.api.ITheme;
 import brachy.modularui.api.IThemeApi;
@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-@Mod.EventBusSubscriber(bus = Mod.EventBusSubscriber.Bus.MOD)
+@EventBusSubscriber
 public class GTGuiTheme {
 
     private static final List<GTGuiTheme> THEMES = new ArrayList<>();
@@ -112,11 +112,6 @@ public class GTGuiTheme {
     }
 
     public static void registerThemes() {
-        THEMES.forEach(GTGuiTheme::register);
-    }
-
-    @SubscribeEvent
-    public static void onReloadThemes(FMLConstructModEvent event) {
         THEMES.forEach(GTGuiTheme::register);
     }
 

@@ -1,30 +1,34 @@
 package com.gregtechceu.gtceu.client.renderer.machine.impl;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
+import com.gregtechceu.gtceu.compat.client.render.CompatRender;
+
+import net.minecraft.util.LightCoordsUtil;
+
+import com.gregtechceu.gtceu.api.item.datacomponents.LargeItemContent;
 import com.gregtechceu.gtceu.api.machine.MetaMachine;
 import com.gregtechceu.gtceu.client.renderer.machine.DynamicRender;
 import com.gregtechceu.gtceu.client.renderer.machine.DynamicRenderType;
 import com.gregtechceu.gtceu.client.util.RenderUtil;
 import com.gregtechceu.gtceu.common.data.GTMachines;
+import com.gregtechceu.gtceu.common.data.item.GTDataComponents;
 import com.gregtechceu.gtceu.common.machine.storage.CreativeChestMachine;
 import com.gregtechceu.gtceu.common.machine.storage.QuantumChestMachine;
 import com.gregtechceu.gtceu.utils.FormattingUtil;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.renderer.LightTexture;
-import net.minecraft.client.renderer.MultiBufferSource;
+import com.gregtechceu.gtceu.compat.client.render.MultiBufferSource;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.Direction;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Quaternionf;
 
@@ -33,7 +37,7 @@ import static com.gregtechceu.gtceu.utils.GTMatrixUtils.*;
 public class QuantumChestItemRender extends DynamicRender<QuantumChestMachine, QuantumChestItemRender> {
 
     // spotless:off
-    public static final Codec<QuantumChestItemRender> CODEC = Codec.unit(QuantumChestItemRender::new);
+    public static final MapCodec<QuantumChestItemRender> CODEC = MapCodec.unit(QuantumChestItemRender::new);
     public static final DynamicRenderType<QuantumChestMachine, QuantumChestItemRender> TYPE = new DynamicRenderType<>(QuantumChestItemRender.CODEC);
     // spotless:on
 
@@ -49,14 +53,17 @@ public class QuantumChestItemRender extends DynamicRender<QuantumChestMachine, Q
     @Override
     public void renderByItem(ItemStack stack, ItemDisplayContext displayContext,
                              PoseStack poseStack, MultiBufferSource buffer, int packedLight, int packedOverlay) {
-        if (CREATIVE_CHEST_ITEM == null) CREATIVE_CHEST_ITEM = GTMachines.CREATIVE_ITEM.getItem();
-        if (stack.hasTag()) {
+        if (CREATIVE_CHEST_ITEM == null) CREATIVE_CHEST_ITEM = GTMachines.CREATIVE_ITEM.asItem();
+
+        LargeItemContent content = stack.get(GTDataComponents.LARGE_ITEM_CONTENT);
+        if (content != null) {
             poseStack.pushPose();
             poseStack.translate(-0.5f, -0.5f, -0.5f);
 
-            ItemStack itemStack = ItemStack.of(stack.getOrCreateTagElement("stored"));
-            long storedAmount = stack.getOrCreateTag().getLong("storedAmount");
-            float totalTick = Minecraft.getInstance().level.getGameTime() + Minecraft.getInstance().getFrameTime();
+            ItemStack itemStack = content.stored();
+            long storedAmount = content.amount();
+            float totalTick = Minecraft.getInstance().player.tickCount +
+                    Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(false);
             // Don't need to handle locked items here since they don't get saved to the item
             renderChestItem(poseStack, buffer, totalTick, Direction.NORTH,
                     itemStack, storedAmount, ItemStack.EMPTY, stack.is(CREATIVE_CHEST_ITEM));
@@ -79,24 +86,23 @@ public class QuantumChestItemRender extends DynamicRender<QuantumChestMachine, Q
         poseStack.popPose();
     }
 
-    @OnlyIn(Dist.CLIENT)
+    @Environment(EnvType.CLIENT)
     public void renderChestItem(PoseStack poseStack, MultiBufferSource buffer, float totalTick, Direction frontFacing,
                                 ItemStack stored, long storedAmount, ItemStack locked, boolean isCreative) {
         ItemStack itemStack = !stored.isEmpty() ? stored : locked;
         if (itemStack.isEmpty()) return;
-        var itemRenderer = Minecraft.getInstance().getItemRenderer();
 
         poseStack.pushPose();
         poseStack.translate(0.5f, 0.5f, 0.5f);
         if (frontFacing.getAxis() == Direction.Axis.Y) {
             Quaternionf rotation = getRotation(Direction.NORTH, frontFacing);
-            poseStack.mulPose(rotation);
+            poseStack.rotate(rotation);
         }
-        poseStack.mulPose(new Quaternionf().rotateY(totalTick * Mth.TWO_PI / 80));
+        poseStack.rotate(new Quaternionf().rotateY(totalTick * Mth.TWO_PI / 80));
         poseStack.scale(0.6f, 0.6f, 0.6f);
 
-        itemRenderer.renderStatic(itemStack, ItemDisplayContext.FIXED,
-                LightTexture.FULL_BRIGHT, OverlayTexture.NO_OVERLAY,
+        CompatRender.renderItem(itemStack, ItemDisplayContext.FIXED,
+                LightCoordsUtil.FULL_BRIGHT, OverlayTexture.NO_OVERLAY,
                 poseStack, buffer, Minecraft.getInstance().level,
                 Item.getId(itemStack.getItem()) + itemStack.getDamageValue());
         poseStack.popPose();
@@ -119,7 +125,6 @@ public class QuantumChestItemRender extends DynamicRender<QuantumChestMachine, Q
     public static void drawAmountText(PoseStack poseStack, MultiBufferSource buffer, Direction frontFacing,
                                       long storedAmount, boolean isCreative) {
         poseStack.pushPose();
-        RenderSystem.disableDepthTest();
         poseStack.translate(frontFacing.getStepX() * -1 / 16f, frontFacing.getStepY() * -1 / 16f,
                 frontFacing.getStepZ() * -1 / 16f);
 
@@ -146,11 +151,10 @@ public class QuantumChestItemRender extends DynamicRender<QuantumChestMachine, Q
         }
 
         Font font = Minecraft.getInstance().font;
-        font.drawInBatch(text, textX - font.getSplitter().stringWidth(text) / 2.0f, textY - font.lineHeight / 2.0f,
-                0xffffffff, false,
-                poseStack.last().pose(), buffer, Font.DisplayMode.NORMAL, 0, LightTexture.FULL_BRIGHT);
+        CompatRender.drawText(font, text, textX - font.getSplitter().stringWidth(text) / 2.0f,
+                textY - font.lineHeight / 2.0f, 0xffffffff, false, poseStack, buffer, Font.DisplayMode.SEE_THROUGH,
+                0, LightCoordsUtil.FULL_BRIGHT);
         poseStack.popPose();
-        RenderSystem.enableDepthTest();
         poseStack.popPose();
     }
 }

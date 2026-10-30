@@ -13,8 +13,8 @@ import com.gregtechceu.gtceu.api.sync_system.annotations.SaveField;
 import com.gregtechceu.gtceu.common.data.GTMedicalConditions;
 import com.gregtechceu.gtceu.common.machine.trait.hazard.EnvironmentalHazardEmitterTrait;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
-import net.minecraftforge.fluids.FluidType;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.fluids.FluidType;
 
 import lombok.Getter;
 

@@ -13,6 +13,7 @@ import com.gregtechceu.gtceu.api.machine.trait.recipe.RecipeLogic;
 import com.gregtechceu.gtceu.api.multiblock.MultiPredicate;
 import com.gregtechceu.gtceu.api.multiblock.Predicates;
 import com.gregtechceu.gtceu.api.multiblock.pattern.MultiblockPatternBuilder;
+import com.gregtechceu.gtceu.api.registry.registrate.entry.MachineEntry;
 import com.gregtechceu.gtceu.client.renderer.machine.DynamicRenderHelper;
 import com.gregtechceu.gtceu.common.data.GTMaterials;
 import com.gregtechceu.gtceu.common.data.GTRecipeModifiers;
@@ -55,7 +56,8 @@ public class GCYMMachines {
 
     public static void init() {}
 
-    public static final MachineDefinition[] PARALLEL_HATCH = registerTieredMachines(REGISTRATE, "parallel_hatch",
+    public static final MachineEntry<MachineDefinition>[] PARALLEL_HATCH = registerTieredMachines(REGISTRATE,
+            "parallel_hatch",
             ParallelHatchPartMachine::new,
             (tier, builder) -> builder
                     .langValue(switch (tier) {
@@ -79,12 +81,12 @@ public class GCYMMachines {
                     .register(),
             IV, LuV, ZPM, UV);
 
-    public final static MultiblockMachineDefinition LARGE_MACERATION_TOWER = REGISTRATE
+    public static final MachineEntry<MultiblockMachineDefinition> LARGE_MACERATION_TOWER = REGISTRATE
             .multiblock("large_maceration_tower", LargeMacerationTowerMachine::new)
             .langValue("Large Maceration Tower")
             .tooltips(Component.translatable("gtceu.multiblock.parallelizable.tooltip"))
             .tooltips(Component.translatable("gtceu.machine.available_recipe_map_1.tooltip",
-                    Component.translatable("gtceu.macerator")))
+                    MACERATOR_RECIPES.getName()))
             .rotationState(RotationState.ALL)
             .recipeType(MACERATOR_RECIPES)
             .recipeModifiers(GTRecipeModifiers.PARALLEL_HATCH, OC_NON_PERFECT_SUBTICK, BATCH_MODE)
@@ -95,7 +97,7 @@ public class GCYMMachines {
                     .slice("XXXXX", "XGGGX", "XGGGX", "XAAAX")
                     .slice("XXXXX", "XGGGX", "XGGGX", "XAAAX")
                     .slice("XXXXX", "XXXXX", "XXSXX", "XXXXX")
-                    .where('S', controller(blocks(definition.get())))
+                    .where('S', controller(definition))
                     .where('X', blocks(CASING_SECURE_MACERATION.get()).setMinGlobalLimited(55)
                             .and(Predicates.autoAbilities(definition.getRecipeTypes()))
                             .and(Predicates.autoAbilities(true, false, true)))
@@ -106,12 +108,12 @@ public class GCYMMachines {
                     GTCEu.id("block/multiblock/gcym/large_maceration_tower"))
             .register();
 
-    public final static MultiblockMachineDefinition LARGE_CHEMICAL_BATH = REGISTRATE
+    public static final MachineEntry<MultiblockMachineDefinition> LARGE_CHEMICAL_BATH = REGISTRATE
             .multiblock("large_chemical_bath", GTMachineInstanceFactories.LARGE_CHEM_BATH)
             .langValue("Large Chemical Bath")
             .tooltips(Component.translatable("gtceu.multiblock.parallelizable.tooltip"))
             .tooltips(Component.translatable("gtceu.machine.available_recipe_map_2.tooltip",
-                    Component.translatable("gtceu.ore_washer"), Component.translatable("gtceu.chemical_bath")))
+                    ORE_WASHER_RECIPES.getName(), CHEMICAL_BATH_RECIPES.getName()))
             .rotationState(RotationState.ALL)
             .recipeTypes(CHEMICAL_BATH_RECIPES, ORE_WASHER_RECIPES)
             .recipeModifiers(GTRecipeModifiers.PARALLEL_HATCH, OC_NON_PERFECT_SUBTICK, BATCH_MODE)
@@ -124,7 +126,7 @@ public class GCYMMachines {
                     .slice("XXXXX", "X   X", "X   X")
                     .slice("XXXXX", "XTTTX", "X   X")
                     .slice("XXXXX", "XXSXX", "XXXXX")
-                    .where('S', controller(blocks(definition.get())))
+                    .where('S', controller(definition))
                     .where('X', blocks(CASING_WATERTIGHT.get()).setMinGlobalLimited(55)
                             .and(Predicates.autoAbilities(definition.getRecipeTypes()))
                             .and(Predicates.autoAbilities(true, false, true)))
@@ -138,12 +140,12 @@ public class GCYMMachines {
                     .andThen(b -> b.addDynamicRenderer(DynamicRenderHelper::makeRecipeFluidAreaRender)))
             .register();
 
-    public final static MultiblockMachineDefinition LARGE_CENTRIFUGE = REGISTRATE
+    public static final MachineEntry<MultiblockMachineDefinition> LARGE_CENTRIFUGE = REGISTRATE
             .multiblock("large_centrifuge", WorkableElectricMultiblockMachine::new)
             .langValue("Large Centrifugal Unit")
             .tooltips(Component.translatable("gtceu.multiblock.parallelizable.tooltip"))
             .tooltips(Component.translatable("gtceu.machine.available_recipe_map_2.tooltip",
-                    Component.translatable("gtceu.centrifuge"), Component.translatable("gtceu.thermal_centrifuge")))
+                    CENTRIFUGE_RECIPES.getName(), THERMAL_CENTRIFUGE_RECIPES.getName()))
             .rotationState(RotationState.ALL)
             .recipeTypes(CENTRIFUGE_RECIPES, THERMAL_CENTRIFUGE_RECIPES)
             .recipeModifiers(GTRecipeModifiers.PARALLEL_HATCH, OC_NON_PERFECT_SUBTICK, BATCH_MODE)
@@ -154,7 +156,7 @@ public class GCYMMachines {
                     .slice("XXXXX", "XPAPX", "XXXXX")
                     .slice("XXXXX", "XAPAX", "XXXXX")
                     .slice("#XXX#", "XXSXX", "#XXX#")
-                    .where('S', controller(blocks(definition.get())))
+                    .where('S', controller(definition))
                     .where('X', blocks(CASING_VIBRATION_SAFE.get()).setMinGlobalLimited(40)
                             .and(Predicates.autoAbilities(definition.getRecipeTypes()))
                             .and(Predicates.autoAbilities(true, false, true)))
@@ -166,12 +168,12 @@ public class GCYMMachines {
                     GTCEu.id("block/multiblock/gcym/large_centrifuge"))
             .register();
 
-    public final static MultiblockMachineDefinition LARGE_MIXER = REGISTRATE
+    public static final MachineEntry<MultiblockMachineDefinition> LARGE_MIXER = REGISTRATE
             .multiblock("large_mixer", GTMachineInstanceFactories.LARGE_MIXER)
             .langValue("Large Mixing Vessel")
             .tooltips(Component.translatable("gtceu.multiblock.parallelizable.tooltip"))
             .tooltips(Component.translatable("gtceu.machine.available_recipe_map_1.tooltip",
-                    Component.translatable("gtceu.mixer")))
+                    MIXER_RECIPES.getName()))
             .rotationState(RotationState.ALL)
             .recipeType(MIXER_RECIPES)
             .recipeModifiers(GTRecipeModifiers.PARALLEL_HATCH, OC_NON_PERFECT_SUBTICK, BATCH_MODE)
@@ -182,7 +184,7 @@ public class GCYMMachines {
                     .slice("XXXXX", "XPPPX", "XAPAX", "XPPPX", "XAGAX", "FFGFF")
                     .slice("XXXXX", "XAPAX", "XAAAX", "XAPAX", "XAAAX", "##F##")
                     .slice("#XXX#", "#XSX#", "#XXX#", "#XXX#", "#XXX#", "##F##")
-                    .where('S', controller(blocks(definition.get())))
+                    .where('S', controller(definition))
                     .where('X', blocks(CASING_REACTION_SAFE.get()).setMinGlobalLimited(50)
                             .and(autoAbilities(definition.getRecipeTypes()))
                             .and(Predicates.autoAbilities(true, false, true)))
@@ -199,12 +201,12 @@ public class GCYMMachines {
                     .andThen(b -> b.addDynamicRenderer(DynamicRenderHelper::makeRecipeFluidAreaRender)))
             .register();
 
-    public final static MultiblockMachineDefinition LARGE_ELECTROLYZER = REGISTRATE
+    public static final MachineEntry<MultiblockMachineDefinition> LARGE_ELECTROLYZER = REGISTRATE
             .multiblock("large_electrolyzer", WorkableElectricMultiblockMachine::new)
             .langValue("Large Electrolysis Chamber")
             .tooltips(Component.translatable("gtceu.multiblock.parallelizable.tooltip"))
             .tooltips(Component.translatable("gtceu.machine.available_recipe_map_1.tooltip",
-                    Component.translatable("gtceu.electrolyzer")))
+                    ELECTROLYZER_RECIPES.getName()))
             .rotationState(RotationState.ALL)
             .recipeType(ELECTROLYZER_RECIPES)
             .recipeModifiers(GTRecipeModifiers.PARALLEL_HATCH, OC_NON_PERFECT_SUBTICK, BATCH_MODE)
@@ -214,7 +216,7 @@ public class GCYMMachines {
                     .slice("XXXXX", "XCCCX", "XCCCX")
                     .slice("XXXXX", "XCCCX", "XCCCX")
                     .slice("XXXXX", "XXSXX", "XXXXX")
-                    .where('S', controller(blocks(definition.get())))
+                    .where('S', controller(definition))
                     .where('X', blocks(CASING_NONCONDUCTING.get()).setMinGlobalLimited(30)
                             .and(Predicates.autoAbilities(definition.getRecipeTypes()))
                             .and(Predicates.autoAbilities(true, false, true)))
@@ -224,13 +226,13 @@ public class GCYMMachines {
                     GTCEu.id("block/multiblock/gcym/large_electrolyzer"))
             .register();
 
-    public final static MultiblockMachineDefinition LARGE_ELECTROMAGNET = REGISTRATE
+    public static final MachineEntry<MultiblockMachineDefinition> LARGE_ELECTROMAGNET = REGISTRATE
             .multiblock("large_electromagnet", WorkableElectricMultiblockMachine::new)
             .langValue("Large Electromagnet")
             .tooltips(Component.translatable("gtceu.multiblock.parallelizable.tooltip"))
             .tooltips(Component.translatable("gtceu.machine.available_recipe_map_2.tooltip",
-                    Component.translatable("gtceu.electromagnetic_separator"),
-                    Component.translatable("gtceu.polarizer")))
+                    ELECTROMAGNETIC_SEPARATOR_RECIPES.getName(),
+                    POLARIZER_RECIPES.getName()))
             .rotationState(RotationState.ALL)
             .recipeTypes(ELECTROMAGNETIC_SEPARATOR_RECIPES, POLARIZER_RECIPES)
             .recipeModifiers(GTRecipeModifiers.PARALLEL_HATCH, OC_NON_PERFECT_SUBTICK, BATCH_MODE)
@@ -240,7 +242,7 @@ public class GCYMMachines {
                     .slice("XCXCX", "XCXCX", "XCXCX")
                     .slice("XCXCX", "XCXCX", "XCXCX")
                     .slice("XXXXX", "XXSXX", "XXXXX")
-                    .where('S', controller(blocks(definition.get())))
+                    .where('S', controller(definition))
                     .where('X', blocks(CASING_NONCONDUCTING.get()).setMinGlobalLimited(35)
                             .and(Predicates.autoAbilities(definition.getRecipeTypes()))
                             .and(Predicates.autoAbilities(true, false, true)))
@@ -250,7 +252,7 @@ public class GCYMMachines {
                     GTCEu.id("block/multiblock/gcym/large_electrolyzer"))
             .register();
 
-    public final static MultiblockMachineDefinition LARGE_PACKER = REGISTRATE
+    public static final MachineEntry<MultiblockMachineDefinition> LARGE_PACKER = REGISTRATE
             .multiblock("large_packer", WorkableElectricMultiblockMachine::new)
             .langValue("Large Packaging Machine")
             .tooltips(Component.translatable("gtceu.multiblock.parallelizable.tooltip"))
@@ -267,7 +269,7 @@ public class GCYMMachines {
                     .slice("XXX", "XAX", "XXX")
                     .slice("XXX", "XAX", "XXX")
                     .slice("XXX", "XSX", "XXX")
-                    .where('S', controller(blocks(definition.get())))
+                    .where('S', controller(definition))
                     .where('X', blocks(CASING_TUNGSTENSTEEL_ROBUST.get()).setMinGlobalLimited(30)
                             .and(Predicates.autoAbilities(definition.getRecipeTypes()))
                             .and(Predicates.autoAbilities(true, false, true)))
@@ -277,7 +279,7 @@ public class GCYMMachines {
                     GTCEu.id("block/multiblock/gcym/large_packer"))
             .register();
 
-    public final static MultiblockMachineDefinition LARGE_ASSEMBLER = REGISTRATE
+    public static final MachineEntry<MultiblockMachineDefinition> LARGE_ASSEMBLER = REGISTRATE
             .multiblock("large_assembler", WorkableElectricMultiblockMachine::new)
             .langValue("Large Assembling Factory")
             .tooltips(Component.translatable("gtceu.multiblock.parallelizable.tooltip"))
@@ -295,7 +297,7 @@ public class GCYMMachines {
                     .slice("XXXXXXXXX", "XXXXXXXXX", "XXXXXXXXX")
                     .slice("XXXXXXXXX", "XAAAXAAAX", "XGGGXXXXX")
                     .slice("XXXXXXXXX", "XGGGXXSXX", "XGGGX###X")
-                    .where('S', controller(blocks(definition.get())))
+                    .where('S', controller(definition))
                     .where('X', blocks(CASING_LARGE_SCALE_ASSEMBLING.get()).setMinGlobalLimited(40)
                             .and(Predicates.autoAbilities(definition.getRecipeTypes(), false, false, true, true, true,
                                     true))
@@ -309,12 +311,12 @@ public class GCYMMachines {
                     GTCEu.id("block/multiblock/gcym/large_assembler"))
             .register();
 
-    public final static MultiblockMachineDefinition LARGE_CIRCUIT_ASSEMBLER = REGISTRATE
+    public static final MachineEntry<MultiblockMachineDefinition> LARGE_CIRCUIT_ASSEMBLER = REGISTRATE
             .multiblock("large_circuit_assembler", WorkableElectricMultiblockMachine::new)
             .langValue("Large Circuit Assembling Facility")
             .tooltips(Component.translatable("gtceu.multiblock.parallelizable.tooltip"))
             .tooltips(Component.translatable("gtceu.machine.available_recipe_map_1.tooltip",
-                    Component.translatable("gtceu.circuit_assembler")))
+                    CIRCUIT_ASSEMBLER_RECIPES.getName()))
             .tooltips(Component.translatable("gtceu.multiblock.exact_hatch_1.tooltip"))
             .conditionalTooltip(GTMachineUtils.defaultEnvironmentRequirement(),
                     ConfigHolder.INSTANCE.gameplay.environmentalHazards)
@@ -329,7 +331,7 @@ public class GCYMMachines {
                     .slice("XXXXXXX", "XAAAAPX", "XGGGGGX")
                     .slice("XXXXXXX", "XTTTTXX", "XXXXXXX")
                     .slice("#####XX", "#####SX", "#####XX")
-                    .where('S', controller(blocks(definition.get())))
+                    .where('S', controller(definition))
                     .where('X', blocks(CASING_LARGE_SCALE_ASSEMBLING.get()).setMinGlobalLimited(55)
                             .and(Predicates.autoAbilities(definition.getRecipeTypes(), false, false, true, true, true,
                                     true))
@@ -345,12 +347,12 @@ public class GCYMMachines {
                     GTCEu.id("block/multiblock/gcym/large_circuit_assembler"))
             .register();
 
-    public final static MultiblockMachineDefinition LARGE_ARC_SMELTER = REGISTRATE
+    public static final MachineEntry<MultiblockMachineDefinition> LARGE_ARC_SMELTER = REGISTRATE
             .multiblock("large_arc_smelter", WorkableElectricMultiblockMachine::new)
             .langValue("Large Arc Smelter")
             .tooltips(Component.translatable("gtceu.multiblock.parallelizable.tooltip"))
             .tooltips(Component.translatable("gtceu.machine.available_recipe_map_1.tooltip",
-                    Component.translatable("gtceu.arc_furnace")))
+                    ARC_FURNACE_RECIPES.getName()))
             .rotationState(RotationState.ALL)
             .recipeType(ARC_FURNACE_RECIPES)
             .recipeModifiers(GTRecipeModifiers.PARALLEL_HATCH, OC_NON_PERFECT_SUBTICK, BATCH_MODE)
@@ -361,7 +363,7 @@ public class GCYMMachines {
                     .slice("XXXXX", "XAAAX", "XAAAX", "XXMXX")
                     .slice("XXXXX", "XACAX", "XACAX", "XXXXX")
                     .slice("#XXX#", "#XSX#", "#XXX#", "#XXX#")
-                    .where('S', controller(blocks(definition.get())))
+                    .where('S', controller(definition))
                     .where('X', blocks(CASING_HIGH_TEMPERATURE_SMELTING.get()).setMinGlobalLimited(45)
                             .and(Predicates.autoAbilities(definition.getRecipeTypes()))
                             .and(Predicates.autoAbilities(true, false, true)))
@@ -374,12 +376,12 @@ public class GCYMMachines {
                     GTCEu.id("block/multiblock/gcym/large_arc_smelter"))
             .register();
 
-    public final static MultiblockMachineDefinition LARGE_ENGRAVING_LASER = REGISTRATE
+    public static final MachineEntry<MultiblockMachineDefinition> LARGE_ENGRAVING_LASER = REGISTRATE
             .multiblock("large_engraving_laser", WorkableElectricMultiblockMachine::new)
             .langValue("Large Engraving Laser")
             .tooltips(Component.translatable("gtceu.multiblock.parallelizable.tooltip"))
             .tooltips(Component.translatable("gtceu.machine.available_recipe_map_1.tooltip",
-                    Component.translatable("gtceu.laser_engraver")))
+                    LASER_ENGRAVER_RECIPES.getName()))
             .conditionalTooltip(GTMachineUtils.defaultEnvironmentRequirement(),
                     ConfigHolder.INSTANCE.gameplay.environmentalHazards)
             .rotationState(RotationState.ALL)
@@ -393,7 +395,7 @@ public class GCYMMachines {
                     .slice("XXXXX", "GAAAG", "GACAG", "XKXKX")
                     .slice("XXXXX", "XAAAX", "XAAAX", "XKKKX")
                     .slice("XXSXX", "XXGXX", "XXGXX", "XXXXX")
-                    .where('S', controller(blocks(definition.get())))
+                    .where('S', controller(definition))
                     .where('C', blocks(CASING_TUNGSTENSTEEL_PIPE.get()))
                     .where('X', blocks(CASING_LASER_SAFE_ENGRAVING.get()).setMinGlobalLimited(50)
                             .and(Predicates.autoAbilities(definition.getRecipeTypes()))
@@ -406,12 +408,12 @@ public class GCYMMachines {
                     GTCEu.id("block/multiblock/gcym/large_engraving_laser"))
             .register();
 
-    public final static MultiblockMachineDefinition LARGE_SIFTING_FUNNEL = REGISTRATE
+    public static final MachineEntry<MultiblockMachineDefinition> LARGE_SIFTING_FUNNEL = REGISTRATE
             .multiblock("large_sifting_funnel", WorkableElectricMultiblockMachine::new)
             .langValue("Large Sifting Funnel")
             .tooltips(Component.translatable("gtceu.multiblock.parallelizable.tooltip"))
             .tooltips(Component.translatable("gtceu.machine.available_recipe_map_1.tooltip",
-                    Component.translatable("gtceu.sifter")))
+                    SIFTER_RECIPES.getName()))
             .rotationState(RotationState.ALL)
             .recipeType(SIFTER_RECIPES)
             .recipeModifiers(GTRecipeModifiers.PARALLEL_HATCH, OC_NON_PERFECT_SUBTICK, BATCH_MODE)
@@ -422,7 +424,7 @@ public class GCYMMachines {
                     .slice("#XXX#", "#XAX#", "XKKKX", "XKKKX", "X###X")
                     .slice("XXXXX", "XAXAX", "XKKKX", "XKKKX", "X###X")
                     .slice("#X#X#", "#X#X#", "#XSX#", "XXXXX", "#XXX#")
-                    .where('S', controller(blocks(definition.get())))
+                    .where('S', controller(definition))
                     .where('X', blocks(CASING_VIBRATION_SAFE.get()).setMinGlobalLimited(50)
                             .and(Predicates.autoAbilities(definition.getRecipeTypes()))
                             .and(Predicates.autoAbilities(true, false, true)))
@@ -434,11 +436,11 @@ public class GCYMMachines {
                     GTCEu.id("block/multiblock/gcym/large_sifting_funnel"))
             .register();
 
-    public final static MultiblockMachineDefinition BLAST_ALLOY_SMELTER = REGISTRATE
+    public static final MachineEntry<MultiblockMachineDefinition> BLAST_ALLOY_SMELTER = REGISTRATE
             .multiblock("alloy_blast_smelter", CoilWorkableElectricMultiblockMachine::new)
             .langValue("Alloy Blast Smelter")
             .tooltips(Component.translatable("gtceu.machine.available_recipe_map_1.tooltip",
-                    Component.translatable("gtceu.alloy_blast_smelter")))
+                    ALLOY_BLAST_RECIPES.getName()))
             .tooltips(Component.translatable("gtceu.machine.electric_blast_furnace.tooltip.0"),
                     Component.translatable("gtceu.machine.electric_blast_furnace.tooltip.1"),
                     Component.translatable("gtceu.machine.electric_blast_furnace.tooltip.2"))
@@ -452,7 +454,7 @@ public class GCYMMachines {
                     .slice("XXXXX", "CAAAC", "GAAAG", "CAAAC", "XXMXX")
                     .slice("XXXXX", "CAAAC", "GAAAG", "CAAAC", "XXXXX")
                     .slice("#XSX#", "#CCC#", "#GGG#", "#CCC#", "#XXX#")
-                    .where('S', controller(blocks(definition.get())))
+                    .where('S', controller(definition))
                     .where('X', blocks(CASING_HIGH_TEMPERATURE_SMELTING.get()).setMinGlobalLimited(30)
                             .and(autoAbilities(definition.getRecipeTypes()))
                             .and(Predicates.autoAbilities(true, false, false)))
@@ -472,7 +474,7 @@ public class GCYMMachines {
                 IntSyncValue coilTemperature = syncManager.getOrCreateSyncHandler("coilTemperature", IntSyncValue.class,
                         () -> new IntSyncValue(() -> coilMachine.getCoilType().getCoilTemperature()));
                 IntSyncValue machineTier = syncManager.getOrCreateSyncHandler("machineTier", IntSyncValue.class,
-                        () -> new IntSyncValue(() -> coilMachine.getTier()));
+                        () -> new IntSyncValue(coilMachine::getTier));
 
                 return Collections.singletonList(Text
                         .dynamic(() -> Component.translatable("gtceu.multiblock.blast_furnace.max_temperature",
@@ -484,12 +486,12 @@ public class GCYMMachines {
             })
             .register();
 
-    public final static MultiblockMachineDefinition LARGE_AUTOCLAVE = REGISTRATE
+    public static final MachineEntry<MultiblockMachineDefinition> LARGE_AUTOCLAVE = REGISTRATE
             .multiblock("large_autoclave", WorkableElectricMultiblockMachine::new)
             .langValue("Large Crystallization Chamber")
             .tooltips(Component.translatable("gtceu.multiblock.parallelizable.tooltip"))
             .tooltips(Component.translatable("gtceu.machine.available_recipe_map_1.tooltip",
-                    Component.translatable("gtceu.autoclave")))
+                    AUTOCLAVE_RECIPES.getName()))
             .rotationState(RotationState.ALL)
             .recipeType(AUTOCLAVE_RECIPES)
             .recipeModifiers(GTRecipeModifiers.PARALLEL_HATCH, OC_NON_PERFECT_SUBTICK, BATCH_MODE)
@@ -500,7 +502,7 @@ public class GCYMMachines {
                     .slice("XXX", "XTX", "XXX")
                     .slice("XXX", "XTX", "XXX")
                     .slice("XXX", "XSX", "XXX")
-                    .where('S', controller(blocks(definition.get())))
+                    .where('S', controller(definition))
                     .where('X', blocks(CASING_WATERTIGHT.get()).setMinGlobalLimited(30)
                             .and(autoAbilities(definition.getRecipeTypes()))
                             .and(autoAbilities(true, false, true)))
@@ -511,13 +513,13 @@ public class GCYMMachines {
                     GTCEu.id("block/multiblock/gcym/large_autoclave"))
             .register();
 
-    public final static MultiblockMachineDefinition LARGE_MATERIAL_PRESS = REGISTRATE
+    public static final MachineEntry<MultiblockMachineDefinition> LARGE_MATERIAL_PRESS = REGISTRATE
             .multiblock("large_material_press", WorkableElectricMultiblockMachine::new)
             .langValue("Large Material Press")
             .tooltips(Component.translatable("gtceu.multiblock.parallelizable.tooltip"))
             .tooltips(Component.translatable("gtceu.machine.available_recipe_map_4.tooltip",
-                    Component.translatable("gtceu.bender"), Component.translatable("gtceu.compressor"),
-                    Component.translatable("gtceu.forge_hammer"), Component.translatable("gtceu.forming_press")))
+                    BENDER_RECIPES.getName(), COMPRESSOR_RECIPES.getName(),
+                    FORGE_HAMMER_RECIPES.getName(), FORMING_PRESS_RECIPES.getName()))
             .rotationState(RotationState.ALL)
             .recipeTypes(BENDER_RECIPES, COMPRESSOR_RECIPES, FORGE_HAMMER_RECIPES, FORMING_PRESS_RECIPES)
             .recipeModifiers(GTRecipeModifiers.PARALLEL_HATCH, OC_NON_PERFECT_SUBTICK, BATCH_MODE)
@@ -526,7 +528,7 @@ public class GCYMMachines {
                     .slice("XXXXXXX", "XXXXXXX", "XXXXXXX")
                     .slice("XXXXXXX", "XAXGGGX", "XXXXXXX")
                     .slice("XXXXXXX", "XSXCCCX", "XXXXXXX")
-                    .where('S', controller(blocks(definition.get())))
+                    .where('S', controller(definition))
                     .where('X', blocks(CASING_STRESS_PROOF.get()).setMinGlobalLimited(40)
                             .and(autoAbilities(definition.getRecipeTypes()))
                             .and(autoAbilities(true, false, true)))
@@ -538,13 +540,13 @@ public class GCYMMachines {
                     GTCEu.id("block/multiblock/gcym/large_material_press"))
             .register();
 
-    public final static MultiblockMachineDefinition LARGE_BREWER = REGISTRATE
+    public static final MachineEntry<MultiblockMachineDefinition> LARGE_BREWER = REGISTRATE
             .multiblock("large_brewer", WorkableElectricMultiblockMachine::new)
             .langValue("Large Brewing Vat")
             .tooltips(Component.translatable("gtceu.multiblock.parallelizable.tooltip"))
             .tooltips(Component.translatable("gtceu.machine.available_recipe_map_3.tooltip",
-                    Component.translatable("gtceu.brewery"), Component.translatable("gtceu.fermenter"),
-                    Component.translatable("gtceu.fluid_heater")))
+                    BREWING_RECIPES.getName(), FERMENTING_RECIPES.getName(),
+                    FLUID_HEATER_RECIPES.getName()))
             .rotationState(RotationState.ALL)
             .recipeTypes(BREWING_RECIPES, FERMENTING_RECIPES, FLUID_HEATER_RECIPES)
             .recipeModifiers(GTRecipeModifiers.PARALLEL_HATCH, OC_NON_PERFECT_SUBTICK, BATCH_MODE)
@@ -555,7 +557,7 @@ public class GCYMMachines {
                     .slice("XXXXX", "XCPCX", "XAPAX", "XAPAX", "#XXX#")
                     .slice("XXXXX", "XCCCX", "XAAAX", "XXAXX", "##X##")
                     .slice("#XXX#", "#XSX#", "#XXX#", "#XXX#", "#####")
-                    .where('S', controller(blocks(definition.get())))
+                    .where('S', controller(definition))
                     .where('X', blocks(CASING_CORROSION_PROOF.get()).setMinGlobalLimited(50)
                             .and(autoAbilities(definition.getRecipeTypes()))
                             .and(autoAbilities(true, false, true)))
@@ -568,12 +570,12 @@ public class GCYMMachines {
                     GTCEu.id("block/multiblock/gcym/large_brewer"))
             .register();
 
-    public final static MultiblockMachineDefinition LARGE_CUTTER = REGISTRATE
+    public static final MachineEntry<MultiblockMachineDefinition> LARGE_CUTTER = REGISTRATE
             .multiblock("large_cutter", info -> new WorkableElectricMultiblockMachine(info, new LatheRecipeLogic()))
             .langValue("Large Cutting Saw")
             .tooltips(Component.translatable("gtceu.multiblock.parallelizable.tooltip"))
             .tooltips(Component.translatable("gtceu.machine.available_recipe_map_2.tooltip",
-                    Component.translatable("gtceu.cutter"), Component.translatable("gtceu.lathe")))
+                    CUTTER_RECIPES.getName(), LATHE_RECIPES.getName()))
             .rotationState(RotationState.ALL)
             .recipeTypes(CUTTER_RECIPES, LATHE_RECIPES)
             .recipeModifiers(GTRecipeModifiers.PARALLEL_HATCH, OC_NON_PERFECT_SUBTICK, BATCH_MODE)
@@ -583,7 +585,7 @@ public class GCYMMachines {
                     .slice("XXXXXXX", "XAXCCCX", "XXXAAAX", "##XXXXX")
                     .slice("XXXXXXX", "XAXCCCX", "XXXAAAX", "##XXXXX")
                     .slice("XXXXXXX", "XSXGGGX", "XXXGGGX", "##XXXXX")
-                    .where('S', controller(blocks(definition.get())))
+                    .where('S', controller(definition))
                     .where('X', blocks(CASING_SHOCK_PROOF.get()).setMinGlobalLimited(65)
                             .and(autoAbilities(definition.getRecipeTypes()))
                             .and(autoAbilities(true, false, true)))
@@ -596,12 +598,12 @@ public class GCYMMachines {
                     GTCEu.id("block/multiblock/gcym/large_cutter"))
             .register();
 
-    public final static MultiblockMachineDefinition LARGE_DISTILLERY = REGISTRATE
+    public static final MachineEntry<MultiblockMachineDefinition> LARGE_DISTILLERY = REGISTRATE
             .multiblock("large_distillery", DistillationTowerMachine::new)
             .langValue("Large Fractionating Distillery")
             .tooltips(Component.translatable("gtceu.multiblock.parallelizable.tooltip"))
             .tooltips(Component.translatable("gtceu.machine.available_recipe_map_2.tooltip",
-                    Component.translatable("gtceu.distillation_tower"), Component.translatable("gtceu.distillery")))
+                    DISTILLATION_RECIPES.getName(), DISTILLERY_RECIPES.getName()))
             .rotationState(RotationState.NON_Y_AXIS)
             .recipeTypes(DISTILLATION_RECIPES, DISTILLERY_RECIPES)
             .recipeModifiers(GTRecipeModifiers.PARALLEL_HATCH, OC_NON_PERFECT_SUBTICK, BATCH_MODE)
@@ -609,15 +611,13 @@ public class GCYMMachines {
             .pattern(definition -> {
                 MultiPredicate casingPredicate = blocks(CASING_WATERTIGHT.get()).setMinGlobalLimited(40);
                 MultiPredicate exportPredicate = abilities(PartAbility.EXPORT_FLUIDS_1X);
-                if (GTCEu.Mods.isAE2Loaded())
-                    exportPredicate = exportPredicate.xor(blocks(GTAEMachines.FLUID_EXPORT_HATCH_ME.get()));
                 exportPredicate = exportPredicate.setMaxLayerLimited(1);
                 return MultiblockPatternBuilder.start(UP, BACK, RIGHT)
                         .slice("#YYY#", "YYYYY", "YYYYY", "YYYYY", "#YYY#")
                         .slice("#YSY#", "YAAAY", "YAAAY", "YAAAY", "#YYY#")
                         .sliceRepeatable(1, 12, "##X##", "#XAX#", "XAPAX", "#XAX#", "##X##")
                         .slice("#####", "#ZZZ#", "#ZZZ#", "#ZZZ#", "#####")
-                        .where('S', controller(blocks(definition.get())))
+                        .where('S', controller(definition))
                         .where('Y', casingPredicate.and(abilities(IMPORT_ITEMS))
                                 .and(abilities(INPUT_ENERGY).setMinGlobalLimited(1).setMaxGlobalLimited(2))
                                 .and(abilities(IMPORT_FLUIDS).setMinGlobalLimited(1))
@@ -636,12 +636,12 @@ public class GCYMMachines {
                     GTCEu.id("block/multiblock/gcym/large_distillery"))
             .register();
 
-    public final static MultiblockMachineDefinition LARGE_EXTRACTOR = REGISTRATE
+    public static final MachineEntry<MultiblockMachineDefinition> LARGE_EXTRACTOR = REGISTRATE
             .multiblock("large_extractor", WorkableElectricMultiblockMachine::new)
             .langValue("Large Extraction Machine")
             .tooltips(Component.translatable("gtceu.multiblock.parallelizable.tooltip"))
             .tooltips(Component.translatable("gtceu.machine.available_recipe_map_2.tooltip",
-                    Component.translatable("gtceu.extractor"), Component.translatable("gtceu.canner")))
+                    EXTRACTOR_RECIPES.getName(), CANNER_RECIPES.getName()))
             .rotationState(RotationState.ALL)
             .recipeTypes(EXTRACTOR_RECIPES, CANNER_RECIPES)
             .recipeModifiers(GTRecipeModifiers.PARALLEL_HATCH, OC_NON_PERFECT_SUBTICK, BATCH_MODE)
@@ -650,7 +650,7 @@ public class GCYMMachines {
                     .slice("XXXXX", "XXXXX", "XXXXX")
                     .slice("XXXXX", "XCACX", "XXXXX")
                     .slice("XXXXX", "XXSXX", "XXXXX")
-                    .where('S', controller(blocks(definition.get())))
+                    .where('S', controller(definition))
                     .where('X', blocks(CASING_WATERTIGHT.get()).setMinGlobalLimited(25)
                             .and(autoAbilities(definition.getRecipeTypes()))
                             .and(autoAbilities(true, false, true)))
@@ -661,12 +661,12 @@ public class GCYMMachines {
                     GTCEu.id("block/multiblock/gcym/large_extractor"))
             .register();
 
-    public final static MultiblockMachineDefinition LARGE_EXTRUDER = REGISTRATE
+    public static final MachineEntry<MultiblockMachineDefinition> LARGE_EXTRUDER = REGISTRATE
             .multiblock("large_extruder", WorkableElectricMultiblockMachine::new)
             .langValue("Large Extrusion Machine")
             .tooltips(Component.translatable("gtceu.multiblock.parallelizable.tooltip"))
             .tooltips(Component.translatable("gtceu.machine.available_recipe_map_1.tooltip",
-                    Component.translatable("gtceu.extruder")))
+                    EXTRUDER_RECIPES.getName()))
             .rotationState(RotationState.ALL)
             .recipeType(EXTRUDER_RECIPES)
             .recipeModifiers(GTRecipeModifiers.PARALLEL_HATCH, OC_NON_PERFECT_SUBTICK, BATCH_MODE)
@@ -677,7 +677,7 @@ public class GCYMMachines {
                     .slice("XXXXX", "XXXPX", "XXXGX")
                     .sliceRepeatable(2, 2, "##XXX", "##XPX", "##XGX")
                     .slice("##XXX", "##XXX", "##XXX")
-                    .where('S', controller(blocks(definition.get())))
+                    .where('S', controller(definition))
                     .where('X', blocks(CASING_STRESS_PROOF.get()).setMinGlobalLimited(40)
                             .and(autoAbilities(definition.getRecipeTypes()))
                             .and(autoAbilities(true, false, true)))
@@ -690,12 +690,12 @@ public class GCYMMachines {
                     GTCEu.id("block/multiblock/gcym/large_extruder"))
             .register();
 
-    public final static MultiblockMachineDefinition LARGE_SOLIDIFIER = REGISTRATE
+    public static final MachineEntry<MultiblockMachineDefinition> LARGE_SOLIDIFIER = REGISTRATE
             .multiblock("large_solidifier", WorkableElectricMultiblockMachine::new)
             .langValue("Large Solidification Array")
             .tooltips(Component.translatable("gtceu.multiblock.parallelizable.tooltip"))
             .tooltips(Component.translatable("gtceu.machine.available_recipe_map_1.tooltip",
-                    Component.translatable("gtceu.fluid_solidifier")))
+                    FLUID_SOLIDFICATION_RECIPES.getName()))
             .rotationState(RotationState.ALL)
             .recipeType(FLUID_SOLIDFICATION_RECIPES)
             .recipeModifiers(GTRecipeModifiers.PARALLEL_HATCH, OC_NON_PERFECT_SUBTICK, BATCH_MODE)
@@ -706,7 +706,7 @@ public class GCYMMachines {
                     .slice("XXXXX", "XAAAX", "XAAAX", "XXXXX")
                     .slice("XXXXX", "XCACX", "XCACX", "XXXXX")
                     .slice("#XXX#", "#XSX#", "#XXX#", "#XXX#")
-                    .where('S', controller(blocks(definition.get())))
+                    .where('S', controller(definition))
                     .where('X', blocks(CASING_WATERTIGHT.get()).setMinGlobalLimited(45)
                             .and(autoAbilities(definition.getRecipeTypes()))
                             .and(autoAbilities(true, false, true)))
@@ -718,12 +718,12 @@ public class GCYMMachines {
                     GTCEu.id("block/multiblock/gcym/large_solidifier"))
             .register();
 
-    public final static MultiblockMachineDefinition LARGE_WIREMILL = REGISTRATE
+    public static final MachineEntry<MultiblockMachineDefinition> LARGE_WIREMILL = REGISTRATE
             .multiblock("large_wiremill", WorkableElectricMultiblockMachine::new)
             .langValue("Large Wire Factory")
             .tooltips(Component.translatable("gtceu.multiblock.parallelizable.tooltip"))
             .tooltips(Component.translatable("gtceu.machine.available_recipe_map_1.tooltip",
-                    Component.translatable("gtceu.wiremill")))
+                    WIREMILL_RECIPES.getName()))
             .rotationState(RotationState.ALL)
             .recipeType(WIREMILL_RECIPES)
             .recipeModifiers(GTRecipeModifiers.PARALLEL_HATCH, OC_NON_PERFECT_SUBTICK, BATCH_MODE)
@@ -732,7 +732,7 @@ public class GCYMMachines {
                     .slice("XXXXX", "XXXXX", "XXX##")
                     .slice("XXXXX", "X#CCX", "XXXXX")
                     .slice("XXXXX", "XSXXX", "XXX##")
-                    .where('S', controller(blocks(definition.get())))
+                    .where('S', controller(definition))
                     .where('X', blocks(CASING_STRESS_PROOF.get()).setMinGlobalLimited(25)
                             .and(autoAbilities(definition.getRecipeTypes()))
                             .and(autoAbilities(true, false, true)))
@@ -743,12 +743,12 @@ public class GCYMMachines {
                     GTCEu.id("block/multiblock/gcym/large_wiremill"))
             .register();
 
-    public static final MultiblockMachineDefinition LARGE_WELDER = REGISTRATE
+    public static final MachineEntry<MultiblockMachineDefinition> LARGE_WELDER = REGISTRATE
             .multiblock("large_welder", WorkableElectricMultiblockMachine::new)
             .langValue("Large Welder")
             .tooltips(Component.translatable("gtceu.multiblock.parallelizable.tooltip"))
             .tooltips(Component.translatable("gtceu.machine.available_recipe_map_1.tooltip",
-                    Component.translatable("gtceu.welder")))
+                    WELDER_RECIPES.getName()))
             .rotationState(RotationState.ALL)
             .recipeType(WELDER_RECIPES)
             .recipeModifiers(GTRecipeModifiers.PARALLEL_HATCH, OC_NON_PERFECT_SUBTICK, BATCH_MODE)
@@ -772,12 +772,13 @@ public class GCYMMachines {
                     GTCEu.id("block/multiblock/gcym/large_welder"))
             .register();
 
-    public static final MultiblockMachineDefinition LARGE_SPOOLER = REGISTRATE
+    public static final MachineEntry<MultiblockMachineDefinition> LARGE_SPOOLER = REGISTRATE
             .multiblock("large_spooler", WorkableElectricMultiblockMachine::new)
             .langValue("Large Spooler")
             .tooltips(Component.translatable("gtceu.multiblock.parallelizable.tooltip"))
             .tooltips(Component.translatable("gtceu.machine.available_recipe_map_1.tooltip",
-                    Component.translatable("gtceu.spooling")))
+                    SPOOLING_RECIPES.getName()))
+            .tooltips(Component.translatable("gtceu.multiblock.exact_hatch_1.tooltip"))
             .rotationState(RotationState.ALL)
             .recipeType(SPOOLING_RECIPES)
             .recipeModifiers(GTRecipeModifiers.PARALLEL_HATCH, OC_NON_PERFECT_SUBTICK, BATCH_MODE)
@@ -790,7 +791,8 @@ public class GCYMMachines {
                     .slice("AAAAA", "AAAAA", "AAAAA", "AAA##", "AAA##", "AAA##")
                     .where('B', controller(definition))
                     .where('A', blocks(CASING_HSSE_STURDY.get()).setMinGlobalLimited(50)
-                            .and(autoAbilities(definition.getRecipeTypes()))
+                            .and(autoAbilities(definition.getRecipeTypes(), false, false, true, true, true, true))
+                            .and(abilities(INPUT_ENERGY).setExactLimit(1))
                             .and(autoAbilities(true, false, true)))
                     .where('C', blocks(CASING_LAMINATED_GLASS.get()))
                     .where('D', blocks(CASING_STEEL_GEARBOX.get()))
@@ -802,12 +804,12 @@ public class GCYMMachines {
             .register();
 
     // spotless:off
-    public final static MultiblockMachineDefinition MEGA_BLAST_FURNACE = REGISTRATE
-            .multiblock("mega_blast_furnace", CoilWorkableElectricMultiblockMachine::new)
+    public static final MachineEntry<MultiblockMachineDefinition> ROTARY_HEARTH_FURNACE = REGISTRATE
+            .multiblock("rotary_hearth_furnace", CoilWorkableElectricMultiblockMachine::new)
             .langValue("Rotary Hearth Furnace")
             .tooltips(Component.translatable("gtceu.multiblock.parallelizable.tooltip"))
             .tooltips(Component.translatable("gtceu.machine.available_recipe_map_1.tooltip",
-                    Component.translatable("gtceu.electric_blast_furnace")))
+                    BLAST_RECIPES.getName()))
             .tooltips(Component.translatable("gtceu.machine.electric_blast_furnace.tooltip.0"),
                     Component.translatable("gtceu.machine.electric_blast_furnace.tooltip.1"),
                     Component.translatable("gtceu.machine.electric_blast_furnace.tooltip.2"))
@@ -833,7 +835,7 @@ public class GCYMMachines {
                         .slice("#XXXXXXXXXXX#", "#XXXXXXXXXXX#", "###F#####F###", "###F#####F###", "###FFFFFFF###", "#############", "#############", "#############", "#############", "#############", "####FFFFF####", "#############", "#############", "#############", "#############", "#############", "#############")
                         .slice("##XXXXXXXXX##", "##XXXXSXXXX##", "#############", "#############", "#############", "#############", "#############", "#############", "#############", "#############", "#############", "#############", "#############", "#############", "#############", "#############", "#############")
                         // spotless:on
-                        .where('S', controller(blocks(definition.get())))
+                        .where('S', controller(definition))
                         .where('X', casing.and(autoAbilities(definition.getRecipeTypes()))
                                 .and(Predicates.autoAbilities(true, false, true)))
                         .where('C', heatingCoils())
@@ -850,7 +852,7 @@ public class GCYMMachines {
                         .build();
             })
             .workableCasingModel(GTCEu.id("block/casings/gcym/high_temperature_smelting_casing"),
-                    GTCEu.id("block/multiblock/gcym/mega_blast_furnace"))
+                    GTCEu.id("block/multiblock/gcym/rotary_hearth_furnace"))
             .additionalDisplay((controller, syncManager) -> {
                 if (!(controller instanceof CoilWorkableElectricMultiblockMachine coilMachine))
                     return Collections.emptyList();
@@ -859,7 +861,7 @@ public class GCYMMachines {
                 IntSyncValue coilTemperature = syncManager.getOrCreateSyncHandler("coilTemperature", IntSyncValue.class,
                         () -> new IntSyncValue(() -> coilMachine.getCoilType().getCoilTemperature()));
                 IntSyncValue machineTier = syncManager.getOrCreateSyncHandler("machineTier", IntSyncValue.class,
-                        () -> new IntSyncValue(() -> coilMachine.getTier()));
+                        () -> new IntSyncValue(coilMachine::getTier));
 
                 return Collections.singletonList(Text
                         .dynamic(() -> Component.translatable("gtceu.multiblock.blast_furnace.max_temperature",
@@ -871,12 +873,12 @@ public class GCYMMachines {
             })
             .register();
 
-    public final static MultiblockMachineDefinition MEGA_VACUUM_FREEZER = REGISTRATE
+    public static final MachineEntry<MultiblockMachineDefinition> MEGA_VACUUM_FREEZER = REGISTRATE
             .multiblock("mega_vacuum_freezer", WorkableElectricMultiblockMachine::new)
             .langValue("Bulk Blast Chiller")
             .tooltips(Component.translatable("gtceu.multiblock.parallelizable.tooltip"))
             .tooltips(Component.translatable("gtceu.machine.available_recipe_map_1.tooltip",
-                    Component.translatable("gtceu.vacuum_freezer")))
+                    VACUUM_RECIPES.getName()))
             .rotationState(RotationState.ALL)
             .recipeType(VACUUM_RECIPES)
             .recipeModifiers(GTRecipeModifiers.PARALLEL_HATCH, OC_NON_PERFECT_SUBTICK, BATCH_MODE)
@@ -890,7 +892,7 @@ public class GCYMMachines {
                     .slice("XXXXXXX#KKK", "XPPPPPX#KVK", "XPA#APX#KVK", "XPAAAPX#KVK", "XPAAAPX#KKK", "XPPPPPX####", "XXXXXXX####")
                     .slice("#XXXXX#####", "#XXSXX#####", "#XGGGX#####", "#XGGGX#####", "#XGGGX#####", "#XXXXX#####", "###########")
                     // spotless:on
-                    .where('S', controller(blocks(definition.get())))
+                    .where('S', controller(definition))
                     .where('X', blocks(CASING_ALUMINIUM_FROSTPROOF.get()).setMinGlobalLimited(140)
                             .and(autoAbilities(definition.getRecipeTypes()))
                             .and(Predicates.autoAbilities(true, false, true)))

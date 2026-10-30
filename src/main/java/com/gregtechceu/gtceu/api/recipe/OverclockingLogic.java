@@ -13,13 +13,10 @@ import org.jetbrains.annotations.NotNull;
 
 import java.math.RoundingMode;
 
-import javax.annotation.ParametersAreNonnullByDefault;
-
 /**
  * Represents a function that, given an initial set of {@link OCParams} and a {@code maxVoltage},
  * will produce an {@link OCResult}
  */
-@ParametersAreNonnullByDefault
 @FunctionalInterface
 public interface OverclockingLogic {
 

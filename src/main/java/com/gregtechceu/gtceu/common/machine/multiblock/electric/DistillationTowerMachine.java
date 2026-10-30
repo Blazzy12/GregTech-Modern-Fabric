@@ -2,6 +2,7 @@ package com.gregtechceu.gtceu.common.machine.multiblock.electric;
 
 import com.gregtechceu.gtceu.api.blockentity.BlockEntityCreationInfo;
 import com.gregtechceu.gtceu.api.capability.recipe.*;
+import com.gregtechceu.gtceu.api.capability.recipe.IO;
 import com.gregtechceu.gtceu.api.machine.multiblock.PartAbility;
 import com.gregtechceu.gtceu.api.machine.multiblock.WorkableElectricMultiblockMachine;
 import com.gregtechceu.gtceu.api.machine.multiblock.part.MultiblockPartMachine;
@@ -19,12 +20,12 @@ import com.gregtechceu.gtceu.api.sync_system.annotations.SaveField;
 import com.gregtechceu.gtceu.api.sync_system.annotations.SyncToClient;
 import com.gregtechceu.gtceu.common.data.GTRecipeTypes;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
-import net.minecraftforge.fluids.capability.IFluidHandler;
-import net.minecraftforge.fluids.capability.IFluidHandler.FluidAction;
-import net.minecraftforge.fluids.capability.templates.VoidFluidHandler;
+import com.gregtechceu.gtceu.compat.fluids.capability.IFluidHandler;
+import com.gregtechceu.gtceu.compat.fluids.capability.IFluidHandler.FluidAction;
+import com.gregtechceu.gtceu.compat.fluids.capability.templates.VoidFluidHandler;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import lombok.Getter;
@@ -101,7 +102,7 @@ public class DistillationTowerMachine extends WorkableElectricMultiblockMachine
                 } else {
                     BlockPos p = part.getBlockPos();
                     pState.setError(new PatternStringError(Component.translatable(
-                            "gtceu.predicate_error.distillery.unexpected_hatch", p.getX(), p.getY(), p.getZ())).pos(p));
+                            "gtceu.predicate_error.distillery.unexpected_hatch", p.getX(), p.getY(), p.getZ())));
                     // GTCEu.LOGGER.error(
                     // "The Distillation Tower at {} has a fluid export hatch with an unexpected Y position",
                     // getBlockPos());
@@ -139,8 +140,9 @@ public class DistillationTowerMachine extends WorkableElectricMultiblockMachine
         int maxAmount = contents.stream()
                 .map(Content::content)
                 .map(FluidRecipeCapability.CAP::of)
-                .filter(i -> !i.isEmpty())
-                .mapToInt((i -> i instanceof IRangedIngredient ranged ? ranged.getMaxRoll() : i.getAmount()))
+                .filter(i -> !i.ingredient().hasNoFluids())
+                .mapToInt(
+                        (i -> i.ingredient() instanceof IRangedIngredient ranged ? (ranged).getMaxRoll() : i.amount()))
                 .max()
                 .orElse(0);
 
@@ -228,7 +230,7 @@ public class DistillationTowerMachine extends WorkableElectricMultiblockMachine
         }
 
         private void updateWorkingRecipe(GTRecipe recipe) {
-            if (recipe.recipeType == GTRecipeTypes.DISTILLERY_RECIPES) {
+            if (recipe.recipeType == GTRecipeTypes.DISTILLERY_RECIPES.value()) {
                 this.workingRecipe = recipe;
                 syncDataHolder.markClientSyncFieldDirty("workingRecipe");
                 return;
@@ -281,8 +283,8 @@ public class DistillationTowerMachine extends WorkableElectricMultiblockMachine
                     .toList();
 
             // Distillery recipes should output to the first non-void handler
-            if (recipe.recipeType == GTRecipeTypes.DISTILLERY_RECIPES) {
-                var fluid = fluids.get(0).getStacks()[0];
+            if (recipe.recipeType == GTRecipeTypes.DISTILLERY_RECIPES.value()) {
+                var fluid = fluids.getFirst().getFluids()[0];
                 var handler = getMachine().getFirstValid();
                 if (handler == null) return false;
                 int filled = (handler instanceof NotifiableFluidTank nft) ?
@@ -295,7 +297,7 @@ public class DistillationTowerMachine extends WorkableElectricMultiblockMachine
             var outputs = getMachine().getFluidOutputs();
             for (int i = 0; i < Math.min(fluids.size(), outputs.size()); ++i) {
                 var handler = outputs.get(i);
-                var fluid = fluids.get(i).getStacks()[0];
+                var fluid = fluids.get(i).getFluids()[0];
                 int filled = (handler instanceof NotifiableFluidTank nft) ?
                         nft.fillInternal(fluid, action) :
                         handler.fill(fluid, action);

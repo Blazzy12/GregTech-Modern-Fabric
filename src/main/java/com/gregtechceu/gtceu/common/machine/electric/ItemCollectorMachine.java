@@ -22,7 +22,7 @@ import com.gregtechceu.gtceu.common.mui.GTMuiMachineUtil;
 import com.gregtechceu.gtceu.common.mui.GTMuiWidgets;
 import com.gregtechceu.gtceu.utils.ISubscription;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -199,7 +199,7 @@ public class ItemCollectorMachine extends TieredEnergyMachine
 
                 ItemStack remainder = fillOutput(stack);
                 if (remainder.isEmpty())
-                    itemEntity.kill();
+                    itemEntity.discard();
                 else if (stack.getCount() > remainder.getCount())
                     itemEntity.setItem(remainder);
             }

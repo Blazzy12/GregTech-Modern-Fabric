@@ -13,7 +13,6 @@ import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.level.Level;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -76,9 +75,9 @@ public class TurbineRotorBehaviour implements IMaterialPartItem, ISubItemHandler
     }
 
     @Override
-    public void appendHoverText(ItemStack stack, @org.jetbrains.annotations.Nullable Level level,
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context,
                                 List<Component> tooltipComponents, TooltipFlag isAdvanced) {
-        IMaterialPartItem.super.appendHoverText(stack, level, tooltipComponents, isAdvanced);
+        IMaterialPartItem.super.appendHoverText(stack, context, tooltipComponents, isAdvanced);
         tooltipComponents
                 .add(Component.translatable("metaitem.tool.tooltip.rotor.efficiency", getRotorEfficiency(stack)));
         tooltipComponents.add(Component.translatable("metaitem.tool.tooltip.rotor.power", getRotorPower(stack)));

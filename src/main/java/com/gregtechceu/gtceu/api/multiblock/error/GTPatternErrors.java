@@ -1,30 +1,37 @@
 package com.gregtechceu.gtceu.api.multiblock.error;
 
-import com.gregtechceu.gtceu.api.GTCEuAPI;
+import com.gregtechceu.gtceu.GTCEu;
+import com.gregtechceu.gtceu.api.registry.GTRegistries;
 
-import net.minecraftforge.fml.ModLoader;
+import net.minecraft.resources.Identifier;
+import com.gregtechceu.gtceu.compat.bus.IEventBus;
+import com.gregtechceu.gtceu.compat.registries.DeferredHolder;
+import com.gregtechceu.gtceu.compat.registries.DeferredRegister;
 
-import static com.gregtechceu.gtceu.api.registry.GTRegistries.PATTERN_ERRORS;
+import com.mojang.serialization.MapCodec;
 
 public class GTPatternErrors {
 
-    public static void register(PatternError.PatternErrorType patternErrorType) {
-        PATTERN_ERRORS.register(patternErrorType.id(), patternErrorType);
+    private static final DeferredRegister<PatternErrorType> PATTERN_ERROR_TYPES = DeferredRegister
+            .create(GTRegistries.Keys.PATTERN_ERROR_TYPE, GTCEu.MOD_ID);
+
+    // spotless:off
+    public static DeferredHolder<PatternErrorType, PatternErrorType> BLOCK_MATCHING_ERROR = register(GTCEu.id("block_matching_error"), BlockMatchingError.CODEC);
+    public static DeferredHolder<PatternErrorType, PatternErrorType> COIL_MATCHING_ERROR = register(GTCEu.id("coil_matching_error"), CoilMatchingError.CODEC);
+    public static DeferredHolder<PatternErrorType, PatternErrorType> FILTER_MATCHING_ERROR = register(GTCEu.id("filter_matching_error"), FilterMatchingError.CODEC);
+    public static DeferredHolder<PatternErrorType, PatternErrorType> PART_ABILITY_ERROR = register(GTCEu.id("part_ability_error"), PartAbilityError.CODEC);
+    public static DeferredHolder<PatternErrorType, PatternErrorType> PLACEHOLDER_ERROR = register(GTCEu.id("placeholder_error"), PlaceholderError.CODEC);
+    public static DeferredHolder<PatternErrorType, PatternErrorType> PATTERN_STRING_ERROR = register(GTCEu.id("pattern_string_error"), PatternStringError.CODEC);
+    public static DeferredHolder<PatternErrorType, PatternErrorType> SIMPLE_PATTERN_ERROR = register(GTCEu.id("simple_pattern_error"), SimplePatternError.CODEC);
+    public static DeferredHolder<PatternErrorType, PatternErrorType> SINGLE_PREDICATE_ERROR = register(GTCEu.id("single_predicate_error"), SinglePredicateError.CODEC);
+    //spotless:on
+
+    private static DeferredHolder<PatternErrorType, PatternErrorType> register(Identifier id,
+                                                                               MapCodec<? extends PatternError> codec) {
+        return PATTERN_ERROR_TYPES.register(id.getPath(), () -> new PatternErrorType(id, codec));
     }
 
-    public static void init() {
-        PATTERN_ERRORS.unfreeze();
-        register(PlaceholderError.TYPE);
-        register(BlockMatchingError.TYPE);
-        register(PartAbilityError.TYPE);
-        register(CoilMatchingError.TYPE);
-        register(FilterMatchingError.TYPE);
-        register(PatternStringError.TYPE);
-        register(SinglePredicateError.TYPE);
-        register(SimplePatternError.TYPE);
-
-        ModLoader.get().postEvent(new GTCEuAPI.RegisterEvent<>(PATTERN_ERRORS, PatternError.PatternErrorType.class));
-
-        PATTERN_ERRORS.freeze();
+    public static void init(IEventBus modBus) {
+        PATTERN_ERROR_TYPES.register(modBus);
     }
 }

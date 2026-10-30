@@ -1,5 +1,7 @@
 package com.gregtechceu.gtceu.common.cover.detector;
 
+import com.gregtechceu.gtceu.core.fabric.ItemStackNbt;
+
 import com.gregtechceu.gtceu.api.capability.ICoverable;
 import com.gregtechceu.gtceu.api.cover.CoverDefinition;
 import com.gregtechceu.gtceu.api.cover.IMuiCover;
@@ -11,13 +13,13 @@ import com.gregtechceu.gtceu.common.mui.GTGuiTextures;
 import com.gregtechceu.gtceu.common.mui.GTMuiWidgets;
 import com.gregtechceu.gtceu.utils.RedstoneUtil;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.items.IItemHandler;
+import com.gregtechceu.gtceu.compat.items.IItemHandler;
 
 import brachy.modularui.api.drawable.Text;
 import brachy.modularui.factory.SidedPosGuiData;
@@ -154,15 +156,16 @@ public class AdvancedItemDetectorCover extends ItemDetectorCover implements IMui
         tag.putInt("min", minValue);
         tag.putInt("max", maxValue);
         tag.putBoolean("latched", isLatched);
-        tag.put("filter", filterHandler.getFilterItem().serializeNBT());
+        tag.put("filter", ItemStackNbt.save(filterHandler.getFilterItem(), coverHolder.getLevel().registryAccess()));
     }
 
     @Override
     public void pasteConfig(ServerPlayer player, CompoundTag tag) {
-        setMinValue(tag.getInt("min"));
-        setMaxValue(tag.getInt("max"));
-        setLatched(tag.getBoolean("latched"));
-        filterHandler.setFilterItem(ItemStack.of(tag.getCompound("filter")));
+        setMinValue(tag.getIntOr("min", 0));
+        setMaxValue(tag.getIntOr("max", 0));
+        setLatched(tag.getBooleanOr("latched", false));
+        filterHandler.setFilterItem(ItemStackNbt.parse(coverHolder.getLevel().registryAccess(), tag.getCompoundOrEmpty("filter"))
+                .orElse(ItemStack.EMPTY));
         super.pasteConfig(player, tag);
     }
 }

@@ -2,20 +2,18 @@ package com.gregtechceu.gtceu.client.bloom;
 
 import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.client.particle.GTParticle;
-import com.gregtechceu.gtceu.client.renderer.GTRenderTypes;
 
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraftforge.client.event.RenderLevelStageEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
 
-import com.mojang.blaze3d.vertex.*;
+import com.gregtechceu.gtceu.compat.client.render.MultiBufferSource;
+
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import lombok.experimental.UtilityClass;
 import org.jetbrains.annotations.Nullable;
-import org.jetbrains.annotations.UnknownNullability;
 
 import java.util.*;
 import java.util.function.*;
@@ -24,18 +22,6 @@ import static com.gregtechceu.gtceu.client.bloom.BloomRenderer.BLOOM_RENDER_LOCK
 
 @UtilityClass
 public class BloomHandler {
-
-    @Mod.EventBusSubscriber(bus = Mod.EventBusSubscriber.Bus.MOD)
-    @UtilityClass
-    public static class RenderStage {
-
-        public static RenderLevelStageEvent.@UnknownNullability Stage AFTER_BLOOM;
-
-        @SubscribeEvent
-        public static void registerLevelRenderStages(RenderLevelStageEvent.RegisterStageEvent event) {
-            AFTER_BLOOM = event.register(GTCEu.id("after_bloom"), GTRenderTypes.bloom());
-        }
-    }
 
     static final Map<@Nullable IRenderSetup, BloomRenderList> BLOOM_RENDERS = new Object2ObjectOpenHashMap<>();
     static final List<BloomRenderTicket> SCHEDULED_BLOOM_RENDERS = new ArrayList<>();
@@ -62,7 +48,7 @@ public class BloomHandler {
                 new IBloomEffect() {
 
                     @Override
-                    public void renderBloomEffect(PoseStack poseStack, BufferBuilder buffer,
+                    public void renderBloomEffect(PoseStack poseStack, VertexConsumer buffer,
                                                   EffectRenderContext context) {
                         render.renderBloomEffect(poseStack, buffer, context);
                     }
@@ -207,8 +193,9 @@ public class BloomHandler {
             this.renderSetup = renderSetup;
         }
 
-        void draw(PoseStack poseStack, BufferBuilder buffer, EffectRenderContext context) {
+        void draw(PoseStack poseStack, EffectRenderContext context, MultiBufferSource buffers) {
             boolean initialized = false;
+            VertexConsumer buffer = null;
 
             poseStack.pushPose();
             poseStack.translate(-context.camPos().x(), -context.camPos().y(), -context.camPos().z());
@@ -219,9 +206,8 @@ public class BloomHandler {
 
                 if (!initialized) {
                     initialized = true;
-                    if (this.renderSetup != null) {
-                        this.renderSetup.preDraw(buffer);
-                    }
+                    buffer = buffers.getBuffer(this.renderSetup != null ? this.renderSetup.getRenderType() :
+                            BloomRenderer.DEFAULT_RENDER_TYPE);
                 }
 
                 poseStack.pushPose();
@@ -230,10 +216,6 @@ public class BloomHandler {
             }
 
             poseStack.popPose();
-
-            if (initialized && this.renderSetup != null) {
-                this.renderSetup.postDraw(buffer);
-            }
         }
 
         /**

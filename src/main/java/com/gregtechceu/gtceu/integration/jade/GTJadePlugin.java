@@ -7,15 +7,19 @@ import com.gregtechceu.gtceu.common.blockentity.FluidPipeBlockEntity;
 import com.gregtechceu.gtceu.common.data.GTMaterialItems;
 import com.gregtechceu.gtceu.integration.jade.provider.*;
 
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 
 import com.tterrag.registrate.util.entry.ItemProviderEntry;
-import snownee.jade.addon.harvest.HarvestToolProvider;
-import snownee.jade.addon.harvest.SimpleToolHandler;
+import snownee.jade.api.harvest.ToolTier;
+import snownee.jade.api.harvest.ToolType;
+import snownee.jade.api.harvest.ToolTypeRegistry;
 import snownee.jade.api.*;
 
+import java.util.List;
 import java.util.Objects;
 
 @WailaPlugin
@@ -46,11 +50,6 @@ public class GTJadePlugin implements IWailaPlugin {
                 new BatteryStorageInfoProvider(),
                 new LDPEndpointProvider(),
                 new ProgrammableCircuitProvider());
-
-        if (GTCEu.Mods.isAE2Loaded()) {
-            register(registration, new MEGridConnectedProvider(), new MEPatternBufferProvider(),
-                    new MEPatternBufferProxyProvider());
-        }
 
         registration.registerItemStorage(GTItemStorageProvider.INSTANCE, MetaMachine.class);
         registration.registerFluidStorage(GTFluidStorageProvider.INSTANCE, MetaMachine.class);
@@ -84,11 +83,7 @@ public class GTJadePlugin implements IWailaPlugin {
                 new CableBlockProvider(),
                 new ProgrammableCircuitProvider());
 
-        if (GTCEu.Mods.isAE2Loaded()) {
-            register(registration, new MEGridConnectedProvider(), new MEPatternBufferProvider(),
-                    new MEPatternBufferProxyProvider());
-        }
-
+        registration.addHarvestPlugin(GTJadePlugin::registerHarvestTools);
         registration.registerItemStorageClient(GTItemStorageProvider.INSTANCE);
         registration.registerFluidStorageClient(GTFluidStorageProvider.INSTANCE);
         registration.registerFluidStorageClient(FluidPipeStorageProvider.INSTANCE);
@@ -103,7 +98,8 @@ public class GTJadePlugin implements IWailaPlugin {
                 clazz = machineInfoProvider.machineType;
             if (provider instanceof MachineTraitProvider<?, ?>) clazz = MetaMachine.class;
 
-            reg.registerBlockDataProvider(provider, clazz);
+            // Jade wants data providers that are not also component providers
+            reg.registerBlockDataProvider(new ServerData(provider), clazz);
         }
     }
 
@@ -117,13 +113,49 @@ public class GTJadePlugin implements IWailaPlugin {
         }
     }
 
-    static {
+    /** The server half of a GT provider, which draws its own tooltip on the client. */
+    private record ServerData(IServerDataProvider<BlockAccessor> provider) implements IServerDataProvider<BlockAccessor> {
+
+        @Override
+        public void appendServerData(CompoundTag data, BlockAccessor accessor) {
+            provider.appendServerData(data, accessor);
+        }
+
+        @Override
+        public boolean shouldRequestData(BlockAccessor accessor) {
+            return provider.shouldRequestData(accessor);
+        }
+
+        @Override
+        public Identifier getUid() {
+            return provider.getUid();
+        }
+
+        @Override
+        public int getDefaultPriority() {
+            return provider.getDefaultPriority();
+        }
+    }
+
+    /** GT's tool types for Jade's harvest info: one tool type per GT tool, with each of its items as a tier. */
+    private static void registerHarvestTools(ToolTypeRegistry registry) {
         GTMaterialItems.TOOL_ITEMS.columnMap().forEach((type, map) -> {
-            if (type.harvestTags.isEmpty() || type.harvestTags.get(0).location().getNamespace().equals("minecraft"))
-                return;
-            HarvestToolProvider.registerHandler(new SimpleToolHandler(type.name, type.harvestTags.get(0),
-                    map.values().stream().filter(Objects::nonNull).filter(ItemProviderEntry::isPresent)
-                            .map(ItemProviderEntry::asItem).toArray(Item[]::new)));
+            boolean hasCustomHarvestTag = type.harvestTags.stream()
+                    .anyMatch(tag -> !tag.location().getNamespace().equals(Identifier.DEFAULT_NAMESPACE));
+            if ((type.toolDefinition.getTool().rules().isEmpty() && !hasCustomHarvestTag) || map.isEmpty()) return;
+
+            List<Item> tools = map
+                    .values()
+                    .stream()
+                    .filter(Objects::nonNull)
+                    .filter(ItemProviderEntry::isBound)
+                    .map(ItemProviderEntry::asItem)
+                    .toList();
+            if (tools.isEmpty()) return;
+            ToolType toolType = registry.type(ToolType.of(GTCEu.id(type.name)));
+            for (Item tool : tools) {
+                toolType.addTier(ToolTier.item(tool));
+            }
         });
     }
 }

@@ -1,5 +1,7 @@
 package com.gregtechceu.gtceu.api;
 
+import com.gregtechceu.gtceu.compat.common.util.ChatFormats;
+
 import com.gregtechceu.gtceu.config.ConfigHolder;
 
 import net.minecraft.util.RandomSource;
@@ -7,7 +9,6 @@ import net.minecraft.util.RandomSource;
 import java.time.LocalDate;
 import java.time.Month;
 import java.util.Arrays;
-import java.util.Locale;
 import java.util.function.BooleanSupplier;
 import java.util.function.IntFunction;
 
@@ -39,7 +40,8 @@ public class GTValues {
     public static final int L = 144;
     public static final RandomSource RNG = RandomSource.createThreadSafe();
 
-    // shortcut for various lengths of time in ticks (with the default tickrate of 20)
+    // shortcut for various lengths of time in ticks
+    // REMEMBER TO MULTIPLY BY `level.tickRateManager().tickrate()` OR THIS WILL BE OFF IF TPS IS CHANGED
     public static final long SECONDS = 20;
     public static final long MINUTES = 60 * SECONDS;
     public static final long HOURS = 60 * MINUTES;
@@ -111,6 +113,7 @@ public class GTValues {
     }
 
     public static final String MODID_JEI = "jei",
+            MODID_REI = "roughlyenoughitems",
             MODID_EMI = "emi",
             MODID_APPENG = "ae2",
             MODID_KUBEJS = "kubejs",
@@ -121,6 +124,7 @@ public class GTValues {
             MODID_OPTIFINE = "optifine",
             MODID_CREATE = "create",
             MODID_CURIOS = "curios",
+            MODID_AE2WTLIB = "ae2wtlib",
             MODID_MODERNFIX = "modernfix",
             MODID_JOURNEYMAP = "journeymap",
             MODID_XAEROS_MINIMAP = "xaerominimap",
@@ -132,8 +136,7 @@ public class GTValues {
             MODID_GAMESTAGES = "gamestages",
             MODID_FTB_QUEST = "ftbquests",
             MODID_CCTWEAKED = "computercraft",
-            MODID_ENDERIO = "enderio",
-            MODID_ENSORCELLATION = "ensorcellation";
+            MODID_SABLE = "sable";
     /**
      * Spray painting compat modids
      */
@@ -144,11 +147,6 @@ public class GTValues {
      */
     public static final String[] VN = new String[] { "ULV", "LV", "MV", "HV", "EV", "IV", "LuV", "ZPM", "UV", "UHV",
             "UEV", "UIV", "UXV", "OpV", "MAX" };
-
-    /**
-     * The lowercase short names for the voltages, used for registration
-     */
-    public static final String[] VNL = Arrays.stream(VN).map(v -> v.toLowerCase(Locale.ROOT)).toArray(String[]::new);
 
     public static final IntFunction<String> MAX_PLUS_FORMAT = (value) -> "" + RED + BOLD + "M" +
             GREEN + BOLD + "A" +
@@ -271,21 +269,21 @@ public class GTValues {
     // Main colour for each tier
     @SuppressWarnings("DataFlowIssue")
     public static final int[] VCM = new int[] {
-            DARK_GRAY.getColor(),
-            GRAY.getColor(),
-            AQUA.getColor(),
-            GOLD.getColor(),
-            DARK_PURPLE.getColor(),
-            BLUE.getColor(),
-            LIGHT_PURPLE.getColor(),
-            RED.getColor(),
-            DARK_AQUA.getColor(),
-            DARK_RED.getColor(),
-            GREEN.getColor(),
-            DARK_GREEN.getColor(),
-            YELLOW.getColor(),
-            BLUE.getColor(),
-            RED.getColor()
+            ChatFormats.getColor(DARK_GRAY),
+            ChatFormats.getColor(GRAY),
+            ChatFormats.getColor(AQUA),
+            ChatFormats.getColor(GOLD),
+            ChatFormats.getColor(DARK_PURPLE),
+            ChatFormats.getColor(BLUE),
+            ChatFormats.getColor(LIGHT_PURPLE),
+            ChatFormats.getColor(RED),
+            ChatFormats.getColor(DARK_AQUA),
+            ChatFormats.getColor(DARK_RED),
+            ChatFormats.getColor(GREEN),
+            ChatFormats.getColor(DARK_GREEN),
+            ChatFormats.getColor(YELLOW),
+            ChatFormats.getColor(BLUE),
+            ChatFormats.getColor(RED)
     };
 
     // Main color for steam machines

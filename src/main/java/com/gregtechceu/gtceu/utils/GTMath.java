@@ -4,22 +4,21 @@ import com.gregtechceu.gtceu.utils.math.ParseResult;
 import com.gregtechceu.gtceu.utils.math.PostfixPercentOperator;
 import com.gregtechceu.gtceu.utils.math.SIPrefix;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.fluids.FluidStack;
+import com.gregtechceu.gtceu.compat.fluids.FluidStack;
 
 import com.ezylang.evalex.BaseException;
 import com.ezylang.evalex.Expression;
 import com.ezylang.evalex.config.ExpressionConfiguration;
 import com.ezylang.evalex.data.EvaluationValue;
+import com.mojang.datafixers.util.Pair;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
@@ -72,7 +71,8 @@ public class GTMath {
             .structuresAllowed(false)
             .stripTrailingZeros(true)
             .build()
-            .withAdditionalOperators(Pair.of("%", new PostfixPercentOperator()));
+            .withAdditionalOperators()
+            .withAdditionalOperators(org.apache.commons.lang3.tuple.Pair.of("%", new PostfixPercentOperator()));
 
     public static ParseResult parseExpression(String expression) {
         return parseExpression(expression, Double.NaN, false);
@@ -294,7 +294,7 @@ public class GTMath {
                 }
             }
         }
-        return ImmutablePair.of(new Vector3f(x1, y1, z1), new Vector3f(x2, y2, z2));
+        return Pair.of(new Vector3f(x1, y1, z1), new Vector3f(x2, y2, z2));
     }
 
     public static float arithmeticGeometricMean(float a, float b) {
@@ -349,9 +349,25 @@ public class GTMath {
         return normal.cross(law).normalize();
     }
 
+    public static Vector3f getFirstPerpendicular(Vector3fc a, Vector3fc b) {
+        Vector3f normal = new Vector3f(a).sub(b).normalize();
+        if (Mth.equal(normal.lengthSquared(), 0.0f)) return normal;
+
+        Vector3fc up = Math.abs(normal.y) < 0.99f ? UNIT_Y : UNIT_X;
+
+        return normal.cross(up).normalize();
+    }
+
+    public static Vector3f getSecondPerpendicular(Vector3fc a, Vector3fc b, Vector3fc firstPerpendicular) {
+        Vector3f normal = new Vector3f(a).sub(b).normalize();
+        if (Mth.equal(normal.lengthSquared(), 0.0f)) return normal;
+
+        return normal.cross(firstPerpendicular).normalize();
+    }
+
     public static Vec3 getCenter(BlockPos a, BlockPos b) {
-        Vec3 ac = a.getCenter();
-        Vec3 bc = b.getCenter();
+        Vec3 ac = net.minecraft.world.phys.Vec3.atCenterOf(a);
+        Vec3 bc = net.minecraft.world.phys.Vec3.atCenterOf(b);
         return ac.add(bc).scale(0.5F);
     }
 }

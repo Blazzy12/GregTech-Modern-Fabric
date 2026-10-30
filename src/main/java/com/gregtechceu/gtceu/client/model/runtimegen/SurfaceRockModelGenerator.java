@@ -3,15 +3,15 @@ package com.gregtechceu.gtceu.client.model.runtimegen;
 import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.data.pack.GTDynamicResourcePack;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.data.models.blockstates.MultiVariantGenerator;
-import net.minecraft.data.models.blockstates.PropertyDispatch;
-import net.minecraft.data.models.blockstates.Variant;
-import net.minecraft.data.models.blockstates.VariantProperties;
-import net.minecraft.data.models.model.DelegatedModel;
-import net.minecraft.resources.ResourceLocation;
+import com.gregtechceu.gtceu.compat.data.models.blockstates.MultiVariantGenerator;
+import com.gregtechceu.gtceu.compat.data.models.blockstates.PropertyDispatch;
+import com.gregtechceu.gtceu.compat.data.models.blockstates.Variant;
+import com.gregtechceu.gtceu.compat.data.models.blockstates.VariantProperties;
+import net.minecraft.client.data.models.model.DelegatedModel;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 
@@ -28,8 +28,8 @@ public class SurfaceRockModelGenerator {
 
     public static void reinitModels() {
         for (SurfaceRockModelGenerator model : MODELS) {
-            ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(model.block);
-            ResourceLocation modelId = blockId.withPrefix("block/");
+            Identifier blockId = BuiltInRegistries.BLOCK.getKey(model.block);
+            Identifier modelId = blockId.withPrefix("block/");
 
             GTDynamicResourcePack.addBlockModel(blockId, new DelegatedModel(GTCEu.id("block/surface_rock")));
             GTDynamicResourcePack.addBlockState(blockId, MultiVariantGenerator

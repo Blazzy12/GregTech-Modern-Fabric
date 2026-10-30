@@ -1,11 +1,14 @@
 package com.gregtechceu.gtceu.api.item.module;
 
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.common.util.LazyOptional;
+import com.gregtechceu.gtceu.api.capability.GTCapabilityHelper;
+import com.gregtechceu.gtceu.common.data.item.GTDataComponents;
 
-import org.jetbrains.annotations.NotNull;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import com.gregtechceu.gtceu.compat.capabilities.ItemCapability;
+import com.gregtechceu.gtceu.compat.capabilities.RegisterCapabilitiesEvent;
+
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -16,9 +19,11 @@ import org.jetbrains.annotations.Nullable;
  */
 public abstract class CapabilityProviderItemModule<T> extends ItemModule {
 
-    public CapabilityProviderItemModule(ResourceLocation id) {
+    public CapabilityProviderItemModule(Identifier id) {
         super(id);
     }
+
+    public abstract ItemCapability<T, @Nullable Void> getCapability();
 
     @Override
     public void onAttach(ModuleContext moduleContext) {
@@ -32,8 +37,6 @@ public abstract class CapabilityProviderItemModule<T> extends ItemModule {
         super.onRemove(moduleContext);
         clearCapabilityFromStack(moduleContext, moduleContext.getAppliedTo());
     }
-
-    public abstract Capability<T> getCapability();
 
     /**
      * Called when the module is attached, should apply existing capability data from the module item to the new
@@ -56,25 +59,37 @@ public abstract class CapabilityProviderItemModule<T> extends ItemModule {
     public abstract @Nullable T createCapabilityForStack(ModuleContext context, ItemStack stack);
 
     /**
-     * Called when the module is removed, should clear capability data from the item stack (e.g. remove the energy
-     * content NBT from the item stack).
+     * Called when the module is removed, should clear capability data from the item stack (e.g. remove the
+     * {@link GTDataComponents#ENERGY_CONTENT} component from the item stack).<br>
      */
     public abstract void clearCapabilityFromStack(ModuleContext context, ItemStack stack);
 
     @Override
     public void updateModuleItem(ModuleContext moduleContext) {
-        T capability = moduleContext.getAppliedTo().getCapability(getCapability()).resolve().orElse(null);
+        T capability = moduleContext.getAppliedTo().getCapability(getCapability());
         if (capability == null) return;
         var newModuleItem = copyCapabilityDataToModuleItem(capability, moduleContext);
         moduleContext.setData(moduleContext.getData().withModuleItem(newModuleItem));
     }
 
     @SuppressWarnings("unchecked")
-    public <Q> LazyOptional<Q> getCapability(ModuleContext context, @NotNull Capability<Q> cap) {
-        if (getCapability().equals(cap)) {
-            var capProvider = (CapabilityProviderItemModule<Q>) this;
-            return LazyOptional.of(() -> capProvider.createCapabilityForStack(context, context.getAppliedTo()));
-        }
-        return LazyOptional.empty();
+    public void attachCapabilities(RegisterCapabilitiesEvent event, Item item) {
+        event.registerItem(getCapability(), (s, v) -> {
+            var modular = GTCapabilityHelper.getModularItem(s);
+            if (modular == null) return null;
+
+            ModuleContext context = null;
+            CapabilityProviderItemModule<T> capProvider = null;
+            for (ModuleContext module : modular.getAllModuleInstances()) {
+                if (module.getModule() instanceof CapabilityProviderItemModule<?> providerItemModule &&
+                        providerItemModule.getCapability().equals(getCapability())) {
+                    capProvider = (CapabilityProviderItemModule<T>) providerItemModule;
+                    context = module;
+                    break;
+                }
+            }
+            if (capProvider == null) return null;
+            return capProvider.createCapabilityForStack(context, s);
+        }, item);
     }
 }

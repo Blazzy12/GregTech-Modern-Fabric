@@ -5,7 +5,7 @@ import com.gregtechceu.gtceu.api.GTValues;
 import com.gregtechceu.gtceu.api.mui.SteamTextureSet;
 import com.gregtechceu.gtceu.api.recipe.gui.ProgressBarTextureSet;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import brachy.modularui.api.GuiAxis;
 import brachy.modularui.drawable.ColorType;
@@ -39,7 +39,7 @@ public interface GTGuiTextures {
         String STANDARD_BUTTON = "gtceu:standard_button";
     }
 
-    ResourceLocation MONOCRAFT_FONT = GTCEu.id("monocraft");
+    Identifier MONOCRAFT_FONT = GTCEu.id("monocraft");
 
     // ICONS
 
@@ -56,8 +56,6 @@ public interface GTGuiTextures {
     UITexture INDICATOR_NO_STEAM_STEEL = fullImage(
             "textures/gui/base/indicator_no_steam_steel.png");
     UITexture TANK_ICON = fullImage("textures/gui/base/tank_icon.png");
-
-    UITexture CLOSE_ICON = fullImage("textures/gui/icon/close.png");
 
     // BACKGROUNDS
     UITexture BACKGROUND = UITexture.builder()
@@ -680,8 +678,8 @@ public interface GTGuiTextures {
             false,
             28, 32, 4);
 
-    UITexture MONITOR = UITexture.fullImage(GTCEu.MOD_ID, "item/computer_monitor_cover");
-    UITexture DATA_HATCH = UITexture.fullImage(GTCEu.MOD_ID, "textures/item/data_module.png")
+    UITexture MONITOR = UITexture.fullImage(GTCEu.id("item/computer_monitor_cover"));
+    UITexture DATA_HATCH = UITexture.fullImage(GTCEu.id("textures/item/data_module.png"))
             .getSubArea(0, 0, 1, 1 / 13f);
 
     UITexture SEPERATOR_SIMPLE = UITexture.builder()
@@ -769,7 +767,7 @@ public interface GTGuiTextures {
     }
 
     private static UITexture fullImage(String path, @Nullable ColorType colorType) {
-        return UITexture.fullImage(GTCEu.MOD_ID, path, colorType);
+        return UITexture.fullImage(GTCEu.id(path), colorType);
     }
 
     @SuppressWarnings("SameParameterValue")

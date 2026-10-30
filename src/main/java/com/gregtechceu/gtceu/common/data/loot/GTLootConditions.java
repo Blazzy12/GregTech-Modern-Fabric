@@ -1,22 +1,24 @@
 package com.gregtechceu.gtceu.common.data.loot;
 
+import com.mojang.serialization.MapCodec;
+import net.minecraft.world.level.storage.loot.predicates.LootItemCondition;
+
 import com.gregtechceu.gtceu.GTCEu;
-import com.gregtechceu.gtceu.api.loot.serializer.CodecBasedSerializer;
 import com.gregtechceu.gtceu.common.loot.condition.GTConfigValueCondition;
 
 import net.minecraft.core.registries.Registries;
-import net.minecraft.world.level.storage.loot.predicates.LootItemConditionType;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.registries.DeferredRegister;
-import net.minecraftforge.registries.RegistryObject;
+import com.gregtechceu.gtceu.compat.bus.IEventBus;
+import com.gregtechceu.gtceu.compat.registries.DeferredHolder;
+import com.gregtechceu.gtceu.compat.registries.DeferredRegister;
 
 public class GTLootConditions {
     // spotless:off
 
-    public static final DeferredRegister<LootItemConditionType> LOOT_CONDITION_TYPES = DeferredRegister.create(Registries.LOOT_CONDITION_TYPE, GTCEu.MOD_ID);
+    public static final DeferredRegister<MapCodec<? extends LootItemCondition>> LOOT_CONDITION_TYPES = DeferredRegister.create(Registries.LOOT_CONDITION_TYPE, GTCEu.MOD_ID);
 
 
-    public static final RegistryObject<LootItemConditionType> CONFIG_VALUE = LOOT_CONDITION_TYPES.register("config_value", () -> new LootItemConditionType(new CodecBasedSerializer<>(GTConfigValueCondition.CODEC)));
+    // 26.x loot condition types are just their codecs
+    public static final DeferredHolder<MapCodec<? extends LootItemCondition>, MapCodec<GTConfigValueCondition>> CONFIG_VALUE = LOOT_CONDITION_TYPES.register("config_value", () -> GTConfigValueCondition.CODEC);
 
     // spotless:on
 

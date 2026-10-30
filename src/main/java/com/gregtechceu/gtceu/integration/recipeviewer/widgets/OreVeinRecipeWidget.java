@@ -7,19 +7,20 @@ import com.gregtechceu.gtceu.api.data.worldgen.GTOreDefinition;
 import com.gregtechceu.gtceu.api.data.worldgen.bedrockfluid.BedrockFluidDefinition;
 import com.gregtechceu.gtceu.api.data.worldgen.bedrockore.BedrockOreDefinition;
 import com.gregtechceu.gtceu.api.registry.GTRegistries;
-import com.gregtechceu.gtceu.client.ClientProxy;
 import com.gregtechceu.gtceu.config.ConfigHolder;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.core.NonNullList;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.valueproviders.IntProvider;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.levelgen.heightproviders.HeightProvider;
 import net.minecraft.world.level.levelgen.heightproviders.UniformHeight;
-import net.minecraftforge.fluids.FluidStack;
+import com.gregtechceu.gtceu.compat.fluids.FluidStack;
 
 import brachy.modularui.api.drawable.IDrawable;
 import brachy.modularui.api.drawable.Text;
@@ -59,7 +60,7 @@ public class OreVeinRecipeWidget extends ParentWidget<OreVeinRecipeWidget> {
         this(WIDTH, 140, getFluidName(fluid), fluid.getWeight(), null, fluid.dimensionFilter, veinYield(fluid),
                 depletion(fluid));
         drawUI(Flow.row().coverChildren().child(RecipeViewerSlotWidget.create(FluidStack.class)
-                .value(new FluidStack(fluid.getStoredFluid().get(), 1000)).recipeSlotRole(RecipeSlotRole.OUTPUT)));
+                .value(new FluidStack(fluid.getStoredFluid(), 1000)).recipeSlotRole(RecipeSlotRole.OUTPUT)));
     }
 
     public OreVeinRecipeWidget(GTOreDefinition oreDefinition) {
@@ -138,7 +139,7 @@ public class OreVeinRecipeWidget extends ParentWidget<OreVeinRecipeWidget> {
 
     @SuppressWarnings("all")
     private static String range(GTOreDefinition oreDefinition) {
-        HeightProvider height = oreDefinition.range().height;
+        HeightProvider height = oreDefinition.heightRange().height();
         int minHeight = 0, maxHeight = 0;
         if (height instanceof UniformHeight uniform) {
             minHeight = uniform.minInclusive.resolveY(null);
@@ -176,25 +177,29 @@ public class OreVeinRecipeWidget extends ParentWidget<OreVeinRecipeWidget> {
 
     public static DimensionMarker[] getDimensionMarkers(Set<ResourceKey<Level>> dimensionFilter) {
         return dimensionFilter.stream()
-                .map(ResourceKey::location)
-                .map(loc -> GTRegistries.DIMENSION_MARKERS.getOrDefault(loc,
-                        new DimensionMarker(DimensionMarker.MAX_TIER, () -> Blocks.BARRIER, loc.toString())))
+                .map(ResourceKey::identifier)
+                .map(loc -> GTRegistries.DIMENSION_MARKERS.getOptional(loc).orElse(
+                        new DimensionMarker(DimensionMarker.MAX_TIER, () -> Blocks.BARRIER,
+                                Component.literal(loc.toString()))))
                 .sorted(Comparator.comparingInt(DimensionMarker::getTier))
                 .toArray(DimensionMarker[]::new);
     }
 
     public static String getOreName(GTOreDefinition oreDefinition) {
-        ResourceLocation id = ClientProxy.CLIENT_ORE_VEINS.inverse().get(oreDefinition);
+        Identifier id = Minecraft.getInstance().level.registryAccess()
+                .lookupOrThrow(GTRegistries.Keys.ORE_VEIN).getKey(oreDefinition);
         return "gtceu.jei.ore_vein." + id.getPath();
     }
 
     public static String getFluidName(BedrockFluidDefinition fluid) {
-        ResourceLocation id = ClientProxy.CLIENT_FLUID_VEINS.inverse().get(fluid);
+        Identifier id = Minecraft.getInstance().level.registryAccess()
+                .lookupOrThrow(GTRegistries.Keys.BEDROCK_FLUID).getKey(fluid);
         return "gtceu.jei.bedrock_fluid." + id.getPath();
     }
 
     public static String getBedrockOreName(BedrockOreDefinition oreDefinition) {
-        ResourceLocation id = ClientProxy.CLIENT_BEDROCK_ORE_VEINS.inverse().get(oreDefinition);
+        Identifier id = Minecraft.getInstance().level.registryAccess()
+                .lookupOrThrow(GTRegistries.Keys.BEDROCK_ORE).getKey(oreDefinition);
         return "gtceu.jei.bedrock_ore." + id.getPath();
     }
 
@@ -211,8 +216,8 @@ public class OreVeinRecipeWidget extends ParentWidget<OreVeinRecipeWidget> {
 
     private static String veinYield(BedrockOreDefinition oreDefinition) {
         IntProvider yieldProvider = oreDefinition.yield();
-        int minYield = yieldProvider.getMinValue();
-        int maxYield = yieldProvider.getMaxValue();
+        int minYield = yieldProvider.minInclusive();
+        int maxYield = yieldProvider.maxInclusive();
         return String.format("%d - %d", minYield, maxYield);
     }
 

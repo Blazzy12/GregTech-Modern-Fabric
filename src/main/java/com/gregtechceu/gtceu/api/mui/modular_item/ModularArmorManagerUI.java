@@ -1,5 +1,7 @@
 package com.gregtechceu.gtceu.api.mui.modular_item;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import com.gregtechceu.gtceu.api.capability.GTCapabilityHelper;
 import com.gregtechceu.gtceu.api.item.module.*;
 import com.gregtechceu.gtceu.api.mui.GTGuiScreen;
@@ -11,7 +13,6 @@ import net.minecraft.world.item.ItemStack;
 
 import brachy.modularui.api.IPanelHandler;
 import brachy.modularui.api.IUIHolder;
-import brachy.modularui.api.drawable.IDrawable;
 import brachy.modularui.api.drawable.Text;
 import brachy.modularui.drawable.ItemDrawable;
 import brachy.modularui.screen.ModularPanel;
@@ -88,9 +89,9 @@ public class ModularArmorManagerUI implements IUIHolder<ModularArmorUIFactory.Ar
             }
             pages.addPage(moduleList);
         }
-        return panel.child(GTMuiWidgets.createTitleBar(IDrawable.EMPTY.asIcon(),
-                Component.translatable("gui.gtceu.armor_config.title").getString(), 284, GTGuiTextures.BACKGROUND))
-                .child(armorList).child(pages);
+        return panel.child(GTMuiWidgets.createTitleBar(null,
+                Component.translatable("gui.gtceu.armor_config.title").getString(), 284,
+                GTGuiTextures.BACKGROUND)).child(armorList).child(pages);
     }
 
     private ModularPanel<?> createPanelForModule(PanelSyncManager psm, IModularItem modularItem, int index,
@@ -147,6 +148,7 @@ public class ModularArmorManagerUI implements IUIHolder<ModularArmorUIFactory.Ar
                         .children(module.getSettings(appliedModule, psm, settingsId)));
     }
 
+    @Environment(EnvType.CLIENT)
     @Override
     public ModularScreen createScreen(ModularArmorUIFactory.ArmorGuiData data, ModularPanel<?> mainPanel) {
         return new GTGuiScreen(mainPanel);

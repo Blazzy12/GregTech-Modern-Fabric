@@ -5,7 +5,7 @@ import com.gregtechceu.gtceu.utils.GTUtil;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -27,9 +27,9 @@ public abstract class CapabilityBlockProvider<C>
                                              implements IBlockComponentProvider, IServerDataProvider<BlockAccessor> {
 
     @Getter
-    public final ResourceLocation uid;
+    public final Identifier uid;
 
-    protected CapabilityBlockProvider(ResourceLocation uid) {
+    protected CapabilityBlockProvider(Identifier uid) {
         this.uid = uid;
     }
 
@@ -53,10 +53,10 @@ public abstract class CapabilityBlockProvider<C>
         var side = block.getSide();
         CompoundTag capData = null;
         if (side != null) {
-            capData = block.getServerData().getCompound(uid.toString()).getCompound(side.getName());
+            capData = block.getServerData().getCompoundOrEmpty(uid.toString()).getCompoundOrEmpty(side.getName());
         }
         if (side == null || capData.isEmpty()) {
-            capData = block.getServerData().getCompound(uid.toString()).getCompound("null");
+            capData = block.getServerData().getCompoundOrEmpty(uid.toString()).getCompoundOrEmpty("null");
         }
 
         addTooltip(capData, tooltip, block.getPlayer(), block, be, config);
@@ -65,7 +65,7 @@ public abstract class CapabilityBlockProvider<C>
     @Override
     public void appendServerData(CompoundTag data, BlockAccessor blockAccessor) {
         // use uid as key for capability data
-        var capData = data.getCompound(uid.toString());
+        var capData = data.getCompoundOrEmpty(uid.toString());
 
         C capability = getCapability(blockAccessor.getLevel(), blockAccessor.getPosition(), null);
         if (capability != null && allowDisplaying(capability)) {

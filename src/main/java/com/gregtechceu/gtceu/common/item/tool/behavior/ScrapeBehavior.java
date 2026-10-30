@@ -1,15 +1,21 @@
 package com.gregtechceu.gtceu.common.item.tool.behavior;
 
+import com.mojang.serialization.MapCodec;
+
+import com.gregtechceu.gtceu.api.item.datacomponents.AoESymmetrical;
 import com.gregtechceu.gtceu.api.item.tool.ToolHelper;
-import com.gregtechceu.gtceu.api.item.tool.aoe.AoESymmetrical;
 import com.gregtechceu.gtceu.api.item.tool.behavior.IToolBehavior;
+import com.gregtechceu.gtceu.api.item.tool.behavior.ToolBehaviorType;
+import com.gregtechceu.gtceu.common.data.GTToolBehaviors;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.context.UseOnContext;
@@ -17,23 +23,26 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.LevelEvent;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.common.ToolAction;
-import net.minecraftforge.common.ToolActions;
+import com.gregtechceu.gtceu.compat.common.ItemAbilities;
+import com.gregtechceu.gtceu.compat.common.ItemAbility;
 
+import com.mojang.serialization.Codec;
+import io.netty.buffer.ByteBuf;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
-public class ScrapeBehavior implements IToolBehavior {
+public class ScrapeBehavior implements IToolBehavior<ScrapeBehavior> {
 
     public static final ScrapeBehavior INSTANCE = new ScrapeBehavior();
+    public static final Codec<ScrapeBehavior> CODEC = MapCodec.unitCodec(INSTANCE);
+    public static final StreamCodec<ByteBuf, ScrapeBehavior> STREAM_CODEC = StreamCodec.unit(INSTANCE);
 
     protected ScrapeBehavior() {/**/}
 
     @Override
-    public boolean canPerformAction(ItemStack stack, ToolAction action) {
-        return action == ToolActions.AXE_SCRAPE;
+    public boolean canPerformAction(ItemStack stack, ItemAbility action) {
+        return action == ItemAbilities.AXE_SCRAPE;
     }
 
     @NotNull
@@ -52,6 +61,7 @@ public class ScrapeBehavior implements IToolBehavior {
                 blocks = List.of(pos);
             } else {
                 blocks = getScrapableBlocks(aoeDefinition, context);
+                blocks.addFirst(context.getClickedPos());
             }
         } else {
             return InteractionResult.PASS;
@@ -62,7 +72,7 @@ public class ScrapeBehavior implements IToolBehavior {
             UseOnContext posContext = new UseOnContext(level, player, context.getHand(), stack,
                     context.getHitResult().withPosition(blockPos));
             BlockState newState = getScraped(level.getBlockState(blockPos), posContext);
-            scraped |= level.setBlock(blockPos, newState, Block.UPDATE_ALL);
+            scraped |= level.setBlock(blockPos, newState, Block.UPDATE_ALL_IMMEDIATE);
             level.levelEvent(player, LevelEvent.PARTICLES_SCRAPE, blockPos, 0);
 
             ToolHelper.damageItem(stack, player);
@@ -70,8 +80,8 @@ public class ScrapeBehavior implements IToolBehavior {
         }
 
         if (scraped) {
-            level.playSound(player, pos, SoundEvents.AXE_WAX_OFF, SoundSource.BLOCKS, 1.0F, 1.0F);
-            return InteractionResult.sidedSuccess(level.isClientSide);
+            level.playSound(player, pos, SoundEvents.AXE_WAX_OFF.value(), SoundSource.BLOCKS, 1.0F, 1.0F);
+            return InteractionResult.SUCCESS;
         }
         return InteractionResult.PASS;
     }
@@ -82,17 +92,22 @@ public class ScrapeBehavior implements IToolBehavior {
 
     protected static boolean isBlockScrapable(UseOnContext context) {
         BlockState state = context.getLevel().getBlockState(context.getClickedPos());
-        BlockState newState = state.getToolModifiedState(context, ToolActions.AXE_SCRAPE, true);
+        BlockState newState = com.gregtechceu.gtceu.compat.common.CommonHooks.getToolModifiedState(state, context, ItemAbilities.AXE_SCRAPE, true);
         return newState != null && newState != state;
     }
 
     protected BlockState getScraped(BlockState state, UseOnContext context) {
-        return state.getToolModifiedState(context, ToolActions.AXE_SCRAPE, false);
+        return com.gregtechceu.gtceu.compat.common.CommonHooks.getToolModifiedState(state, context, ItemAbilities.AXE_SCRAPE, false);
     }
 
     @Override
-    public void addInformation(@NotNull ItemStack stack, @Nullable Level Level, @NotNull List<Component> tooltip,
+    public void addInformation(@NotNull ItemStack stack, Item.TooltipContext Level, @NotNull List<Component> tooltip,
                                @NotNull TooltipFlag flag) {
         tooltip.add(Component.translatable("item.gtceu.tool.behavior.scrape"));
+    }
+
+    @Override
+    public ToolBehaviorType<ScrapeBehavior> getType() {
+        return GTToolBehaviors.SCRAPE.value();
     }
 }

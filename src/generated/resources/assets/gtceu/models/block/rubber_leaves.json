@@ -1,7 +1,5 @@
 {
   "parent": "minecraft:block/leaves",
-  "render_type": "minecraft:cutout_mipped",
-  "render_type_fast": "minecraft:solid",
   "textures": {
     "all": "gtceu:block/rubber_leaves"
   }

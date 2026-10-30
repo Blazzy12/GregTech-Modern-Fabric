@@ -1,11 +1,10 @@
 package com.gregtechceu.gtceu.api.sync_system.data_transformers;
 
-import com.gregtechceu.gtceu.api.block.ICoilType;
 import com.gregtechceu.gtceu.api.cover.CoverBehavior;
 import com.gregtechceu.gtceu.api.data.chemical.material.Material;
+import com.gregtechceu.gtceu.api.machine.MachineDefinition;
 import com.gregtechceu.gtceu.api.recipe.ConsumedInputsData;
 import com.gregtechceu.gtceu.api.recipe.GTRecipe;
-import com.gregtechceu.gtceu.api.recipe.GTRecipeType;
 import com.gregtechceu.gtceu.api.registry.GTRegistries;
 import com.gregtechceu.gtceu.api.sync_system.SyncDataHolder;
 import com.gregtechceu.gtceu.api.sync_system.TypeDeclaration;
@@ -20,17 +19,19 @@ import net.minecraft.core.Registry;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.*;
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.util.ExtraCodecs;
+import net.minecraft.network.chat.ComponentSerialization;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.Fluid;
-import net.minecraftforge.common.util.INBTSerializable;
-import net.minecraftforge.fluids.FluidStack;
+import com.gregtechceu.gtceu.compat.common.util.INBTSerializable;
+import com.gregtechceu.gtceu.compat.fluids.FluidStack;
 
 import com.mojang.serialization.Codec;
 import it.unimi.dsi.fastutil.objects.Reference2ReferenceOpenHashMap;
@@ -39,8 +40,6 @@ import org.jetbrains.annotations.Nullable;
 import java.lang.reflect.Type;
 import java.nio.ByteBuffer;
 import java.util.*;
-import java.util.function.BiConsumer;
-import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.IntStream;
 import java.util.stream.LongStream;
@@ -115,19 +114,13 @@ public final class ValueTransformers {
         REGISTERED.put(type, transformer);
     }
 
-    public static <T> void registerCodecTransformer(Class<T> type, Codec<T> codec) {
-        registerTransformer(type, new CodecTransformer<>(codec));
-    }
-
     public static <T> void registerCodecTransformer(Class<T> type, Codec<T> codec,
-                                                    BiConsumer<FriendlyByteBuf, T> writePacket,
-                                                    Function<FriendlyByteBuf, @Nullable T> readPacket) {
-        registerTransformer(type, new CodecTransformer<>(codec, writePacket, readPacket));
+                                                    StreamCodec<? super RegistryFriendlyByteBuf, T> streamCodec) {
+        registerTransformer(type, new CodecTransformer<>(codec, streamCodec));
     }
 
     public static <T> void registerRegistryTransformer(Class<T> type, Registry<T> registry) {
-        registerCodecTransformer(type, registry.byNameCodec(),
-                (buf, value) -> buf.writeId(registry, value), buf -> buf.readById(registry));
+        registerCodecTransformer(type, registry.byNameCodec(), ByteBufCodecs.registry(registry.key()));
     }
 
     /**
@@ -150,35 +143,35 @@ public final class ValueTransformers {
 
         // spotless:off
 
-        registerCodecTransformer(Integer.class, Codec.INT, FriendlyByteBuf::writeVarInt, FriendlyByteBuf::readVarInt);
-        registerCodecTransformer(Long.class, Codec.LONG, FriendlyByteBuf::writeVarLong, FriendlyByteBuf::readVarLong);
-        registerCodecTransformer(Float.class, Codec.FLOAT, FriendlyByteBuf::writeFloat, FriendlyByteBuf::readFloat);
-        registerCodecTransformer(Double.class, Codec.DOUBLE, FriendlyByteBuf::writeDouble, FriendlyByteBuf::readDouble);
-        registerCodecTransformer(Short.class, Codec.SHORT, (buf, s) -> buf.writeShort(s), FriendlyByteBuf::readShort);
-        registerCodecTransformer(Byte.class, Codec.BYTE, (buf, b) -> buf.writeByte(b), FriendlyByteBuf::readByte);
-        registerCodecTransformer(Character.class, SyncSystemCodecs.CHAR, (buf, c) -> buf.writeChar(c), FriendlyByteBuf::readChar);
-        registerCodecTransformer(Boolean.class, Codec.BOOL, FriendlyByteBuf::writeBoolean, FriendlyByteBuf::readBoolean);
+        registerCodecTransformer(Integer.class, Codec.INT, ByteBufCodecs.VAR_INT);
+        registerCodecTransformer(Long.class, Codec.LONG, ByteBufCodecs.VAR_LONG);
+        registerCodecTransformer(Float.class, Codec.FLOAT, ByteBufCodecs.FLOAT);
+        registerCodecTransformer(Double.class, Codec.DOUBLE, ByteBufCodecs.DOUBLE);
+        registerCodecTransformer(Short.class, Codec.SHORT, ByteBufCodecs.SHORT);
+        registerCodecTransformer(Byte.class, Codec.BYTE, ByteBufCodecs.BYTE);
+        registerCodecTransformer(Character.class, SyncSystemCodecs.CHAR, SyncSystemCodecs.CHAR_STREAM);
+        registerCodecTransformer(Boolean.class, Codec.BOOL, ByteBufCodecs.BOOL);
 
         // Primtive arrays
-        registerCodecTransformer(int[].class, Codec.INT_STREAM.xmap(IntStream::toArray, IntStream::of), FriendlyByteBuf::writeVarIntArray, FriendlyByteBuf::readVarIntArray);
-        registerCodecTransformer(long[].class, Codec.LONG_STREAM.xmap(LongStream::toArray, LongStream::of), FriendlyByteBuf::writeLongArray, FriendlyByteBuf::readLongArray);
-        registerCodecTransformer(byte[].class, Codec.BYTE_BUFFER.xmap(ByteBuffer::array, ByteBuffer::wrap), FriendlyByteBuf::writeByteArray, FriendlyByteBuf::readByteArray);
+        registerCodecTransformer(int[].class, Codec.INT_STREAM.xmap(IntStream::toArray, IntStream::of), SyncSystemCodecs.INT_ARRAY_STREAM);
+        registerCodecTransformer(long[].class, Codec.LONG_STREAM.xmap(LongStream::toArray, LongStream::of), SyncSystemCodecs.LONG_ARRAY_STREAM);
+        registerCodecTransformer(byte[].class, Codec.BYTE_BUFFER.xmap(ByteBuffer::array, ByteBuffer::wrap), ByteBufCodecs.BYTE_ARRAY);
 
         //// Java classes and standard minecraft/forge classes
 
-        registerCodecTransformer(String.class, Codec.STRING, FriendlyByteBuf::writeUtf, FriendlyByteBuf::readUtf);
-        registerCodecTransformer(UUID.class, UUIDUtil.CODEC, FriendlyByteBuf::writeUUID, FriendlyByteBuf::readUUID);
-        registerCodecTransformer(CompoundTag.class, CompoundTag.CODEC, FriendlyByteBuf::writeNbt, FriendlyByteBuf::readNbt);
-        registerCodecTransformer(ResourceLocation.class, ResourceLocation.CODEC, FriendlyByteBuf::writeResourceLocation, FriendlyByteBuf::readResourceLocation);
+        registerCodecTransformer(String.class, Codec.STRING, ByteBufCodecs.STRING_UTF8);
+        registerCodecTransformer(UUID.class, UUIDUtil.CODEC, UUIDUtil.STREAM_CODEC);
+        registerCodecTransformer(CompoundTag.class, CompoundTag.CODEC, ByteBufCodecs.COMPOUND_TAG);
+        registerCodecTransformer(Identifier.class, Identifier.CODEC, Identifier.STREAM_CODEC);
 
         registerRegistryTransformer(Item.class, BuiltInRegistries.ITEM);
-        registerCodecTransformer(ItemStack.class, ItemStack.CODEC, FriendlyByteBuf::writeItem, FriendlyByteBuf::readItem);
+        registerCodecTransformer(ItemStack.class, ItemStack.OPTIONAL_CODEC, ItemStack.OPTIONAL_STREAM_CODEC);
         registerRegistryTransformer(Fluid.class, BuiltInRegistries.FLUID);
-        registerCodecTransformer(FluidStack.class, FluidStack.CODEC, (buf, v) -> v.writeToPacket(buf), FluidStack::readFromPacket);
-        registerCodecTransformer(Component.class, ExtraCodecs.COMPONENT, FriendlyByteBuf::writeComponent, FriendlyByteBuf::readComponent);
+        registerCodecTransformer(FluidStack.class, FluidStack.OPTIONAL_CODEC, FluidStack.OPTIONAL_STREAM_CODEC);
+        registerCodecTransformer(Component.class, ComponentSerialization.CODEC, ComponentSerialization.STREAM_CODEC);
 
-        registerTransformer(BlockPos.class, new BlockPosTransformer());
-        registerCodecTransformer(BlockState.class, BlockState.CODEC, (b, v) -> b.writeId(Block.BLOCK_STATE_REGISTRY, v), b -> b.readById(Block.BLOCK_STATE_REGISTRY));
+        registerCodecTransformer(BlockPos.class, BlockPos.CODEC, BlockPos.STREAM_CODEC);
+        registerCodecTransformer(BlockState.class, BlockState.CODEC, ByteBufCodecs.idMapper(Block.BLOCK_STATE_REGISTRY));
 
         registerTransformer(INBTSerializable.class, new NBTSerializableTransformer());
         registerTransformer(ISyncManaged.class, new SyncDataHolder.SyncManagedTransformer());
@@ -192,13 +185,12 @@ public final class ValueTransformers {
         registerTransformer(CoverBehavior.class, new CoverBehaviorTransformer());
         registerTransformer(GTRecipe.class, new GTRecipeTransformer());
 
-        registerCodecTransformer(MachineRenderState.class, MachineRenderState.CODEC);
-        registerTransformer(MonitorGroup.class, new MonitorGroupTransformer());
-        registerCodecTransformer(ConsumedInputsData.class, ConsumedInputsData.CODEC);
-        registerCodecTransformer(ICoilType.class, ICoilType.CODEC);
+        registerCodecTransformer(MachineRenderState.class, MachineRenderState.CODEC, ByteBufCodecs.idMapper(MachineDefinition.RENDER_STATE_REGISTRY));
+        registerCodecTransformer(MonitorGroup.class, MonitorGroup.CODEC, MonitorGroup.STREAM_CODEC);
+        registerCodecTransformer(ConsumedInputsData.class, ConsumedInputsData.CODEC, ByteBufCodecs.fromCodecWithRegistries(ConsumedInputsData.CODEC));
 
-        registerCodecTransformer(GTRecipeType.class, ResourceLocation.CODEC.xmap(GTRegistries.RECIPE_TYPES::get, GTRecipeType::getRegistryName));
-        registerCodecTransformer(Material.class, ResourceLocation.CODEC.xmap(GTRegistries.MATERIALS::get, Material::getResourceLocation));
+        registerRegistryTransformer(Material.class, GTRegistries.MATERIALS);
+
         // spotless:on
     }
 }

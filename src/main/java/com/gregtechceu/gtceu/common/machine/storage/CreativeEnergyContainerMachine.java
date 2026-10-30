@@ -13,7 +13,7 @@ import com.gregtechceu.gtceu.api.machine.mui.MachineUIPanelBuilder;
 import com.gregtechceu.gtceu.api.sync_system.annotations.SaveField;
 import com.gregtechceu.gtceu.utils.GTUtil;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
+import com.gregtechceu.gtceu.compat.MethodsReturnNonnullByDefault;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.Level;
@@ -101,7 +101,7 @@ public class CreativeEnergyContainerMachine extends TieredMachine
         }
         ampsReceived = 0;
         if (!workingEnabled || !source || voltage <= 0 || amps <= 0) return;
-        int ampsUsed = 0;
+        long ampsUsed = 0;
         for (var facing : GTUtil.DIRECTIONS) {
             var opposite = facing.getOpposite();
             IEnergyContainer container = GTCapabilityHelper.getEnergyContainer(getLevel(),
