@@ -48,7 +48,7 @@ public class EnvironmentalHazardClientHandler {
         }
 
         Level level = Minecraft.getInstance().level;
-        if (level == null) {
+        if (level == null || Minecraft.getInstance().player == null) {
             return;
         }
         RandomSource random = level.getRandom();

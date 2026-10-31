@@ -260,6 +260,15 @@ public final class SyncedKeyMapping {
     @Environment(EnvType.CLIENT)
     public static void onClientTick() {
         updatingKeyDown.clear();
+        // Key states are only synced while connected to a server (e.g. not on the title screen or while joining).
+        // They are reset meanwhile, so held keys are sent again once in game.
+        var minecraft = net.minecraft.client.Minecraft.getInstance();
+        if (minecraft.player == null || minecraft.getConnection() == null) {
+            for (SyncedKeyMapping keyMapping : KEYMAPPINGS.values()) {
+                keyMapping.isKeyDown = false;
+            }
+            return;
+        }
         for (var entry : KEYMAPPINGS.int2ObjectEntrySet()) {
             SyncedKeyMapping keyMapping = entry.getValue();
             boolean previousKeyDown = keyMapping.isKeyDown;

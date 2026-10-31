@@ -49,6 +49,10 @@ final class ClientPayloadBridge {
     }
 
     static void sendToServer(CustomPacketPayload payload) {
-        ClientPlayNetworking.send(payload);
+        // dropped while not connected or when the server lacks the channel; Fabric would throw
+        if (net.minecraft.client.Minecraft.getInstance().getConnection() != null
+                && ClientPlayNetworking.canSend(payload.type())) {
+            ClientPlayNetworking.send(payload);
+        }
     }
 }

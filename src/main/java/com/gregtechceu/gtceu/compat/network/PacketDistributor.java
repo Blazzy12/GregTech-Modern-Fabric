@@ -82,7 +82,15 @@ public final class PacketDistributor {
 
     private static final class ClientSender {
 
+        /**
+         * Like NeoForge, packets sent while not connected (or to a server without the channel) are dropped instead of
+         * crashing: Fabric throws in both cases.
+         */
         static void send(CustomPacketPayload payload) {
+            if (net.minecraft.client.Minecraft.getInstance().getConnection() == null
+                    || !net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.canSend(payload.type())) {
+                return;
+            }
             net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.send(payload);
         }
     }
