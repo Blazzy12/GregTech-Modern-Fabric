@@ -63,7 +63,8 @@ public enum GTFluidStorageProvider implements IServerExtensionProvider<FluidView
             boolean locked = stored.isEmpty() && qtm.isLocked();
             if (locked) stored = qtm.getLockedFluid();
             if (stored.isEmpty()) return Collections.emptyList();
-            return List.of(group(GTElementHelper.fluidData(locked ? stored.copyWithAmount(1000) : stored,
+            // the stored stack only marks the fluid; the amount is a separate long, as tanks can hold more than an int
+            return List.of(group(GTElementHelper.fluidData(stored, locked ? 1000 : qtm.getStoredAmount(),
                     qtm.getMaxAmount()), locked));
         } else if (accessor.getTarget() instanceof FluidHatchPartMachine hatch) {
             if (hatch.tank.getTanks() == 1 && hatch.tank.getFluidInTank(0).isEmpty() && hatch.tank.isLocked()) {

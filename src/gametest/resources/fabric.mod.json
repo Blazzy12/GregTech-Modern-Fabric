@@ -6,10 +6,7 @@
   "environment": "*",
   "entrypoints": {
     "fabric-client-gametest": [
-      "com.gregtechceu.gtceu.gametest.GTClientGameTest",
-      "com.gregtechceu.gtceu.gametest.GTMechanicsGameTest",
-      "com.gregtechceu.gtceu.gametest.GTDedicatedServerGameTest",
-      "com.gregtechceu.gtceu.gametest.GTRemoteServerGameTest"
+      "com.gregtechceu.gtceu.gametest.GTGameTests"
     ]
   },
   "depends": {

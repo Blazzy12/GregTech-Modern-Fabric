@@ -18,7 +18,9 @@
     "jei.RecipeLayoutAccessor",
     "jei.RecipeLayoutBuilderAccessor",
     "jei.RecipeLayoutMixin",
-    "jei.RecipeSlotAccessor"
+    "jei.RecipeSlotAccessor",
+    "rei.DefaultDisplayViewingScreenMixin",
+    "rei.EntryWidgetAccessor"
   ],
   "mixins": [
     "common.AbstractContainerMenuAccessor",

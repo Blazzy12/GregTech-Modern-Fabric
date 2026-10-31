@@ -24,6 +24,11 @@ public class CategoryIcon {
         this.texture = Either.right(stack);
     }
 
+    /** @return the icon's texture or item, for recipe viewers that draw it themselves */
+    public Either<Identifier, ItemStack> getTexture() {
+        return texture;
+    }
+
     public Object get() {
         if (wrappedValue != null) return wrappedValue;
         wrappedValue = RecipeViewerHooks.iconFactory.apply(texture);

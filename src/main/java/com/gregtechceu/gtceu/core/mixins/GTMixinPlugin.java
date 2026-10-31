@@ -44,7 +44,7 @@ public class GTMixinPlugin implements IMixinConfigPlugin {
             "journeymap", "computercraft");
     // mixin package -> mod id, where they differ
     private static final Map<String, String> MOD_IDS = Map.of("xaerominimap", "xaerominimap",
-            "xaeroworldmap", "xaeroworldmap");
+            "xaeroworldmap", "xaeroworldmap", "rei", "roughlyenoughitems");
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {

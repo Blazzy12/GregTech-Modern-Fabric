@@ -28,6 +28,7 @@
         "jei.FluidHelperMixin",
         "jei.FluidTankRendererMixin",
         "jei.RecipesGuiAccessor",
+        "rei.ArchitecturyFluidSpriteMixin",
         "xaerominimap.HighlighterRegistryMixin",
         "xaerominimap.MinimapFBORendererMixin",
         "xaeroworldmap.GuiMapMixin",
@@ -35,6 +36,8 @@
         "xaeroworldmap.WorldMapSessionMixin"
     ],
     "mixins": [
+        "EnchantmentHelperMixin",
+        "PowderSnowBlockMixin",
         "BlockBehaviourAccessor",
         "BlockMixin",
         "BlockPropertiesAccessor",

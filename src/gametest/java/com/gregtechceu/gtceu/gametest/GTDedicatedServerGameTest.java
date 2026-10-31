@@ -23,7 +23,7 @@ public class GTDedicatedServerGameTest implements FabricClientGameTest {
 
     @Override
     public void runTest(ClientGameTestContext context) {
-        if (GTRemoteServerGameTest.ADDRESS != null) return;
+        if (!GTTests.enabled("server")) return;
         try (TestDedicatedServerContext server = context.worldBuilder().createServer()) {
             try (var connection = server.connect()) {
                 connection.waitForChunksRender();

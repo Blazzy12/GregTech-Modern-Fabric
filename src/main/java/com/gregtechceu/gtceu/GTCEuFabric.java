@@ -58,6 +58,7 @@ public class GTCEuFabric implements ModInitializer {
         RegistrationLoader.run();
         CommonProxy.registerLegacyAliases();
         TransferBridges.init();
+        com.gregtechceu.gtceu.compat.transfer.FluidVariantHandlers.init();
         EarlyComponentBinder.bind();
         GTBlocks.registerBlockTransformers();
         GTBiomeModifiers.init();

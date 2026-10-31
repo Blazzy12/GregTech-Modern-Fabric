@@ -45,13 +45,13 @@ That's all you need. The config library and EvalEx are bundled inside the jar. G
 | Mod | Status | What you get |
 | --- | :---: | --- |
 | [JEI](https://modrinth.com/mod/jei) | ✅ | GT recipe categories, fluids and ModularUI ghost slots |
+| [REI](https://modrinth.com/mod/rei) | ✅ | GT recipe categories, info pages, fluids and ModularUI ghost slots |
 | [Jade](https://modrinth.com/mod/jade) | ✅ | Machine progress, energy, recipe outputs, multiblock and maintenance info |
 | [CC: Tweaked](https://modrinth.com/mod/cc-tweaked) | ✅ | GT machines as peripherals (`getProgress`, `getEnergyStored`, …) |
 | [JourneyMap](https://modrinth.com/mod/journeymap) | ✅ | Ore vein markers from prospecting |
 | [Xaero's Minimap / World Map](https://modrinth.com/mod/xaeros-minimap) | ✅ | Ore vein markers and map buttons |
 | [Sodium](https://modrinth.com/mod/sodium) / [Iris](https://modrinth.com/mod/iris) | ✅ | Compatible, including animated fluids in ModularUI previews |
 | Fabric Transfer API | ✅ | GT machines and tanks work with hoppers, chests and other mods' pipes |
-| REI | 🚧 | Not ported yet |
 | EMI, AE2, Create, KubeJS | ⏳ | Waiting for Minecraft 26.3 Fabric builds |
 
 ## How it was tested
@@ -125,6 +125,7 @@ If you bump the JourneyMap or Xaero versions in `gradle.properties`, update the 
 ```bash
 ./gradlew runClient                      # play in a dev client
 ./gradlew runClient -PwithSodium=true    # ... with Sodium and Iris
+./gradlew runClient -PwithRei=true       # ... with REI instead of JEI
 ./gradlew runServer                      # dev dedicated server
 ./gradlew runClientGameTest              # full automated test suite
 ```

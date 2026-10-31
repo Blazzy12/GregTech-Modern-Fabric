@@ -20,7 +20,10 @@ public class GhostIngredientTarget<I> implements IGhostIngredientHandler.Target<
     }
 
     @Override
-    public void accept(I ingredient) {
+    @SuppressWarnings("unchecked")
+    public void accept(I jeiIngredient) {
+        // JEI hands over its own fluid type; ghost slots hold ModularUI's
+        I ingredient = (I) JeiIngredientHandler.fromJei(jeiIngredient);
         if (this.ghostSlot.ingredientHandlingOverride(ingredient)) {
             return;
         }

@@ -39,7 +39,7 @@ public class GTClientGameTest implements FabricClientGameTest {
 
     @Override
     public void runTest(ClientGameTestContext context) {
-        if (GTRemoteServerGameTest.ADDRESS != null) return;
+        if (!GTTests.enabled("client")) return;
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             var server = singleplayer.getServer();
             singleplayer.getConnection().waitForChunksRender();

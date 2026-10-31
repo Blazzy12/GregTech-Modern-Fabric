@@ -22,6 +22,10 @@
     ],
     "journeymap": [
       "com.gregtechceu.gtceu.integration.map.journeymap.GTJourneyMapPlugin"
+    ],
+    "rei_client": [
+      "brachy.modularui.integration.rei.ModularUIReiPlugin",
+      "com.gregtechceu.gtceu.integration.recipeviewer.rei.GTREIPlugin"
     ]
   },
   "depends": {
@@ -37,6 +41,7 @@
   "accessWidener": "gtceu.classtweaker",
   "suggests": {
     "jei": "*",
-    "jade": "*"
+    "jade": "*",
+    "roughlyenoughitems": "*"
   }
 }

@@ -162,6 +162,21 @@ public class GTToolItem extends TieredItem implements IGTTool {
         return definition$doesSneakBypassUse(stack, level, pos, player);
     }
 
+    /** Fabric's equivalent of {@link #shouldCauseReequipAnimation}: GT's tool data changes must not bob the hand. */
+    @Override
+    public boolean allowComponentsUpdateAnimation(net.minecraft.world.entity.player.Player player,
+                                                  net.minecraft.world.InteractionHand hand, ItemStack oldStack,
+                                                  ItemStack newStack) {
+        return shouldCauseReequipAnimation(oldStack, newStack, false);
+    }
+
+    /** Fabric's equivalent of {@link #shouldCauseBlockBreakReset}: GT's tool data changes must not restart mining. */
+    @Override
+    public boolean allowContinuingBlockBreaking(net.minecraft.world.entity.player.Player player, ItemStack oldStack,
+                                                ItemStack newStack) {
+        return !shouldCauseBlockBreakReset(oldStack, newStack);
+    }
+
     @Override
     public boolean shouldCauseBlockBreakReset(ItemStack oldStack, ItemStack newStack) {
         return definition$shouldCauseBlockBreakReset(oldStack, newStack);

@@ -33,8 +33,11 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLevelEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.context.UseOnContext;
 import net.fabricmc.fabric.api.event.player.AttackBlockCallback;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
+import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 
 /**
@@ -110,6 +113,14 @@ public final class FabricEventBridge {
                 post(new PlayerInteractEvent.LeftClickBlock(player, hand, pos, direction,
                         PlayerInteractEvent.Action.START)).isCanceled() ?
                                 InteractionResult.SUCCESS : InteractionResult.PASS);
+        // NeoForge calls Item#onItemUseFirst before the clicked block gets to handle the click, on both sides.
+        // Fabric's UseBlockCallback runs at that point. GT's covers and many item behaviours (data sticks,
+        // plungers, ...) act there.
+        UseBlockCallback.EVENT.register((player, level, hand, hit) -> {
+            ItemStack stack = player.getItemInHand(hand);
+            if (player.isSpectator() || stack.isEmpty()) return InteractionResult.PASS;
+            return stack.getItem().onItemUseFirst(stack, new UseOnContext(player, hand, hit));
+        });
         UseEntityCallback.EVENT.register((player, level, hand, entity, hit) ->
                 post(new PlayerInteractEvent.EntityInteract(player, hand, entity.blockPosition(), null, entity))
                         .isCanceled() ? InteractionResult.SUCCESS : InteractionResult.PASS);

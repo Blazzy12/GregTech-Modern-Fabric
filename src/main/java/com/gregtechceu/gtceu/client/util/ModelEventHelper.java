@@ -29,6 +29,7 @@ import com.gregtechceu.gtceu.compat.client.event.TextureAtlasStitchedEvent;
 
 
 import com.gregtechceu.gtceu.GTCEu;
+import com.gregtechceu.gtceu.compat.client.extensions.common.ClientExtensionsManager;
 import com.gregtechceu.gtceu.client.model.ctm.CTMBakedModel;
 import com.gregtechceu.gtceu.client.model.machine.MachineModel;
 import com.gregtechceu.gtceu.client.renderer.cover.ICoverableRenderer;
@@ -128,6 +129,9 @@ public class ModelEventHelper {
             ICoverableRenderer.initSprites(atlas);
         });
 
+        // fluid textures depend on loaded resources, so fluid models are (re)registered at the start of each model
+        // reload; Fabric reads them when it bakes the fluid models later in the same reload
+        ModelLoadingPlugin.register(context -> ClientExtensionsManager.registerFluidModels());
         ModelLoadingPlugin.register(context -> context.modifyBlockModelAfterBake().register((model, ctx) -> {
             if (model instanceof GTBlockStateModel gtModel) {
                 return gtModel.model() instanceof CTMBakedModel<?> ? model : wrapIfConnected(gtModel.model(), model,

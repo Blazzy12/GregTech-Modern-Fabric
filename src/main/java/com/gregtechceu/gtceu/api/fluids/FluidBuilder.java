@@ -1,5 +1,6 @@
 package com.gregtechceu.gtceu.api.fluids;
 
+import com.gregtechceu.gtceu.common.data.models.GTModels;
 import com.gregtechceu.gtceu.api.data.chemical.material.Material;
 import com.gregtechceu.gtceu.api.data.chemical.material.info.MaterialFlags;
 import com.gregtechceu.gtceu.api.data.chemical.material.info.MaterialIconType;
@@ -455,10 +456,13 @@ public class FluidBuilder {
         FluidType type = new GTFluidType(properties, material);
         OneTimeEventReceiver.addModListener(owner, RegisterClientExtensionsEvent.class, event -> {
             final int color = isColorEnabled ? this.color : INFER_COLOR;
-            if (still == null || flowing == null) {
-                this.determineTextures(material, key);
-            }
-            event.registerFluidType(new GTClientFluidTypeExtensions(still, flowing, color), type);
+            // textures are worked out lazily: icon set textures can only be checked once resources have loaded
+            event.registerFluidType(new GTClientFluidTypeExtensions(() -> {
+                if (still == null || flowing == null || still.equals(GTModels.BLANK_TEXTURE)) {
+                    this.determineTextures(material, key);
+                }
+                return new Identifier[] { still, flowing };
+            }, color), type);
         });
         return type;
     }

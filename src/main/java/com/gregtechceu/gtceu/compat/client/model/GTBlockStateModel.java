@@ -1,6 +1,7 @@
 package com.gregtechceu.gtceu.compat.client.model;
 
 import com.gregtechceu.gtceu.compat.client.model.data.ModelData;
+import com.gregtechceu.gtceu.compat.common.extensions.IBlockEntityExtension;
 
 import net.minecraft.client.renderer.block.BlockAndTintGetter;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
@@ -48,7 +49,7 @@ public class GTBlockStateModel implements BlockStateModel {
     @Override
     public void emitQuads(QuadEmitter emitter, BlockAndTintGetter level, BlockPos pos, BlockState state,
                           RandomSource random, Predicate<Direction> cullTest) {
-        ModelData data = model.getModelData(level, pos, state, ModelData.EMPTY);
+        ModelData data = model.getModelData(level, pos, state, blockEntityData(level, pos));
         long seed = random.nextLong();
         for (ChunkSectionLayer layer : model.getRenderTypes(state, random, data)) {
             for (Direction side : BakedModel.SIDES) {
@@ -59,6 +60,15 @@ public class GTBlockStateModel implements BlockStateModel {
                 }
             }
         }
+    }
+
+    /**
+     * The block entity's own model data, which NeoForge passes to {@code getModelData} as the starting point (pipes
+     * put their connections there). Without it, pipes rendered without any of their connections.
+     */
+    private static ModelData blockEntityData(BlockAndTintGetter level, BlockPos pos) {
+        return level.getBlockEntity(pos) instanceof IBlockEntityExtension blockEntity ? blockEntity.getModelData() :
+                ModelData.EMPTY;
     }
 
     @Override
@@ -92,7 +102,7 @@ public class GTBlockStateModel implements BlockStateModel {
 
     @Override
     public Material.Baked particleMaterial(BlockAndTintGetter level, BlockPos pos, BlockState state) {
-        ModelData data = model.getModelData(level, pos, state, ModelData.EMPTY);
+        ModelData data = model.getModelData(level, pos, state, blockEntityData(level, pos));
         return new Material.Baked(model.getParticleIcon(data), false);
     }
 

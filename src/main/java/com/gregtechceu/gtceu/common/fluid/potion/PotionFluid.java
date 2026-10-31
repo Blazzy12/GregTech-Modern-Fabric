@@ -67,8 +67,9 @@ public class PotionFluid extends BaseFlowingFluid {
 
         @Override
         public @NotNull String getDescriptionId(FluidStack stack) {
-            // Potion#getName(Optional, prefix) before 26.x
-            return this.getDescriptionId() + ".effect." + stack.getOrDefault(DataComponents.POTION_CONTENTS,
+            // Potion#getName(Optional, prefix) before 26.x. Upstream used GT's own "fluid.gtceu.potion.effect.*" keys,
+            // which no language file has; vanilla's potion item names ("Potion of Night Vision") are used instead.
+            return "item.minecraft.potion.effect." + stack.getOrDefault(DataComponents.POTION_CONTENTS,
                     PotionContents.EMPTY).potion().map(potion -> potion.value().name()).orElse("empty");
         }
     }

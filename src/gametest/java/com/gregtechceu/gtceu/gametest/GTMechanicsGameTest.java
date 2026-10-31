@@ -33,7 +33,7 @@ public class GTMechanicsGameTest implements FabricClientGameTest {
 
     @Override
     public void runTest(ClientGameTestContext context) {
-        if (GTRemoteServerGameTest.ADDRESS != null) return;
+        if (!GTTests.enabled("mechanics")) return;
         TestWorldSave save;
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             save = singleplayer.getWorldSave();
@@ -197,7 +197,7 @@ public class GTMechanicsGameTest implements FabricClientGameTest {
         return sb.toString();
     }
 
-    private static void setField(Object target, String name, Object value) {
+    static void setField(Object target, String name, Object value) {
         try {
             for (Class<?> c = target.getClass(); c != null; c = c.getSuperclass()) {
                 try {

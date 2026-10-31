@@ -34,17 +34,49 @@ public class GTRemoteServerGameTest implements FabricClientGameTest {
         context.waitTicks(60);
         context.takeScreenshot("gtceu_remote_world");
 
+        context.runOnClient(mc -> mc.player.getInventory().setSelectedSlot(8)); // an empty hand opens the machine
+        context.waitTicks(5);
         context.getInput().pressKey(options -> options.keyUse);
         context.waitTicks(40);
-        String screen = context.computeOnClient(mc -> mc.gui.screen() == null ? "none" :
-                mc.gui.screen().getClass().getName());
+        String screen = screen(context);
         context.takeScreenshot("gtceu_remote_machine_ui");
         if (!screen.contains("modularui")) throw new AssertionError("Machine UI did not open: " + screen);
+        context.setScreen(() -> null);
+        context.waitTicks(20);
+
+        // the script also gave us a conveyor (slot 1), a screwdriver (slot 2) and a programmed circuit (slot 3):
+        // place the conveyor on the machine and open its cover UI with the screwdriver
+        useSlot(context, 0);
+        useSlot(context, 1);
+        String coverScreen = screen(context);
+        context.takeScreenshot("gtceu_remote_cover_ui");
+        if (!coverScreen.contains("modularui")) throw new AssertionError("Cover UI did not open: " + coverScreen);
+        context.setScreen(() -> null);
+        context.waitTicks(20);
+
+        // the programmed circuit's own UI, used in the air
+        context.runOnClient(mc -> mc.player.setXRot(-90));
+        context.waitTicks(5);
+        useSlot(context, 2);
+        String itemScreen = screen(context);
+        context.takeScreenshot("gtceu_remote_item_ui");
+        if (!itemScreen.contains("modularui")) throw new AssertionError("Item UI did not open: " + itemScreen);
         context.setScreen(() -> null);
         context.waitTicks(20);
         BlockPos pos = context.computeOnClient(mc -> mc.player.blockPosition());
         context.runOnClient(mc -> mc.disconnect(new TitleScreen(), false));
         context.waitFor(mc -> mc.level == null, 20 * 30);
         System.out.println("GTCEU remote test passed at " + pos);
+    }
+
+    private static void useSlot(ClientGameTestContext context, int slot) {
+        context.runOnClient(mc -> mc.player.getInventory().setSelectedSlot(slot));
+        context.waitTicks(5);
+        context.getInput().pressKey(options -> options.keyUse);
+        context.waitTicks(30);
+    }
+
+    private static String screen(ClientGameTestContext context) {
+        return context.computeOnClient(mc -> mc.gui.screen() == null ? "none" : mc.gui.screen().getClass().getName());
     }
 }

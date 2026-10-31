@@ -123,6 +123,7 @@ public class JeiRecipeViewerSlot<I, T> extends RecipeViewerSlotWidget<I, JeiReci
         if (this.entries != null) {
             builder.addIngredientsUnsafe(this.entries.getStacks().stream()
                     .map(this.renderMappingFunction)
+                    .map(JeiIngredientHandler::toJei)
                     .toList());
         }
         // mmm I love off-by-one errors
@@ -143,6 +144,7 @@ public class JeiRecipeViewerSlot<I, T> extends RecipeViewerSlotWidget<I, JeiReci
                 SlotDisplayContext.fromLevel(Minecraft.getInstance().level), ingredientRole);
         ingredients.addIngredientsUnsafe(this.entries.getStacks().stream()
                 .map(this.renderMappingFunction)
+                .map(JeiIngredientHandler::toJei)
                 .toList());
 
         List<? extends @Nullable ITypedIngredient<?>> allIngredients = ingredients.getAllIngredients();

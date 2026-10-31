@@ -30,6 +30,7 @@ public class GTCEuClient implements ClientModInitializer {
         ClientProxy.registerClientExtensions(extensions);
         ModBuses.MOD_BUS.post(extensions);
         ClientExtensionsManager.registerFluidModels();
+        com.gregtechceu.gtceu.compat.transfer.FluidVariantRenderHandlers.init();
 
         // NeoForge asked for colour handlers once; Registrate's builders wait for these
         ModBuses.MOD_BUS.post(new RegisterColorHandlersEvent.Block());

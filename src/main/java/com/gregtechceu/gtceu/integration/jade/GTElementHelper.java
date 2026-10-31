@@ -29,6 +29,12 @@ public class GTElementHelper {
         return new FluidView.Data(fluid(stack), capacity * JadeFluidObject.bucketVolume() / 1000);
     }
 
+    /** A tank of {@code capacity} millibuckets holding {@code amount} millibuckets of {@code type}'s fluid. */
+    public static FluidView.Data fluidData(FluidStack type, long amount, long capacity) {
+        return new FluidView.Data(JadeFluidObject.of(type.getFluid(), amount * JadeFluidObject.bucketVolume() / 1000,
+                type.getComponentsPatch()), capacity * JadeFluidObject.bucketVolume() / 1000);
+    }
+
     /** A millibucket amount, formatted by Jade (which counts in its platform's units). */
     public static Component millibuckets(long amount) {
         return FluidTextHelper.getMillibuckets(amount * JadeFluidObject.bucketVolume() / 1000, true);

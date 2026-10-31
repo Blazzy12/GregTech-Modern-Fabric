@@ -369,3 +369,106 @@ runs when `GTCEU_REMOTE_SERVER` is set and skips the other tests. The client con
 LV macerator, and the client opens its ModularUI. It passes, and the server log has no errors. ModularUI's
 "Debug Options" overlay in screenshots is its dev-environment debug mode (`ModularUI.isTestEnv()`), not shown in
 production.
+
+## JEI fluids (seventh session, 2026-10-30)
+
+Four bugs made GT fluids, gases most visibly, show up broken in JEI:
+- **No textures:** GT material fluids rendered as `gtceu:block/void`, i.e. invisible. The fluid's icon-set texture
+  is chosen by checking which textures exist, and that check ran during client init, before any resources had
+  loaded. `GTClientFluidTypeExtensions` now resolves textures lazily and retries until it gets a real one. Fluid
+  models are re-registered at the start of every model reload, through a `ModelLoadingPlugin` in
+  `ModelEventHelper`, and Fabric reads them when it bakes fluids later in that reload.
+- **Untranslated names:** fluids showed as `block.gtceu.hydrogen`. Fabric names fluids through
+  `FluidVariantAttributes`, which by default uses the block's translation key. `compat/transfer/FluidVariantHandlers`
+  registers GT's names, plus temperature, viscosity, light level and lighter-than-air, for every `BaseFlowingFluid`.
+  `FluidVariantRenderHandlers` (client only) supplies per-stack tints such as potion colours.
+- **Potion fluid names:** these used `fluid.gtceu.potion.effect.*` keys that no language has (upstream too). They now
+  use vanilla's `item.minecraft.potion.effect.*` names, e.g. "Potion of Night Vision".
+- **Empty recipe slots:** every fluid slot in GT's JEI recipes was blank, and only the ModularUI amount label showed.
+  ModularUI passed GT's compat `FluidStack` to JEI, which only accepts `IJeiFluidIngredient` on Fabric, so JEI
+  silently dropped the fluids. Every ModularUI–JEI crossing now goes through
+  `JeiIngredientHandler.toJei`/`fromJei`: recipe slots, hover lookups, clickable ingredients, and dragging into ghost slots.
+
+`GTJeiGameTest` (`GTCEU_TESTS=jei ./gradlew runClientGameTest` runs only that test; `GTCEU_TESTS` takes a comma list
+of client/mechanics/jei/server) checks:
+- All 435 GT fluids have a real name, a texture and a visible colour.
+- All of GT's roughly 9.4k items have translated names.
+- The coke oven's JEI slots, creosote included, are filled.
+
+It also screenshots the gas list, a recipe with gas outputs, a fluid tooltip and a tank UI.
+
+## REI (eighth session, 2026-10-30)
+
+REI 26.3.824 (with Cloth Config 26.3.159 and Architectury 22.0.5, all from Modrinth's Maven) is supported.
+`./gradlew runClient -PwithRei=true` runs REI instead of JEI.
+- **ModularUI's REI layer** moved from `disabled/` to `brachy/modularui/integration/rei`. It was ported to REI 26's
+  API: REI's own `GuiGraphics` wrapper, the new input event records, a `null` display serializer (displays are built
+  on the client), and Architectury fluid amounts in droplets. `ModularUIReiPlugin` makes REI the current
+  `RecipeViewerHandler`. The `DefaultDisplayViewingScreenMixin` lambda target is now `lambda$checkExportDisplays$0`,
+  with `require = 0`.
+- **GT's REI plugin** (`integration/recipeviewer/rei/GTREIPlugin`, `rei_client` entrypoint) mirrors `GTJEIPlugin`.
+  `GTReiCategory` is a single generic category and display. Each display draws the same ModularUI widget the JEI
+  categories use, and lists its inputs and outputs for lookups. It covers:
+  - every GT recipe category, with machine workstations (the furnace maps to REI's smelting category)
+  - multiblock previews and ore processing diagrams
+  - ore veins, bedrock fluids and bedrock ores
+  - programmed circuits
+  - potion fluid entries
+- **Two REI 26.3 problems worked around:**
+  - REI's fluid renderer looks up the sprite and then draws nothing, so REI showed no fluid anywhere, vanilla water
+    included. `ReiFluidRenderer` draws fluids instead and gives them JEI-style GT tooltips.
+  - On Fabric, Architectury only knows sprites for its own fluids. `core/mixins/rei/ArchitecturyFluidSpriteMixin` falls
+    back to the fluid's baked model.
+- REI validates every display on its plugin reload thread by asking for its width. ModularUI can't lay out widgets
+  there, and doing it for 30k recipes would be slow, so `ModularUIReiCategory` reports a fallback width until the
+  real size is measured on the render thread.
+- Tests now run through one entrypoint, `GTGameTests`, which only loads a test class when its mods are present (the
+  JEI tests can't even load without JEI). `GTReiGameTest` (`GTCEU_TESTS=rei ./gradlew runClientGameTest
+  -PwithRei=true`) checks that:
+  - REI has the GT displays (30k+), and every category has some
+  - the coke oven display lists its ingredients
+  - Architectury now finds GT fluid sprites
+  - GT fluids are in REI's list
+  - recipe fluid slots convert to REI entries
+
+  It also screenshots a few REI views.
+
+## Gameplay sweep (ninth session, 2026-10-30)
+
+New client tests (all run by `GTGameTests`; select them with `GTCEU_TESTS=world|logistics|tools`):
+- `GTWorldGameTest`: a normal overworld with a fixed seed has:
+  - GT ore veins: about 68k ore blocks of 140 kinds within 5 chunks
+  - ores that drop their raw ore (plus, as upstream, a 0–1 secondary dust roll that can come out as an empty stack)
+  - surface rocks and bedrock fluid veins
+- `GTLogisticsGameTest`: hopper → tin item pipe → chest; pump cover → bronze fluid pipe → super tank; conveyor cover out of
+  a super chest; a preheated steam boiler running a steam macerator; and a coke oven making charcoal and creosote. It
+  also screenshots the pipes and covers.
+- `GTToolsGameTest`:
+  - a hammer plate recipe returns the damaged hammer
+  - a GT pickaxe mines GT ore
+  - innate tool enchantments count
+  - a wrench sets the output side, and sneaking with it turns the machine
+  - using a cover item on a machine places the cover through the real server click path
+- `GTRemoteServerGameTest` now also places a conveyor, opens its cover UI with a screwdriver, and opens the
+  programmed circuit's item UI, all against a real production server. Run it with `research/tools/prodremotetest.sh`.
+
+Bugs found and fixed:
+- **`Item#onItemUseFirst` was never called** (a NeoForge hook). Covers could not be placed by hand, and GT's other
+  use-first behaviours (tools, data items, plungers, ...) did nothing. It is now bridged through Fabric's
+  `UseBlockCallback` in `FabricEventBridge`.
+- **Pipes rendered without their connections.** NeoForge seeds a model's `getModelData` with the block entity's own
+  model data, which is where pipes keep their connection mask. `GTBlockStateModel` now does the same.
+- **Innate tool enchantments were ignored**, because NeoForge's `getAllEnchantments` is never called by vanilla.
+  `EnchantmentHelperMixin` adds them wherever enchantments are read. GT's own default tool enchantments still follow
+  the `enchantedTools` config, which is off by default, as upstream.
+- **Jade showed "1B" for every super tank.** It used the stored stack, which only marks the fluid type. It now shows
+  the real long amount. Upstream shows 0 there.
+- Two NeoForge hooks bridged to their Fabric equivalents:
+  - GT tools now implement `FabricItem#allowComponentsUpdateAnimation` and `#allowContinuingBlockBreaking` (from
+    `shouldCauseReequipAnimation`/`shouldCauseBlockBreakReset`), so tool data changes don't bob the hand or restart
+    mining.
+  - Nano and quantum boots walk on powder snow (`PowderSnowBlockMixin`).
+- `IItemExtension` hooks with no callers and no GT override (`canEquip`, `onEntityItemUpdate`, ...) are left as they are.
+
+Checked and fine as-is: a wrench without sneaking sets the output side (only sneaking turns the machine, as upstream);
+conveyor covers need an item inventory, so they won't go on a super tank; covers can't go on a machine's front.

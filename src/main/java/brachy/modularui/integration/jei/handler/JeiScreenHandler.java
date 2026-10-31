@@ -1,5 +1,7 @@
 package brachy.modularui.integration.jei.handler;
 
+import brachy.modularui.integration.jei.JeiIngredientHandler;
+
 import brachy.modularui.api.IMuiScreen;
 import brachy.modularui.api.widget.IWidget;
 import brachy.modularui.core.mixins.jei.IngredientListOverlayAccessor;
@@ -72,14 +74,14 @@ public class JeiScreenHandler<T extends Screen & IMuiScreen> extends RecipeViewe
                 .getRecipeViewerSettings().getGhostIngredientSlots();
         List<Target<I>> ghostHandlerTargets = new ArrayList<>();
         for (var slot : ghostSlots) {
-            if (slot.isEnabled() && slot.castGhostIngredientIfValid(ingredient.getIngredient()) != null) {
+            if (slot.isEnabled() && slot.castGhostIngredientIfValid(JeiIngredientHandler.fromJei(ingredient.getIngredient())) != null) {
                 @SuppressWarnings("unchecked")
                 GhostIngredientSlot<I> slotWithType = (GhostIngredientSlot<I>) slot;
                 ghostHandlerTargets.add(new GhostIngredientTarget<>(slotWithType));
             }
         }
 
-        currentIngredient = ghostHandlerTargets.isEmpty() ? null : ingredient.getIngredient();
+        currentIngredient = ghostHandlerTargets.isEmpty() ? null : JeiIngredientHandler.fromJei(ingredient.getIngredient());
 
         return ghostHandlerTargets;
     }
@@ -173,7 +175,7 @@ public class JeiScreenHandler<T extends Screen & IMuiScreen> extends RecipeViewe
                 if (provider.getIngredients().isEmpty()) return Optional.empty();
 
                 Optional<? extends IClickableIngredient<?>> ingredient = this
-                        .createClickableIngredient(mapFirstIngredient(provider), hovered.getArea());
+                        .createClickableIngredient(JeiIngredientHandler.toJei(mapFirstIngredient(provider)), hovered.getArea());
 
                 // noinspection unchecked
                 return (Optional<IClickableIngredient<?>>) ingredient;
